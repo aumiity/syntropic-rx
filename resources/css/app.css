@@ -1,1 +1,40 @@
 @import "tailwindcss";
+
+@layer base {
+    html {
+        font-family: "Poppins", "Sarabun", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        color: #047857;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background-color: #f8fafc;
+    }
+
+    body {
+        font-weight: 400;
+        background-color: inherit;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        font-weight: 600;
+        line-height: 1.25;
+        color: #047857;
+    }
+
+    p, a, li, span, input, button {
+        font-weight: 400;
+        letter-spacing: 0.02em;
+    }
+
+    .text-muted {
+        color: #6b7280;
+    }
+
+    .text-primary {
+        color: #047857;
+    }
+
+    .btn-primary {
+        @apply bg-emerald-600 text-white hover:bg-emerald-700;
+    }
+}
