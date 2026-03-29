@@ -16,6 +16,7 @@
                 <div>เวลา: <span id="hygeia-time">--:--:--</span></div>
             </div>
         </div>
+
     </div>
 
     {{-- ========================================== --}}
@@ -59,15 +60,17 @@
     {{-- ========================================== --}}
     <div class="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden relative">
 
-        {{-- Table Header (เปลี่ยนสีให้สว่าง สะอาดตา) --}}
-        <div class="bg-slate-100 text-slate-600 text-sm font-bold grid grid-cols-12 gap-2 px-4 py-3 border-b border-slate-200">
-            <div class="col-span-1 text-center">ลำดับ</div>
-            <div class="col-span-5">รายการสินค้า (Product)</div>
-            <div class="col-span-2 text-center">จำนวน (Qty)</div>
-            <div class="col-span-1 text-right">ราคา/หน่วย</div>
-            <div class="col-span-1 text-right">ส่วนลด</div>
-            <div class="col-span-1 text-right">รวมเงิน</div>
-            <div class="col-span-1 text-center">ลบ</div>
+       {{-- Table Header (ล็อกขนาด Grid ตายตัว 100%) --}}
+        <div class="w-full grid gap-2 px-4 py-3 bg-slate-100 text-slate-600 text-sm font-bold border-b border-slate-200 items-center" 
+             style="grid-template-columns: 50px 3fr 1fr 80px 1fr 1fr 1fr 50px;">
+            <div class="text-center">ลำดับ</div>
+            <div>รายการสินค้า (Product)</div>
+            <div class="text-center">หน่วย</div>
+            <div class="text-center">จำนวน (Qty)</div>
+            <div class="text-center">ราคา/หน่วย</div>
+            <div class="text-center">ส่วนลด</div>
+            <div class="text-center">รวมเงิน</div>
+            <div class="text-center">ลบ</div>
         </div>
 
         {{-- Table Body (Cart Items) --}}
@@ -98,8 +101,9 @@
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     ยกเลิกบิล [F8]
                 </button>
-                <button class="px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm">พักบิล</button>
-                <button class="px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm">พิมพ์ใบสั่งยา</button>
+                <button onclick="holdBill()" class="px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm">พักบิล</button>
+                <button onclick="showHeldBills()" class="px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm">เรียกบิลที่พัก</button>
+                <button onclick="printLabel()" class="px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm">พิมพ์ฉลากยา</button>
             </div>
         </div>
 
@@ -136,9 +140,50 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
 </style>
 
+<style>
+/* Custom Scrollbar for sleek UI */
+.custom-scrollbar::-webkit-scrollbar { width: 8px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+
+/* ซ่อนลูกศรขึ้น/ลง ในช่องพิมพ์ตัวเลขจำนวนสินค้า */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
+}
+input[type=number] {
+    -moz-appearance: textfield;
+}
+</style>
+
+<!-- Modals -->
+<div id="price-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-96 shadow-lg">
+        <h3 class="text-lg font-bold text-slate-800 mb-4">เปลี่ยนราคา</h3>
+        <input type="number" id="price-input" class="w-full border border-slate-300 rounded px-3 py-2 mb-4 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" min="0" step="0.01" placeholder="ใส่ราคาใหม่">
+        <div class="flex justify-end gap-2">
+            <button id="price-cancel" class="px-4 py-2 bg-slate-200 text-slate-700 rounded hover:bg-slate-300 transition-colors">ยกเลิก</button>
+            <button id="price-ok" class="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors">ตกลง</button>
+        </div>
+    </div>
+</div>
+
+<div id="discount-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-96 shadow-lg">
+        <h3 class="text-lg font-bold text-slate-800 mb-4">ใส่ส่วนลด</h3>
+        <input type="number" id="discount-input" class="w-full border border-slate-300 rounded px-3 py-2 mb-4 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" min="0" step="0.01" placeholder="ใส่ส่วนลด">
+        <div class="flex justify-end gap-2">
+            <button id="discount-cancel" class="px-4 py-2 bg-slate-200 text-slate-700 rounded hover:bg-slate-300 transition-colors">ยกเลิก</button>
+            <button id="discount-ok" class="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors">ตกลง</button>
+        </div>
+    </div>
+</div>
+
 <script>
 // --- State ---
-let cart = {}, allProducts = [];
+let cart = {}, allProducts = [], heldBills = JSON.parse(localStorage.getItem('held_bills') || '[]');
 
 // --- Search & Popup Logic ---
 let timer;
@@ -184,8 +229,8 @@ function renderSearchResults(products) {
         const out = stock === 0;
 
         return `
-        <div onclick="${!out ? `addToCart(${p.id})` : ''}"
-             class="px-4 py-3 hover:bg-emerald-50 cursor-pointer border-b border-slate-100 last:border-0 flex justify-between items-center ${out ? 'opacity-50 cursor-not-allowed bg-slate-50' : ''}">
+        <div onclick="${!out ? `addToCart('${p.id}')` : ''}" 
+             class="px-4 py-3 border-b border-slate-100 last:border-0 flex justify-between items-center ${out ? 'opacity-50 cursor-not-allowed bg-slate-50' : 'hover:bg-emerald-50 cursor-pointer'}">
             <div class="flex-1">
                 <div class="font-bold text-slate-800 text-lg flex items-center gap-2">
                     ${p.trade_name}
@@ -202,11 +247,11 @@ function renderSearchResults(products) {
 
 // --- Cart Actions ---
 function addToCart(id) {
-    const p = allProducts.find(p => p.id == id);
+    const p = allProducts.find(product => product.id == id);
     if (!p) return;
 
     if(cart[id]) {
-        cart[id].qty += 1;
+        cart[id].qty = parseInt(cart[id].qty) + 1;
     } else {
         cart[id] = {product: p, qty: 1};
     }
@@ -218,17 +263,89 @@ function addToCart(id) {
     updateAll();
 }
 
-function changeQty(id, d) {
+// 🛠️ ปรับปรุง changeQty ใหม่ บังคับเป็นตัวเลขทั้งหมด
+window.changeQty = function(id, d) {
     if (!cart[id]) return;
-    cart[id].qty += d;
-    if (cart[id].qty <= 0) delete cart[id];
+    
+    // บังคับให้จำนวนปัจจุบันและค่าที่ส่งมาบวกลบ เป็นตัวเลข (Integer) ป้องกันบั๊ก String ต่อกัน
+    const currentQty = parseInt(cart[id].qty) || 0;
+    const diff = parseInt(d) || 0;
+    
+    cart[id].qty = currentQty + diff;
+    
+    if (cart[id].qty <= 0) {
+        delete cart[id];
+    }
+    
     updateAll();
-}
+};
 
-function removeItem(id) {
+window.setQty = function(id, value) {
+    if (!cart[id]) return;
+    const newQty = parseInt(value);
+    
+    if (isNaN(newQty) || newQty <= 0) {
+        delete cart[id];
+    } else {
+        cart[id].qty = newQty;
+    }
+    updateAll();
+};
+
+window.changePrice = function(id) {
+    if (!cart[id]) return;
+    const p = cart[id].product;
+    const currentPrice = cart[id].customPrice || parseFloat(p.price_retail);
+    document.getElementById('price-input').value = currentPrice;
+    document.getElementById('price-modal').classList.remove('hidden');
+    document.getElementById('price-modal').classList.add('flex');
+    window.currentPriceId = id;
+};
+
+window.changeDiscount = function(id) {
+    if (!cart[id]) return;
+    const currentDiscount = cart[id].discount || 0;
+    document.getElementById('discount-input').value = currentDiscount;
+    document.getElementById('discount-modal').classList.remove('hidden');
+    document.getElementById('discount-modal').classList.add('flex');
+    window.currentDiscountId = id;
+};
+
+// Modal event listeners
+document.getElementById('price-ok').addEventListener('click', function() {
+    const newPrice = parseFloat(document.getElementById('price-input').value);
+    if (!isNaN(newPrice) && newPrice >= 0) {
+        cart[window.currentPriceId].customPrice = newPrice;
+        updateAll();
+    }
+    document.getElementById('price-modal').classList.add('hidden');
+    document.getElementById('price-modal').classList.remove('flex');
+});
+
+document.getElementById('price-cancel').addEventListener('click', function() {
+    document.getElementById('price-modal').classList.add('hidden');
+    document.getElementById('price-modal').classList.remove('flex');
+});
+
+document.getElementById('discount-ok').addEventListener('click', function() {
+    const newDiscount = parseFloat(document.getElementById('discount-input').value);
+    if (!isNaN(newDiscount) && newDiscount >= 0) {
+        cart[window.currentDiscountId].discount = newDiscount;
+        updateAll();
+    }
+    document.getElementById('discount-modal').classList.add('hidden');
+    document.getElementById('discount-modal').classList.remove('flex');
+});
+
+document.getElementById('discount-cancel').addEventListener('click', function() {
+    document.getElementById('discount-modal').classList.add('hidden');
+    document.getElementById('discount-modal').classList.remove('flex');
+});
+
+window.removeItem = function(id) {
     delete cart[id];
     updateAll();
-}
+};
 
 function clearCart() {
     if(Object.keys(cart).length === 0) return;
@@ -242,48 +359,75 @@ function clearCart() {
 }
 
 // --- Render Main Table ---
+// --- Render Main Table ---
 function updateAll() {
     const list = document.getElementById('cart-list');
-    const emptyState = document.getElementById('empty-cart');
+    const emptyState = document.getElementById('empty-cart'); // โค้ดที่ Copilot สร้างอาจจะไม่มีตัวนี้
     const keys = Object.keys(cart);
 
     let grandTotal = 0;
 
     if (!keys.length) {
         list.innerHTML = '';
-        list.appendChild(emptyState);
-        emptyState.classList.remove('hidden');
-        emptyState.classList.add('flex');
+        // เช็คว่ามีกล่อง empty-cart ไหม ถ้ามีค่อยแสดง ถ้าไม่มีก็สร้างข้อความใส่ลงไปเลย
+        if (emptyState) {
+            list.appendChild(emptyState);
+            emptyState.classList.remove('hidden');
+            emptyState.classList.add('flex');
+        } else {
+            list.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-slate-300 gap-3 py-10">
+                <p class="text-xl font-medium">ยังไม่มีรายการสั่งซื้อ</p>
+                <p class="text-sm text-slate-400">พิมพ์ค้นหา หรือ สแกนบาร์โค้ด เพื่อเริ่มขาย</p>
+            </div>`;
+        }
     } else {
-        emptyState.classList.add('hidden');
-        emptyState.classList.remove('flex');
+        // เช็คว่ามีกล่อง empty-cart ไหม ถ้ามีค่อยซ่อน
+        if (emptyState) {
+            emptyState.classList.add('hidden');
+            emptyState.classList.remove('flex');
+        }
 
         list.innerHTML = keys.map((id, index) => {
             const item = cart[id];
             const p = item.product;
             const price = parseFloat(p.price_retail);
-            const lineTotal = price * item.qty;
+            const effectivePrice = item.customPrice || price;
+            const discount = item.discount || 0;
+            const lineTotal = (effectivePrice * item.qty) - discount;
             grandTotal += lineTotal;
 
-            return `
-            <div class="grid grid-cols-12 gap-2 px-4 py-3 border-b border-slate-100 items-center hover:bg-slate-50 transition-colors">
-                <div class="col-span-1 text-center text-slate-500 font-medium">${index + 1}</div>
-                <div class="col-span-5">
-                    <div class="font-bold text-slate-800 text-base">${p.trade_name}</div>
-                    <div class="text-xs text-slate-400">Barcode: ${p.barcode || '-'}</div>
+           return `
+            <div class="w-full grid gap-2 px-4 py-3 border-b border-slate-100 items-center hover:bg-slate-50 transition-colors" 
+                 style="grid-template-columns: 50px 3fr 1fr 80px 1fr 1fr 1fr 50px;">
+                 
+                <div class="text-center text-slate-500 font-medium">${index + 1}</div>
+                
+                <div>
+                    <div class="font-bold text-slate-800 text-base line-clamp-1">${p.trade_name}</div>
                 </div>
-                <div class="col-span-2 flex justify-center">
-                    <div class="flex items-center bg-white border border-slate-300 rounded-lg overflow-hidden shadow-sm">
-                        <button onclick="changeQty(${p.id}, -1)" class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors">−</button>
-                        <input type="text" value="${item.qty}" class="w-10 text-center font-bold text-slate-800 border-x border-slate-200 h-8 outline-none" readonly>
-                        <button onclick="changeQty(${p.id}, 1)" class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors">+</button>
+                
+                <div class="text-center text-slate-500 font-medium">${p.unit ? p.unit.name : '-'}</div>
+                
+                <div class="flex justify-center">
+                    <div class="flex items-center bg-white border border-slate-300 rounded-lg overflow-hidden shadow-sm focus-within:ring-2 focus-within:ring-emerald-500 w-max max-w-[120px]">
+                        <button type="button" data-action="changeQty" data-id="${p.id}" data-delta="-1" class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors font-bold text-lg">-</button>
+                        <input type="number" min="1" value="${item.qty}" onchange="setQty('${p.id}', this.value)" class="w-8 text-center font-bold text-slate-800 border-x border-slate-200 h-8 outline-none bg-white flex-1">
+                        <button type="button" data-action="changeQty" data-id="${p.id}" data-delta="1" class="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors font-bold text-lg">+</button>
                     </div>
                 </div>
-                <div class="col-span-1 text-right text-slate-700 font-medium">฿${price.toLocaleString()}</div>
-                <div class="col-span-1 text-right text-slate-400">-</div>
-                <div class="col-span-1 text-right font-bold text-emerald-600 text-lg">฿${lineTotal.toLocaleString()}</div>
-                <div class="col-span-1 flex justify-center">
-                    <button onclick="removeItem(${p.id})" class="w-8 h-8 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors">
+                
+                <div class="text-center">
+                    <div onclick="changePrice('${p.id}')" class="cursor-pointer text-slate-700 font-medium hover:bg-slate-100 px-2 py-1 rounded transition-colors inline-block" title="คลิกเพื่อแก้ราคา">฿${effectivePrice.toLocaleString('th', {minimumFractionDigits: 2})}</div>
+                </div>
+                
+                <div class="text-center">
+                    <div onclick="changeDiscount('${p.id}')" class="cursor-pointer text-slate-500 font-medium hover:bg-slate-100 px-2 py-1 rounded transition-colors inline-block" title="คลิกเพื่อใส่ส่วนลด">${discount > 0 ? '-฿' + discount.toLocaleString('th', {minimumFractionDigits: 2}) : '-'}</div>
+                </div>
+                
+                <div class="text-center font-bold text-emerald-600 text-lg">฿${lineTotal.toLocaleString('th', {minimumFractionDigits: 2})}</div>
+                
+                <div class="flex justify-center">
+                    <button type="button" data-action="removeItem" data-id="${p.id}" class="w-8 h-8 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     </button>
                 </div>
@@ -291,12 +435,37 @@ function updateAll() {
         }).join('');
     }
 
-    document.getElementById('tb-total').textContent = '฿ ' + grandTotal.toLocaleString('th', {minimumFractionDigits: 2});
-    document.getElementById('s-count').textContent = keys.length;
+    // ใส่ if ดักเผื่อ Copilot ตั้งชื่อ ID ไม่ตรงด้วย
+    const tbTotal = document.getElementById('tb-total');
+    if (tbTotal) tbTotal.textContent = '฿ ' + grandTotal.toLocaleString('th', {minimumFractionDigits: 2});
+    
+    const sCount = document.getElementById('s-count');
+    if (sCount) sCount.textContent = keys.length;
 
     const payBtn = document.getElementById('pay-btn');
-    payBtn.disabled = !keys.length;
+    if (payBtn) payBtn.disabled = !keys.length;
 }
+
+// --- Event Listeners ---
+const cartList = document.getElementById('cart-list');
+cartList.addEventListener('click', function(event) {
+    const btn = event.target.closest('button[data-action]');
+    if (btn) {
+        const action = btn.dataset.action;
+        const id = btn.dataset.id;
+
+        if (action === 'changeQty') {
+            const delta = Number(btn.dataset.delta || 0);
+            changeQty(id, delta);
+            return;
+        }
+
+        if (action === 'removeItem') {
+            removeItem(id);
+            return;
+        }
+    }
+});
 
 // --- General Actions ---
 function changeCustomer() { alert('เปิดหน้าเลือกลูกค้า'); }
@@ -311,9 +480,11 @@ document.addEventListener('keydown', e => {
 
 // --- Hygeia-style helper: realtime clock ---
 function updateHygeiaTime() {
-    const now = new Date();
-    const t = now.toLocaleTimeString('th-TH', { hour12: false });
-    document.getElementById('hygeia-time').textContent = t;
+    const el = document.getElementById('hygeia-time');
+    if(el) {
+        const now = new Date();
+        el.textContent = now.toLocaleTimeString('th-TH', { hour12: false });
+    }
 }
 setInterval(updateHygeiaTime, 1000);
 updateHygeiaTime();

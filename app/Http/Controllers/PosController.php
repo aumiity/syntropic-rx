@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Models\Product;
 use App\Models\Customer;
+use App\Models\ProductLot;
+use App\Models\Supplier;
 
 class PosController extends Controller
 {
@@ -12,6 +15,139 @@ class PosController extends Controller
     {
         $customers = Customer::where('id', '!=', 1)->get();
         return view('pos.index', compact('customers'));
+    }
+
+    public function receiveStockForm()
+    {
+        $products = Product::where('is_disabled', false)->orderBy('trade_name')->get();
+        $suppliers = Supplier::where('is_disabled', false)->orderBy('name')->get();
+
+        return view('pos.receive_stock', compact('products', 'suppliers'));
+    }
+
+    public function receiveStock(Request $request)
+    {
+        $data = $request->validate([
+            'supplier_id' => 'nullable|exists:suppliers,id',
+            'receive_date' => 'required|date',
+            'invoice_no' => 'nullable|string|max:100',
+
+            'product_id' => 'required|array|min:1',
+            'product_id.*' => 'required|exists:products,id',
+            'lot_number' => 'required|array|min:1',
+            'lot_number.*' => 'required|string|max:100',
+            'manufactured_date' => 'nullable|array',
+            'manufactured_date.*' => 'nullable|date',
+            'expiry_date' => 'required|array|min:1',
+            'expiry_date.*' => 'required|date',
+            'cost_price' => 'required|array|min:1',
+            'cost_price.*' => 'required|numeric|min:0',
+            'sell_price' => 'required|array|min:1',
+            'sell_price.*' => 'required|numeric|min:0',
+            'qty_received' => 'required|array|min:1',
+            'qty_received.*' => 'required|integer|min:1',
+            'note' => 'nullable|array',
+            'note.*' => 'nullable|string|max:255',
+        ]);
+
+        $rows = count($data['product_id']);
+
+        DB::transaction(function () use ($data, $rows) {
+            for ($i = 0; $i < $rows; $i++) {
+                $productId = $data['product_id'][$i];
+                $lotNumber = $data['lot_number'][$i];
+                $manufacturedDate = $data['manufactured_date'][$i] ?? null;
+                $expiryDate = $data['expiry_date'][$i];
+                $costPrice = $data['cost_price'][$i];
+                $sellPrice = $data['sell_price'][$i];
+                $qtyReceived = $data['qty_received'][$i];
+                $itemNote = $data['note'][$i] ?? null;
+
+                if (!$productId || !$lotNumber || !$expiryDate || !$qtyReceived) {
+                    continue;
+                }
+
+                $lot = ProductLot::firstOrNew([
+                    'product_id' => $productId,
+                    'lot_number' => $lotNumber,
+                ]);
+
+                $prevOnHand = $lot->exists ? $lot->qty_on_hand : 0;
+
+                $lot->supplier_id = $data['supplier_id'] ?? null;
+                $lot->manufactured_date = $manufacturedDate;
+                $lot->expiry_date = $expiryDate;
+                $lot->cost_price = $costPrice;
+                $lot->sell_price = $sellPrice;
+                $lot->qty_received = ($lot->qty_received ?: 0) + $qtyReceived;
+                $lot->qty_on_hand = ($lot->qty_on_hand ?: 0) + $qtyReceived;
+                $lot->note = $itemNote;
+                $lot->is_closed = false;
+                $lot->save();
+
+                DB::table('stock_movements')->insert([
+                    'product_id' => $lot->product_id,
+                    'lot_id' => $lot->id,
+                    'movement_type' => 'receive',
+                    'ref_type' => 'stock_receive',
+                    'ref_id' => null,
+                    'qty_change' => $qtyReceived,
+                    'qty_before' => $prevOnHand,
+                    'qty_after' => $lot->qty_on_hand,
+                    'unit_cost' => $costPrice,
+                    'note' => 'รับยาเข้าสต๊อค (เลขที่เอกสาร: ' . ($data['invoice_no'] ?? '-') . ')',
+                    'created_by' => auth()->id() ?: null,
+                    'created_at' => now(),
+                ]);
+            }
+        });
+
+        return redirect()->route('pos.stock.receive')->with('success', 'บันทึกการรับยาเข้าสต๊อคเรียบร้อยแล้ว');
+    }
+
+    public function receiveStockHistory(Request $request)
+    {
+        $query = DB::table('stock_movements')
+            ->join('products', 'stock_movements.product_id', '=', 'products.id')
+            ->join('product_lots', 'stock_movements.lot_id', '=', 'product_lots.id')
+            ->leftJoin('suppliers', 'product_lots.supplier_id', '=', 'suppliers.id')
+            ->leftJoin('users', 'stock_movements.created_by', '=', 'users.id')
+            ->where('stock_movements.movement_type', 'receive')
+            ->select([
+                'stock_movements.id',
+                'stock_movements.created_at',
+                'stock_movements.qty_change',
+                'stock_movements.unit_cost',
+                'stock_movements.note',
+                'products.trade_name',
+                'products.barcode',
+                'products.code',
+                'product_lots.lot_number',
+                'product_lots.expiry_date',
+                'suppliers.name as supplier_name',
+                'users.name as created_by_name',
+            ]);
+
+        // Filters
+        if ($request->filled('date_from')) {
+            $query->whereDate('stock_movements.created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('stock_movements.created_at', '<=', $request->date_to);
+        }
+        if ($request->filled('supplier_id')) {
+            $query->where('product_lots.supplier_id', $request->supplier_id);
+        }
+        if ($request->filled('product_id')) {
+            $query->where('stock_movements.product_id', $request->product_id);
+        }
+
+        $movements = $query->orderBy('stock_movements.created_at', 'desc')->paginate(50);
+
+        $suppliers = Supplier::where('is_disabled', false)->orderBy('name')->get();
+        $products = Product::where('is_disabled', false)->orderBy('trade_name')->get();
+
+        return view('pos.receive_stock_history', compact('movements', 'suppliers', 'products'));
     }
 
     public function search(Request $request)
@@ -26,7 +162,7 @@ class PosController extends Controller
             ->with(['lots' => function($q) {
                 $q->where('qty_on_hand', '>', 0)
                   ->orderBy('expiry_date', 'asc');
-            }])
+            }, 'unit'])
             ->get();
 
         return response()->json($products);
