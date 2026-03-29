@@ -9,7 +9,7 @@ class Product extends Model
     protected $fillable = [
         'barcode', 'code', 'trade_name', 'name_for_print',
         'item_type', 'unit_id', 'unit_small_id', 'unit_large_id', 'conversion', 'price_retail', 'price_wholesale1',
-        'reorder_point', 'safety_stock',
+        'reorder_point', 'safety_stock','search_keywords',
         'expiry_alert_days1', 'expiry_alert_days2', 'expiry_alert_days3',
         'drug_type_id', 'is_fda_report', 'is_fda13_report',
         'is_disabled', 'is_hidden',

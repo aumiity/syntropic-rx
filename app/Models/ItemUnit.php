@@ -6,9 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class ItemUnit extends Model
 {
-    protected $fillable = ['name', 'multiply'];
+    public $timestamps = false;
 
-    protected $casts = [
-        'multiply' => 'decimal:4',
-    ];
+    protected $table = 'item_units';
+
+    protected $fillable = ['name', 'multiply'];
 }

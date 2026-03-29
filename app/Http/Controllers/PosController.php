@@ -8,6 +8,10 @@ use App\Models\Product;
 use App\Models\Customer;
 use App\Models\ProductLot;
 use App\Models\Supplier;
+use Illuminate\Support\Facades\DB as FacadesDB;
+use App\Models\DrugType;
+use App\Models\DosageForm;
+use App\Models\ItemUnit;
 
 class PosController extends Controller
 {
@@ -156,8 +160,9 @@ class PosController extends Controller
         $products = Product::where('is_disabled', false)
             ->where(function($q) use ($query) {
                 $q->where('trade_name', 'like', "%{$query}%")
-                  ->orWhere('barcode', $query)
-                  ->orWhere('code', $query);
+                  ->orWhere('barcode', 'like', "%{$query}%")
+                  ->orWhere('search_keywords', 'like', "%{$query}%")
+                  ->orWhere('code', 'like', "%{$query}%");
             })
             ->with(['lots' => function($q) {
                 $q->where('qty_on_hand', '>', 0)
@@ -185,25 +190,58 @@ class PosController extends Controller
 
     public function editProduct(Product $product)
     {
-        return view('pos.edit_product', compact('product'));
+        $drugTypes   = DrugType::where('is_disabled', false)->orderBy('name_th')->get();
+        $dosageForms = DosageForm::where('is_disabled', false)->orderBy('name_th')->get();
+        $itemUnits   = ItemUnit::orderBy('name')->get();
+        return view('pos.edit_product', compact('product', 'drugTypes', 'dosageForms', 'itemUnits'));
     }
 
     public function updateProduct(Request $request, Product $product)
     {
         $data = $request->validate([
-            'barcode' => 'required|string|max:50|unique:products,barcode,' . $product->id,
-            'code' => 'nullable|string|max:50|unique:products,code,' . $product->id,
-            'trade_name' => 'required|string|max:255',
-            'name_for_print' => 'nullable|string|max:255',
-            'price_retail' => 'required|numeric|min:0',
-            'price_wholesale1' => 'nullable|numeric|min:0',
-            'item_type' => 'nullable|string|in:drug,supply,equipment,service',
-            'reorder_point' => 'nullable|integer|min:0',
-            'safety_stock' => 'nullable|integer|min:0',
-            'drug_type_id' => 'nullable|integer|exists:drug_types,id',
+            'barcode'           => 'nullable|string|max:50|unique:products,barcode,' . $product->id,
+            'barcode2'          => 'nullable|string|max:50',
+            'code'              => 'nullable|string|max:50|unique:products,code,' . $product->id,
+            'trade_name'        => 'required|string|max:255',
+            'name_for_print'    => 'nullable|string|max:255',
+            'item_type'         => 'nullable|string|in:drug,supply,equipment,service',
+            'dosage_form_id'    => 'nullable|integer|exists:dosage_forms,id',
+            'unit_id'           => 'nullable|integer|exists:item_units,id',
+            'price_retail'      => 'required|numeric|min:0',
+            'price_wholesale1'  => 'nullable|numeric|min:0',
+            'price_wholesale2'  => 'nullable|numeric|min:0',
+            'is_vat'            => 'nullable|boolean',
+            'is_not_discount'   => 'nullable|boolean',
+            'reorder_point'     => 'nullable|integer|min:0',
+            'safety_stock'      => 'nullable|integer|min:0',
+            'expiry_alert_days1'=> 'nullable|integer|min:1',
+            'expiry_alert_days2'=> 'nullable|integer|min:1',
+            'expiry_alert_days3'=> 'nullable|integer|min:1',
+            'drug_type_id'      => 'nullable|integer|exists:drug_types,id',
+            'strength'          => 'nullable|numeric|min:0',
+            'registration_no'   => 'nullable|string|max:50',
+            'tmt_id'            => 'nullable|string|max:30',
+            'is_original_drug'  => 'nullable|boolean',
+            'is_antibiotic'     => 'nullable|boolean',
+            'max_dispense_qty'  => 'nullable|numeric|min:0',
+            'indication_note'   => 'nullable|string',
+            'side_effect_note'  => 'nullable|string',
+            'is_fda_report'     => 'nullable|boolean',
+            'is_fda13_report'   => 'nullable|boolean',
+            'is_sale_control'   => 'nullable|boolean',
+            'sale_control_qty'  => 'nullable|numeric|min:0',
+            'note'              => 'nullable|string',
         ]);
 
-        $data['item_type'] = $data['item_type'] ?? 'drug';
+        $data['item_type']       = $data['item_type'] ?? 'drug';
+        $data['is_vat']          = $request->boolean('is_vat');
+        $data['is_not_discount'] = $request->boolean('is_not_discount');
+        $data['is_original_drug']= $request->boolean('is_original_drug');
+        $data['is_antibiotic']   = $request->boolean('is_antibiotic');
+        $data['is_fda_report']   = $request->boolean('is_fda_report');
+        $data['is_fda13_report'] = $request->boolean('is_fda13_report');
+        $data['is_sale_control'] = $request->boolean('is_sale_control');
+
         $product->update($data);
 
         return redirect()->route('products.index')->with('success', 'อัพเดตข้อมูลสินค้าเรียบร้อยแล้ว');
@@ -211,30 +249,63 @@ class PosController extends Controller
 
     public function createProduct()
     {
-        return view('pos.create_product');
+        $drugTypes   = DrugType::where('is_disabled', false)->orderBy('name_th')->get();
+        $dosageForms = DosageForm::where('is_disabled', false)->orderBy('name_th')->get();
+        $itemUnits   = ItemUnit::orderBy('name')->get();
+        return view('pos.create_product', compact('drugTypes', 'dosageForms', 'itemUnits'));
     }
 
     public function storeProduct(Request $request)
     {
         $data = $request->validate([
-            'barcode' => 'required|string|max:50|unique:products,barcode',
-            'code' => 'nullable|string|max:50|unique:products,code',
-            'trade_name' => 'required|string|max:255',
-            'name_for_print' => 'nullable|string|max:255',
-            'price_retail' => 'required|numeric|min:0',
-            'price_wholesale1' => 'nullable|numeric|min:0',
-            'item_type' => 'nullable|string|in:drug,supply,equipment,service',
-            'reorder_point' => 'nullable|integer|min:0',
-            'safety_stock' => 'nullable|integer|min:0',
-            'drug_type_id' => 'nullable|integer|exists:drug_types,id',
+            'barcode'           => 'nullable|string|max:50|unique:products,barcode',
+            'barcode2'          => 'nullable|string|max:50',
+            'code'              => 'nullable|string|max:50|unique:products,code',
+            'trade_name'        => 'required|string|max:255',
+            'name_for_print'    => 'nullable|string|max:255',
+            'item_type'         => 'nullable|string|in:drug,supply,equipment,service',
+            'dosage_form_id'    => 'nullable|integer|exists:dosage_forms,id',
+            'unit_id'           => 'nullable|integer|exists:item_units,id',
+            'price_retail'      => 'required|numeric|min:0',
+            'price_wholesale1'  => 'nullable|numeric|min:0',
+            'price_wholesale2'  => 'nullable|numeric|min:0',
+            'is_vat'            => 'nullable|boolean',
+            'is_not_discount'   => 'nullable|boolean',
+            'reorder_point'     => 'nullable|integer|min:0',
+            'safety_stock'      => 'nullable|integer|min:0',
+            'expiry_alert_days1'=> 'nullable|integer|min:1',
+            'expiry_alert_days2'=> 'nullable|integer|min:1',
+            'expiry_alert_days3'=> 'nullable|integer|min:1',
+            'drug_type_id'      => 'nullable|integer|exists:drug_types,id',
+            'strength'          => 'nullable|numeric|min:0',
+            'registration_no'   => 'nullable|string|max:50',
+            'tmt_id'            => 'nullable|string|max:30',
+            'is_original_drug'  => 'nullable|boolean',
+            'is_antibiotic'     => 'nullable|boolean',
+            'max_dispense_qty'  => 'nullable|numeric|min:0',
+            'indication_note'   => 'nullable|string',
+            'side_effect_note'  => 'nullable|string',
+            'is_fda_report'     => 'nullable|boolean',
+            'is_fda13_report'   => 'nullable|boolean',
+            'is_sale_control'   => 'nullable|boolean',
+            'sale_control_qty'  => 'nullable|numeric|min:0',
+            'note'              => 'nullable|string',
         ]);
 
-        $data['item_type'] = $data['item_type'] ?? 'drug';
+        $data['item_type']       = $data['item_type'] ?? 'drug';
+        $data['is_vat']          = $request->boolean('is_vat');
+        $data['is_not_discount'] = $request->boolean('is_not_discount');
+        $data['is_original_drug']= $request->boolean('is_original_drug');
+        $data['is_antibiotic']   = $request->boolean('is_antibiotic');
+        $data['is_fda_report']   = $request->boolean('is_fda_report');
+        $data['is_fda13_report'] = $request->boolean('is_fda13_report');
+        $data['is_sale_control'] = $request->boolean('is_sale_control');
+        $data['is_disabled']     = false;
+        $data['is_hidden']       = false;
+        $lastId = Product::max('id') ?? 0;
+        $data['code'] = 'PRD-' . str_pad($lastId + 1, 5, '0', STR_PAD_LEFT);
 
-        Product::create(array_merge($data, [
-            'is_disabled' => false,
-            'is_hidden' => false,
-        ]));
+        Product::create($data);
 
         return redirect()->route('pos.products.create')
             ->with('success', 'เพิ่มสินค้าเรียบร้อยแล้ว');
