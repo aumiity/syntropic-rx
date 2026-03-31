@@ -1,7 +1,11 @@
+// Product units management
+Route::post('/products/{product}/units', [\App\Http\Controllers\PosController::class, 'storeProductUnit'])->name('products.units.store');
+Route::delete('/products/{product}/units/{unit}', [\App\Http\Controllers\PosController::class, 'destroyProductUnit'])->name('products.units.destroy');
 <?php
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PosController;
+use App\Http\Controllers\SettingsController;
 
 Route::get('/', [PosController::class, 'index'])->name('pos.index');
 Route::get('/pos', [PosController::class, 'index'])->name('pos');
@@ -35,3 +39,21 @@ Route::post('/suppliers', [SupplierController::class, 'store'])->name('suppliers
 Route::get('/suppliers/{supplier}/edit', [SupplierController::class, 'edit'])->name('suppliers.edit');
 Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update');
 Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->name('suppliers.destroy');
+
+// Settings Routes
+Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+
+// Product Categories
+Route::post('/settings/categories', [SettingsController::class, 'storeCategory'])->name('settings.categories.store');
+Route::put('/settings/categories/{category}', [SettingsController::class, 'updateCategory'])->name('settings.categories.update');
+Route::patch('/settings/categories/{category}/toggle', [SettingsController::class, 'toggleCategory'])->name('settings.categories.toggle');
+
+// Item Units
+Route::post('/settings/units', [SettingsController::class, 'storeUnit'])->name('settings.units.store');
+Route::put('/settings/units/{unit}', [SettingsController::class, 'updateUnit'])->name('settings.units.update');
+Route::delete('/settings/units/{unit}', [SettingsController::class, 'deleteUnit'])->name('settings.units.delete');
+
+// Drug Types
+Route::post('/settings/drug-types', [SettingsController::class, 'storeDrugType'])->name('settings.drugtypes.store');
+Route::put('/settings/drug-types/{type}', [SettingsController::class, 'updateDrugType'])->name('settings.drugtypes.update');
+Route::patch('/settings/drug-types/{type}/toggle', [SettingsController::class, 'toggleDrugType'])->name('settings.drugtypes.toggle');

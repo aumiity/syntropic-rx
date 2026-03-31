@@ -49,11 +49,13 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">ประเภทสินค้า</label>
-                        <select name="item_type" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
-                            <option value="drug"      {{ old('item_type','drug')=='drug'      ? 'selected':'' }}>ยา (Drug)</option>
-                            <option value="supply"    {{ old('item_type')=='supply'    ? 'selected':'' }}>เวชภัณฑ์ (Supply)</option>
-                            <option value="equipment" {{ old('item_type')=='equipment' ? 'selected':'' }}>อุปกรณ์ (Equipment)</option>
-                            <option value="service"   {{ old('item_type')=='service'   ? 'selected':'' }}>บริการ (Service)</option>
+                        <select name="category_id" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                            <option value="">-- เลือกประเภท --</option>
+                            @foreach($categories as $cat)
+                                <option value="{{ $cat->id }}" {{ old('category_id') == $cat->id ? 'selected' : '' }}>
+                                    {{ $cat->name }}
+                                </option>
+                            @endforeach
                         </select>
                     </div>
                     <div>

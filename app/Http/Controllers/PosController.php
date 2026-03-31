@@ -1,3 +1,26 @@
+    // เพิ่ม/ลบ product unit
+    public function storeProductUnit(Request $request, Product $product)
+    {
+        $data = $request->validate([
+            'unit_id' => 'required|exists:item_units,id',
+            'qty_per_base' => 'required|numeric|min:0.0001',
+            'barcode' => 'nullable|string|max:50|unique:product_units,barcode',
+            'is_for_sale' => 'nullable|boolean',
+            'is_for_purchase' => 'nullable|boolean',
+        ]);
+        $data['is_for_sale'] = $request->boolean('is_for_sale');
+        $data['is_for_purchase'] = $request->boolean('is_for_purchase');
+        $data['is_disabled'] = false;
+        $product->productUnits()->create($data);
+        return redirect()->back()->with('success', 'เพิ่มหน่วยสำเร็จ');
+    }
+
+    public function destroyProductUnit(Product $product, $unit)
+    {
+        $unitModel = $product->productUnits()->findOrFail($unit);
+        $unitModel->delete();
+        return redirect()->back()->with('success', 'ลบหน่วยสำเร็จ');
+    }
 <?php
 
 namespace App\Http\Controllers;
@@ -12,6 +35,7 @@ use Illuminate\Support\Facades\DB as FacadesDB;
 use App\Models\DrugType;
 use App\Models\DosageForm;
 use App\Models\ItemUnit;
+use App\Models\ProductCategory;
 
 class PosController extends Controller
 {
@@ -193,7 +217,8 @@ class PosController extends Controller
         $drugTypes   = DrugType::where('is_disabled', false)->orderBy('name_th')->get();
         $dosageForms = DosageForm::where('is_disabled', false)->orderBy('name_th')->get();
         $itemUnits   = ItemUnit::orderBy('name')->get();
-        return view('pos.edit_product', compact('product', 'drugTypes', 'dosageForms', 'itemUnits'));
+        $categories = ProductCategory::active()->get();
+        return view('pos.edit_product', compact('product', 'drugTypes', 'dosageForms', 'itemUnits', 'categories'));
     }
 
     public function updateProduct(Request $request, Product $product)
@@ -204,7 +229,7 @@ class PosController extends Controller
             'code'              => 'nullable|string|max:50|unique:products,code,' . $product->id,
             'trade_name'        => 'required|string|max:255',
             'name_for_print'    => 'nullable|string|max:255',
-            'item_type'         => 'nullable|string|in:drug,supply,equipment,service',
+            'category_id'       => 'nullable|integer|exists:product_categories,id',
             'dosage_form_id'    => 'nullable|integer|exists:dosage_forms,id',
             'unit_id'           => 'nullable|integer|exists:item_units,id',
             'price_retail'      => 'required|numeric|min:0',
@@ -224,6 +249,7 @@ class PosController extends Controller
             'is_original_drug'  => 'nullable|boolean',
             'is_antibiotic'     => 'nullable|boolean',
             'max_dispense_qty'  => 'nullable|numeric|min:0',
+            'default_qty'       => 'nullable|integer|min:1',
             'indication_note'   => 'nullable|string',
             'side_effect_note'  => 'nullable|string',
             'is_fda_report'     => 'nullable|boolean',
@@ -233,7 +259,6 @@ class PosController extends Controller
             'note'              => 'nullable|string',
         ]);
 
-        $data['item_type']       = $data['item_type'] ?? 'drug';
         $data['is_vat']          = $request->boolean('is_vat');
         $data['is_not_discount'] = $request->boolean('is_not_discount');
         $data['is_original_drug']= $request->boolean('is_original_drug');
@@ -241,6 +266,7 @@ class PosController extends Controller
         $data['is_fda_report']   = $request->boolean('is_fda_report');
         $data['is_fda13_report'] = $request->boolean('is_fda13_report');
         $data['is_sale_control'] = $request->boolean('is_sale_control');
+        $data['default_qty']     = $data['default_qty'] ?? 1;
 
         $product->update($data);
 
@@ -252,7 +278,10 @@ class PosController extends Controller
         $drugTypes   = DrugType::where('is_disabled', false)->orderBy('name_th')->get();
         $dosageForms = DosageForm::where('is_disabled', false)->orderBy('name_th')->get();
         $itemUnits   = ItemUnit::orderBy('name')->get();
-        return view('pos.create_product', compact('drugTypes', 'dosageForms', 'itemUnits'));
+        $categories  = \App\Models\ProductCategory::where('is_disabled', false)
+                           ->orderBy('sort_order')
+                           ->get();
+        return view('pos.create_product', compact('drugTypes', 'dosageForms', 'itemUnits', 'categories'));
     }
 
     public function storeProduct(Request $request)
@@ -263,7 +292,7 @@ class PosController extends Controller
             'code'              => 'nullable|string|max:50|unique:products,code',
             'trade_name'        => 'required|string|max:255',
             'name_for_print'    => 'nullable|string|max:255',
-            'item_type'         => 'nullable|string|in:drug,supply,equipment,service',
+            'category_id'       => 'nullable|integer|exists:product_categories,id',
             'dosage_form_id'    => 'nullable|integer|exists:dosage_forms,id',
             'unit_id'           => 'nullable|integer|exists:item_units,id',
             'price_retail'      => 'required|numeric|min:0',
@@ -283,6 +312,7 @@ class PosController extends Controller
             'is_original_drug'  => 'nullable|boolean',
             'is_antibiotic'     => 'nullable|boolean',
             'max_dispense_qty'  => 'nullable|numeric|min:0',
+            'default_qty'       => 'nullable|integer|min:1',
             'indication_note'   => 'nullable|string',
             'side_effect_note'  => 'nullable|string',
             'is_fda_report'     => 'nullable|boolean',
@@ -292,7 +322,6 @@ class PosController extends Controller
             'note'              => 'nullable|string',
         ]);
 
-        $data['item_type']       = $data['item_type'] ?? 'drug';
         $data['is_vat']          = $request->boolean('is_vat');
         $data['is_not_discount'] = $request->boolean('is_not_discount');
         $data['is_original_drug']= $request->boolean('is_original_drug');
@@ -300,6 +329,7 @@ class PosController extends Controller
         $data['is_fda_report']   = $request->boolean('is_fda_report');
         $data['is_fda13_report'] = $request->boolean('is_fda13_report');
         $data['is_sale_control'] = $request->boolean('is_sale_control');
+        $data['default_qty']     = $data['default_qty'] ?? 1;
         $data['is_disabled']     = false;
         $data['is_hidden']       = false;
         $lastId = Product::max('id') ?? 0;

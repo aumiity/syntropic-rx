@@ -1,3 +1,7 @@
+    public function productUnits()
+    {
+        return $this->hasMany(ProductUnit::class);
+    }
 <?php
 
 namespace App\Models;
@@ -8,11 +12,11 @@ class Product extends Model
 {
     protected $fillable = [
         'barcode', 'code', 'trade_name', 'name_for_print',
-        'item_type', 'unit_id', 'unit_small_id', 'unit_large_id', 'conversion', 'price_retail', 'price_wholesale1',
+        'category_id', 'unit_id', 'unit_small_id', 'unit_large_id', 'conversion', 'price_retail', 'price_wholesale1',
         'reorder_point', 'safety_stock','search_keywords',
         'expiry_alert_days1', 'expiry_alert_days2', 'expiry_alert_days3',
         'drug_type_id', 'is_fda_report', 'is_fda13_report',
-        'is_disabled', 'is_hidden',
+        'is_disabled', 'is_hidden','default_qty',
     ];
 
     protected $casts = [
@@ -24,6 +28,11 @@ class Product extends Model
         'price_wholesale1'=> 'decimal:2',
         'conversion'      => 'integer',
     ];
+
+    public function category()
+    {
+        return $this->belongsTo(\App\Models\ProductCategory::class);
+    }
 
     public function lots()
     {
