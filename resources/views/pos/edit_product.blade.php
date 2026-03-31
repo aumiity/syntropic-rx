@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="p-6 w-full">
+<div class="p-6 max-w-10xl mx-auto">
 
     <div class="mb-5 flex items-center justify-between">
         <div>
@@ -52,7 +52,7 @@
                     <!-- ชื่อสินค้า (Trade Name) -->
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">ชื่อสินค้า (Trade Name) <span class="text-red-500">*</span></label>
-                        <input type="text" name="trade_name" value="{{ old('trade_name', $product->trade_name) }}" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400" required>
+                        <input type="text" name="trade_name" value="{{ old('trade_name', $product->trade_name) }}" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400" data-required="true" data-error-msg="กรุณากรอกชื่อสินค้า">
                     </div>
                     <!-- ชื่อพิมพ์ (ฉลากยา) -->
                     <div>
@@ -128,7 +128,7 @@
                         <!-- ราคาขายปลีก -->
                         <div>
                             <label class="block text-sm font-medium text-gray-600 mb-1">ราคาขายปลีก <span class="text-red-500">*</span></label>
-                            <input type="number" name="price_retail" id="price_retail" value="{{ old('price_retail', $product->price_retail) }}" step="0.01" min="0" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400" required>
+                            <input type="number" name="price_retail" id="price_retail" value="{{ old('price_retail', $product->price_retail) }}" step="0.01" min="0" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400" data-required="true" data-error-msg="กรุณากรอกราคาขายปลีก">
                         </div>
                         <!-- ราคาส่ง ระดับ 1 -->
                         <div>
@@ -170,7 +170,7 @@
 
             <div id="tab-2" class="tab-panel hidden bg-white border border-gray-200 rounded-xl p-5">
                 <div class="mb-4">
-                    <span class="block text-sm font-medium text-gray-700 mb-1">หน่วยฐานของสินค้า:</span>
+                    <span class="block text-sm font-medium text-gray-700 mb-1">หน่วยย่อยของสินค้า:</span>
                     <span class="inline-block px-3 py-2 rounded bg-gray-100 text-gray-800 text-base font-semibold min-h-[44px]">{{ $product->unit->name ?? '-' }}</span>
                 </div>
 
@@ -179,7 +179,8 @@
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="px-3 py-2 text-left font-medium text-gray-600">หน่วย</th>
-                                <th class="px-3 py-2 text-right font-medium text-gray-600">จำนวนเทียบหน่วยฐาน</th>
+                                <th class="px-3 py-2 text-right font-medium text-gray-600">จำนวนของหน่วยย่อย</th>
+                                <th class="px-3 py-2 text-right font-medium text-gray-600">ราคาปลีก</th>
                                 <th class="px-3 py-2 text-left font-medium text-gray-600">Barcode</th>
                                 <th class="px-3 py-2 text-center font-medium text-gray-600">ขายได้</th>
                                 <th class="px-3 py-2 text-center font-medium text-gray-600">รับเข้าได้</th>
@@ -189,8 +190,9 @@
                         <tbody>
                             @forelse($product->productUnits as $unit)
                                 <tr class="border-b border-gray-100">
-                                    <td class="px-3 py-2 min-h-[44px]">{{ $unit->unit->name ?? '-' }}</td>
+                                    <td class="px-3 py-2 min-h-[44px]">{{ $unit->unit_name }}</td>
                                     <td class="px-3 py-2 text-right min-h-[44px]">{{ $unit->qty_per_base }}</td>
+                                    <td class="px-3 py-2 text-right min-h-[44px]">{{ number_format($unit->price_retail, 2) }}</td>
                                     <td class="px-3 py-2 min-h-[44px]">{{ $unit->barcode }}</td>
                                     <td class="px-3 py-2 text-center min-h-[44px]">
                                         @if($unit->is_for_sale)
@@ -209,7 +211,10 @@
                                             <button type="submit" class="inline-flex items-center justify-center px-3 py-2 rounded bg-red-50 text-red-600 hover:bg-red-100 min-h-[44px]" title="ลบ">
                                                 ลบ
                                             </button>
+                                        <!-- ...existing code... -->
                                         </form>
+
+
                                     </td>
                                 </tr>
                             @empty
@@ -220,41 +225,12 @@
                 </div>
 
                 <div class="border-t border-gray-200 pt-4 mt-4">
-                    <form action="{{ route('products.units.store', $product) }}" method="POST" class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
-                        @csrf
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">หน่วย</label>
-                            <select name="unit_id" class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400 min-h-[44px]" required>
-                                <option value="">-- เลือก --</option>
-                                @foreach($itemUnits as $unit)
-                                    <option value="{{ $unit->id }}">{{ $unit->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">จำนวนเทียบหน่วยฐาน</label>
-                            <input type="number" name="qty_per_base" step="0.0001" min="0.0001" class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400 min-h-[44px]" required>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">Barcode</label>
-                            <input type="text" name="barcode" class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400 min-h-[44px]">
-                        </div>
-                        <div class="flex items-center min-h-[44px]">
-                            <label class="inline-flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
-                                <input type="checkbox" name="is_for_sale" value="1" class="w-5 h-5 rounded">
-                                ขายได้
-                            </label>
-                        </div>
-                        <div class="flex items-center min-h-[44px]">
-                            <label class="inline-flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
-                                <input type="checkbox" name="is_for_purchase" value="1" class="w-5 h-5 rounded">
-                                รับเข้าได้
-                            </label>
-                        </div>
-                        <div>
-                            <button type="submit" class="w-full h-11 px-4 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 min-h-[44px]">เพิ่มหน่วย</button>
-                        </div>
-                    </form>
+                    <button type="button" id="btn-add-unit"
+                        onclick="document.getElementById('modal-add-unit').classList.remove('hidden')"
+                        class="h-11 px-5 rounded-lg bg-emerald-500 hover:bg-emerald-600
+                               text-white text-sm font-medium min-h-[44px]">
+                        + เพิ่มหน่วยสินค้า
+                    </button>
                 </div>
             </div>
 
@@ -457,6 +433,85 @@
 
         </div>
     </form>
+    <div id="modal-add-unit"
+                                                 class="fixed inset-0 bg-black/40 hidden z-50 flex items-center justify-center p-4">
+                                            <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
+                                                <h2 class="text-sm font-semibold text-gray-800 mb-5">เพิ่มหน่วยสินค้า</h2>
+                                                <form action="{{ route('products.units.store', $product) }}" method="POST">
+                                                    @csrf
+                                                    <div class="space-y-4">
+                                                        <div>
+                                                            <label class="block text-xs font-medium text-gray-600 mb-1">
+                                                                ชื่อหน่วย <span class="text-red-500">*</span>
+                                                            </label>
+                                                            <input type="text" name="unit_name" placeholder="เช่น กล่อง, ลัง, แพ็ค"
+                                                                data-required="true" data-error-msg="กรุณากรอกชื่อหน่วย"
+                                                                class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm
+                                                                             focus:outline-none focus:border-emerald-400">
+                                                        </div>
+                                                        <div>
+                                                            <label class="block text-xs font-medium text-gray-600 mb-1">
+                                                                จำนวนของหน่วยย่อย <span class="text-red-500">*</span>
+                                                            </label>
+                                                            <input type="number" name="qty_per_base" step="0.0001" min="0.0001"
+                                                                placeholder="เช่น 50 (แปลว่า 1 กล่อง = 50 หน่วยย่อย)"
+                                                                data-required="true" data-error-msg="กรุณากรอกจำนวน"
+                                                                class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm
+                                                                             focus:outline-none focus:border-emerald-400">
+                                                        </div>
+                                                        <div>
+                                                            <label class="block text-xs font-medium text-gray-600 mb-1">บาร์โค้ด</label>
+                                                            <input type="text" name="barcode" placeholder="บาร์โค้ดของหน่วยนี้ (ถ้ามี)"
+                                                                class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm
+                                                                             focus:outline-none focus:border-emerald-400">
+                                                        </div>
+                                                        <div class="grid grid-cols-3 gap-3">
+                                                            <div>
+                                                                <label class="block text-xs font-medium text-gray-600 mb-1">ราคาปลีก</label>
+                                                                <input type="number" name="price_retail" step="0.01" min="0" value="0"
+                                                                    class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm
+                                                                                 focus:outline-none focus:border-emerald-400">
+                                                            </div>
+                                                            <div>
+                                                                <label class="block text-xs font-medium text-gray-600 mb-1">ราคาส่ง 1</label>
+                                                                <input type="number" name="price_wholesale1" step="0.01" min="0" value="0"
+                                                                    class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm
+                                                                                 focus:outline-none focus:border-emerald-400">
+                                                            </div>
+                                                            <div>
+                                                                <label class="block text-xs font-medium text-gray-600 mb-1">ราคาส่ง 2</label>
+                                                                <input type="number" name="price_wholesale2" step="0.01" min="0" value="0"
+                                                                    class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm
+                                                                                 focus:outline-none focus:border-emerald-400">
+                                                            </div>
+                                                        </div>
+                                                        <div class="flex gap-4">
+                                                            <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                                                                <input type="checkbox" name="is_for_sale" value="1" checked
+                                                                    class="w-5 h-5 rounded accent-emerald-500"> ขายได้
+                                                            </label>
+                                                            <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                                                                <input type="checkbox" name="is_for_purchase" value="1" checked
+                                                                    class="w-5 h-5 rounded accent-emerald-500"> รับเข้าได้
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex justify-end gap-3 mt-6">
+                                                        <button type="button"
+                                                            onclick="document.getElementById('modal-add-unit').classList.add('hidden')"
+                                                            class="px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-600
+                                                                         hover:bg-gray-50">
+                                                            ยกเลิก
+                                                        </button>
+                                                        <button type="submit"
+                                                            class="px-5 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600
+                                                                         text-white text-sm font-medium">
+                                                            บันทึก
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
 </div>
 
 <!-- Tab Switching & Profit Calculation JavaScript -->

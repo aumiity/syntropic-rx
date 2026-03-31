@@ -20,7 +20,7 @@
                 <input type="text" name="code" value="{{ old('code') }}" class="w-full mt-1 rounded border border-slate-300 p-2">
             </label>
             <label>ชื่อ
-                <input type="text" name="name" value="{{ old('name') }}" class="w-full mt-1 rounded border border-slate-300 p-2" required>
+                <input type="text" name="name" data-required="true" data-error-msg="กรุณากรอกชื่อผู้จำหน่าย" class="w-full mt-1 rounded border border-slate-300 p-2">
             </label>
             <label>Tax ID
                 <input type="text" name="tax_id" value="{{ old('tax_id') }}" class="w-full mt-1 rounded border border-slate-300 p-2">

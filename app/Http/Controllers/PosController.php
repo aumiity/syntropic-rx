@@ -1,26 +1,3 @@
-    // เพิ่ม/ลบ product unit
-    public function storeProductUnit(Request $request, Product $product)
-    {
-        $data = $request->validate([
-            'unit_id' => 'required|exists:item_units,id',
-            'qty_per_base' => 'required|numeric|min:0.0001',
-            'barcode' => 'nullable|string|max:50|unique:product_units,barcode',
-            'is_for_sale' => 'nullable|boolean',
-            'is_for_purchase' => 'nullable|boolean',
-        ]);
-        $data['is_for_sale'] = $request->boolean('is_for_sale');
-        $data['is_for_purchase'] = $request->boolean('is_for_purchase');
-        $data['is_disabled'] = false;
-        $product->productUnits()->create($data);
-        return redirect()->back()->with('success', 'เพิ่มหน่วยสำเร็จ');
-    }
-
-    public function destroyProductUnit(Product $product, $unit)
-    {
-        $unitModel = $product->productUnits()->findOrFail($unit);
-        $unitModel->delete();
-        return redirect()->back()->with('success', 'ลบหน่วยสำเร็จ');
-    }
 <?php
 
 namespace App\Http\Controllers;
@@ -28,10 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Product;
+use App\Models\ProductUnit;
 use App\Models\Customer;
 use App\Models\ProductLot;
 use App\Models\Supplier;
-use Illuminate\Support\Facades\DB as FacadesDB;
 use App\Models\DrugType;
 use App\Models\DosageForm;
 use App\Models\ItemUnit;
@@ -124,7 +101,7 @@ class PosController extends Controller
                     'qty_after' => $lot->qty_on_hand,
                     'unit_cost' => $costPrice,
                     'note' => 'รับยาเข้าสต๊อค (เลขที่เอกสาร: ' . ($data['invoice_no'] ?? '-') . ')',
-                    'created_by' => auth()->id() ?: null,
+                    'created_by' => optional(auth()->user())->id,
                     'created_at' => now(),
                 ]);
             }
@@ -201,19 +178,31 @@ class PosController extends Controller
     {
         $q = trim($request->get('q', ''));
 
+        // Sorting
+        $allowedSortBy = ['id', 'code', 'trade_name', 'price_retail'];
+        $sort_by = $request->get('sort_by', 'id');
+        if (!in_array($sort_by, $allowedSortBy)) {
+            $sort_by = 'id';
+        }
+        $sort_dir = strtolower($request->get('sort_dir', 'desc'));
+        if (!in_array($sort_dir, ['asc', 'desc'])) {
+            $sort_dir = 'desc';
+        }
+
         $products = Product::when($q, function($query) use ($q) {
             $query->where(function($sub) use ($q) {
                 $sub->where('trade_name', 'like', "%{$q}%")
                     ->orWhere('barcode', 'like', "%{$q}%")
                     ->orWhere('code', 'like', "%{$q}%");
             });
-        })->orderBy('id', 'desc')->paginate(20);
+        })->orderBy($sort_by, $sort_dir)->paginate(20);
 
-        return view('pos.products_index', compact('products', 'q'));
+        return view('pos.products_index', compact('products', 'q', 'sort_by', 'sort_dir'));
     }
 
     public function editProduct(Product $product)
     {
+        $product->load('productUnits');
         $drugTypes   = DrugType::where('is_disabled', false)->orderBy('name_th')->get();
         $dosageForms = DosageForm::where('is_disabled', false)->orderBy('name_th')->get();
         $itemUnits   = ItemUnit::orderBy('name')->get();
@@ -253,6 +242,7 @@ class PosController extends Controller
             'indication_note'   => 'nullable|string',
             'side_effect_note'  => 'nullable|string',
             'is_fda_report'     => 'nullable|boolean',
+            'is_fda11_report'   => 'nullable|boolean',
             'is_fda13_report'   => 'nullable|boolean',
             'is_sale_control'   => 'nullable|boolean',
             'sale_control_qty'  => 'nullable|numeric|min:0',
@@ -264,13 +254,15 @@ class PosController extends Controller
         $data['is_original_drug']= $request->boolean('is_original_drug');
         $data['is_antibiotic']   = $request->boolean('is_antibiotic');
         $data['is_fda_report']   = $request->boolean('is_fda_report');
+        $data['is_fda11_report'] = $request->boolean('is_fda11_report');
         $data['is_fda13_report'] = $request->boolean('is_fda13_report');
         $data['is_sale_control'] = $request->boolean('is_sale_control');
         $data['default_qty']     = $data['default_qty'] ?? 1;
 
         $product->update($data);
 
-        return redirect()->route('products.index')->with('success', 'อัพเดตข้อมูลสินค้าเรียบร้อยแล้ว');
+        return redirect()->route('products.edit', $product)
+            ->with('success', 'บันทึกข้อมูลสินค้าเรียบร้อยแล้ว');
     }
 
     public function createProduct()
@@ -316,6 +308,7 @@ class PosController extends Controller
             'indication_note'   => 'nullable|string',
             'side_effect_note'  => 'nullable|string',
             'is_fda_report'     => 'nullable|boolean',
+            'is_fda11_report'   => 'nullable|boolean',
             'is_fda13_report'   => 'nullable|boolean',
             'is_sale_control'   => 'nullable|boolean',
             'sale_control_qty'  => 'nullable|numeric|min:0',
@@ -327,17 +320,48 @@ class PosController extends Controller
         $data['is_original_drug']= $request->boolean('is_original_drug');
         $data['is_antibiotic']   = $request->boolean('is_antibiotic');
         $data['is_fda_report']   = $request->boolean('is_fda_report');
+        $data['is_fda11_report'] = $request->boolean('is_fda11_report');
         $data['is_fda13_report'] = $request->boolean('is_fda13_report');
         $data['is_sale_control'] = $request->boolean('is_sale_control');
         $data['default_qty']     = $data['default_qty'] ?? 1;
         $data['is_disabled']     = false;
         $data['is_hidden']       = false;
-        $lastId = Product::max('id') ?? 0;
-        $data['code'] = 'PRD-' . str_pad($lastId + 1, 5, '0', STR_PAD_LEFT);
+        if (empty($data['code'])) {
+            $lastId = Product::max('id') ?? 0;
+            $data['code'] = 'PRD-' . str_pad($lastId + 1, 5, '0', STR_PAD_LEFT);
+        }
 
         Product::create($data);
 
         return redirect()->route('pos.products.create')
             ->with('success', 'เพิ่มสินค้าเรียบร้อยแล้ว');
+    }
+    // เพิ่ม/ลบ product unit
+    public function storeProductUnit(Request $request, Product $product)
+    {
+        $data = $request->validate([
+            'unit_name' => 'required|string|max:50',
+            'qty_per_base' => 'required|numeric|min:0.0001',
+            'barcode' => 'nullable|string|max:50|unique:product_units,barcode',
+            'is_for_sale' => 'nullable|boolean',
+            'is_for_purchase' => 'nullable|boolean',
+            'price_retail'     => 'nullable|numeric|min:0',
+            'price_wholesale1' => 'nullable|numeric|min:0',
+            'price_wholesale2' => 'nullable|numeric|min:0',
+        ]);
+        $data['is_for_sale'] = $request->boolean('is_for_sale');
+        $data['is_for_purchase'] = $request->boolean('is_for_purchase');
+        $data['is_disabled'] = false;
+        $data['price_retail']     = $data['price_retail'] ?? 0;
+        $data['price_wholesale1'] = $data['price_wholesale1'] ?? 0;
+        $data['price_wholesale2'] = $data['price_wholesale2'] ?? 0;
+        $product->productUnits()->create($data);
+        return redirect()->back()->with('success', 'เพิ่มหน่วยสำเร็จ');
+    }
+
+    public function destroyProductUnit(Product $product, ProductUnit $productUnit)
+    {
+        $productUnit->delete();
+        return redirect()->back()->with('success', 'ลบหน่วยสำเร็จ');
     }
 }

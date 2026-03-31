@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="p-6">
+<div class="p-6 w-[1600px] mx-auto">
     <div class="mb-4 flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-bold">หน้าจอจัดการสินค้า</h1>
@@ -22,23 +22,70 @@
         <table class="min-w-full text-sm">
             <thead class="bg-slate-100 text-slate-600">
                 <tr>
-                    <th class="px-4 py-3 text-left">ID</th>
-                    <th class="px-4 py-3 text-left">Barcode</th>
-                    <th class="px-4 py-3 text-left">รหัส</th>
-                    <th class="px-4 py-3 text-left">ชื่อ</th>
-                    <th class="px-4 py-3 text-right">ราคาขาย</th>
-                    <th class="px-4 py-3 text-right">สถานะ</th>
-                    <th class="px-4 py-3 text-center">จัดการ</th>
+                    @php
+                        $sortable = [
+                            'id' => 'ID',
+                            'code' => 'รหัส',
+                            'trade_name' => 'ชื่อ',
+                        ];
+                        $columns = [
+                            'id', 'code', 'trade_name', 'cost_price', 'price_retail', 'profit', 'profit_percent', 'status', 'actions'
+                        ];
+                    @endphp
+                    @foreach($columns as $col)
+                        @if(isset($sortable[$col]))
+                            @php
+                                $isActive = $sort_by === $col;
+                                $nextDir = ($isActive && $sort_dir === 'asc') ? 'desc' : 'asc';
+                                $arrow = $isActive ? ($sort_dir === 'asc' ? '↑' : '↓') : '';
+                                $query = array_filter([
+                                    'q' => $q ?? null,
+                                    'sort_by' => $col,
+                                    'sort_dir' => $nextDir
+                                ]);
+                            @endphp
+                            <th class="px-4 py-3 text-left cursor-pointer">
+                                <a href="?{{ http_build_query($query) }}" class="hover:underline">
+                                    {{ $sortable[$col] }} {!! $arrow !!}
+                                </a>
+                            </th>
+                        @elseif($col === 'cost_price')
+                            <th class="px-4 py-3 text-right">ราคาทุน</th>
+                        @elseif($col === 'price_retail')
+                            <th class="px-4 py-3 text-right">ราคาขาย</th>
+                        @elseif($col === 'profit')
+                            <th class="px-4 py-3 text-right">กำไร(บาท)</th>
+                        @elseif($col === 'profit_percent')
+                            <th class="px-4 py-3 text-right">กำไรเทียบทุน(%)</th>
+                        @elseif($col === 'status')
+                            <th class="px-4 py-3 text-right">สถานะ</th>
+                        @elseif($col === 'actions')
+                            <th class="px-4 py-3 text-center">จัดการ</th>
+                        @endif
+                    @endforeach
                 </tr>
             </thead>
             <tbody>
                 @forelse($products as $product)
                     <tr class="border-t border-slate-100 hover:bg-slate-50">
                         <td class="px-4 py-2">{{ $product->id }}</td>
-                        <td class="px-4 py-2">{{ $product->barcode }}</td>
                         <td class="px-4 py-2">{{ $product->code ?? '-' }}</td>
                         <td class="px-4 py-2">{{ $product->trade_name }}</td>
+                        <td class="px-4 py-2 text-right">{{ number_format($product->lots?->avg('cost_price') ?? 0, 2) }}</td>
                         <td class="px-4 py-2 text-right">{{ number_format($product->price_retail, 2) }}</td>
+                        <td class="px-4 py-2 text-right">
+                            @php
+                                $cost = $product->lots?->avg('cost_price') ?? 0;
+                                $profit = $product->price_retail - $cost;
+                            @endphp
+                            {{ number_format($profit, 2) }}
+                        </td>
+                        <td class="px-4 py-2 text-right">
+                            @php
+                                $profit_percent = $cost > 0 ? ($profit / $cost) * 100 : 0;
+                            @endphp
+                            {{ number_format($profit_percent, 2) }}%
+                        </td>
                         <td class="px-4 py-2 text-right">{{ $product->is_disabled ? 'ปิดใช้งาน' : 'ใช้งาน' }}</td>
                         <td class="px-4 py-2 text-center">
                             <a href="{{ route('products.edit', $product) }}" class="inline-flex items-center gap-1 px-2 py-1 bg-blue-500 text-white rounded-md text-xs hover:bg-blue-600">แก้ไข</a>
@@ -46,12 +93,14 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-4 py-6 text-center text-slate-500">ไม่พบข้อมูลสินค้า</td>
+                        <td colspan="9" class="px-4 py-6 text-center text-slate-500">ไม่พบข้อมูลสินค้า</td>
                     </tr>
                 @endforelse
             </tbody>
         </table>
     </div>
+
+    {{-- Removed client-side sortTable() script, now using server-side sorting --}}
 
     <div class="mt-4">
         {{ $products->withQueryString()->links() }}

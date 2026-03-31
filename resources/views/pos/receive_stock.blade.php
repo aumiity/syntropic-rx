@@ -44,11 +44,11 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700">วันที่รับสินค้า</label>
-                        <input type="datetime-local" name="receive_date" value="{{ old('receive_date', now()->format('Y-m-d\TH:i')) }}" class="w-full rounded border border-slate-300 px-3 py-2">
+                        <input type="datetime-local" name="receive_date" value="{{ old('receive_date', now()->format('Y-m-d\TH:i')) }}" class="w-full rounded border border-slate-300 px-3 py-2" data-required="true" data-error-msg="กรุณาเลือกวันที่รับสินค้า">
                     </div>
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-slate-700">ผู้จำหน่าย</label>
-                        <select name="supplier_id" class="w-full rounded border border-slate-300 px-3 py-2" required>
+                                        <select name="supplier_id" class="w-full rounded border border-slate-300 px-3 py-2" data-required="true" data-error-msg="กรุณาเลือกสินค้า">
                             <option value="">-- เลือกผู้จำหน่าย --</option>
                             @foreach($suppliers as $supplier)
                                 <option value="{{ $supplier->id }}" {{ old('supplier_id') == $supplier->id ? 'selected' : '' }}>{{ $supplier->name }}</option>
@@ -84,19 +84,19 @@
                                 <tr data-row-index="{{ $i }}">
                                     <td class="px-2 py-1 text-center">{{ $i + 1 }}</td>
                                     <td class="px-2 py-1 min-w-[240px]">
-                                        <select name="product_id[]" class="w-full rounded border border-slate-300 px-2 py-1 text-sm" required>
+                                        <select type="number" name="product_id[]" class="w-full rounded border border-slate-300 px-2 py-1 text-sm" required>
                                             <option value="">- เลือกสินค้า -</option>
                                             @foreach($products as $product)
                                                 <option value="{{ $product->id }}" data-price="{{ $product->price_retail }}" {{ old('product_id.' . $i) == $product->id ? 'selected' : '' }}>{{ $product->trade_name }} ({{ $product->barcode ?? $product->code }})</option>
                                             @endforeach
                                         </select>
                                     </td>
-                                    <td class="px-2 py-1"><input type="text" name="lot_number[]" value="{{ old('lot_number.' . $i) }}" class="w-full rounded border border-slate-300 px-2 py-1 text-sm" required></td>
+                                    <td class="px-2 py-1"><input type="text" name="lot_number[]" value="{{ old('lot_number.' . $i) }}" class="w-full rounded border border-slate-300 px-2 py-1 text-sm" data-required="true" data-error-msg="กรุณากรอกเลข Lot"></td>
                                     <td class="px-2 py-1"><input type="date" name="manufactured_date[]" value="{{ old('manufactured_date.' . $i) }}" class="w-full rounded border border-slate-300 px-2 py-1 text-sm"></td>
-                                    <td class="px-2 py-1"><input type="date" name="expiry_date[]" value="{{ old('expiry_date.' . $i) }}" class="w-full rounded border border-slate-300 px-2 py-1 text-sm" required></td>
+                                    <td class="px-2 py-1"><input type="date" name="expiry_date[]" value="{{ old('expiry_date.' . $i) }}" class="w-full rounded border border-slate-300 px-2 py-1 text-sm" data-required="true" data-error-msg="กรุณากรอกวันหมดอายุ"></td>
                                     <td class="px-2 py-1"><input type="number" name="cost_price[]" value="{{ old('cost_price.' . $i, '0.00') }}" step="0.01" min="0" class="w-full rounded border border-slate-300 px-2 py-1 text-sm" required></td>
                                     <td class="px-2 py-1"><input type="number" name="sell_price[]" value="{{ old('sell_price.' . $i, '0.00') }}" step="0.01" min="0" class="w-full rounded border border-slate-300 px-2 py-1 text-sm" required></td>
-                                    <td class="px-2 py-1"><input type="number" name="qty_received[]" value="{{ old('qty_received.' . $i, 1) }}" step="1" min="1" class="w-full rounded border border-slate-300 px-2 py-1 text-sm" required></td>
+                                    <td class="px-2 py-1"><input type="number" name="qty_received[]" value="{{ old('qty_received.' . $i, 1) }}" step="1" min="1" class="w-full rounded border border-slate-300 px-2 py-1 text-sm" data-required="true" data-error-msg="กรุณากรอกจำนวน"></td>
                                     <td class="px-2 py-1"><input type="text" name="note[]" value="{{ old('note.' . $i) }}" class="w-full rounded border border-slate-300 px-2 py-1 text-sm"></td>
                                     <td class="px-2 py-1 text-center">
                                         <button type="button" class="remove-row text-red-600 hover:text-red-800">x</button>

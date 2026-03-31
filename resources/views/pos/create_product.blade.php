@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="p-6 max-w-4xl mx-auto">
+<div class="p-6 max-w-10xl mx-auto">
 
     <div class="mb-5 flex items-center justify-between">
         <div>
@@ -33,7 +33,7 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">ชื่อสินค้า (Trade Name) <span class="text-red-500">*</span></label>
-                        <input type="text" name="trade_name" value="{{ old('trade_name') }}" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400" required>
+                        <input type="text" name="trade_name" value="{{ old('trade_name') }}" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400" data-required="true" data-error-msg="กรุณากรอกชื่อสินค้า">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">ชื่อพิมพ์ (ฉลากยา)</label>
@@ -85,7 +85,7 @@
                 <div class="grid grid-cols-3 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">ราคาขายปลีก <span class="text-red-500">*</span></label>
-                        <input type="number" name="price_retail" value="{{ old('price_retail','0.00') }}" step="0.01" min="0" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400" required>
+                        <input type="number" name="price_retail" value="{{ old('price_retail','0.00') }}" step="0.01" min="0" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400" data-required="true" data-error-msg="กรุณากรอกราคาขายปลีก">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">ราคาส่ง 1</label>

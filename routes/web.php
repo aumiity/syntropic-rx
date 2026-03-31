@@ -1,6 +1,3 @@
-// Product units management
-Route::post('/products/{product}/units', [\App\Http\Controllers\PosController::class, 'storeProductUnit'])->name('products.units.store');
-Route::delete('/products/{product}/units/{unit}', [\App\Http\Controllers\PosController::class, 'destroyProductUnit'])->name('products.units.destroy');
 <?php
 
 use Illuminate\Support\Facades\Route;
@@ -15,6 +12,9 @@ Route::get('/pos/search', [PosController::class, 'search'])->name('pos.search');
 Route::get('/products', [PosController::class, 'productIndex'])->name('products.index');
 Route::get('/products/{product}/edit', [PosController::class, 'editProduct'])->name('products.edit');
 Route::put('/products/{product}', [PosController::class, 'updateProduct'])->name('products.update');
+// Product Units management
+Route::post('/products/{product}/units', [PosController::class, 'storeProductUnit'])->name('products.units.store');
+Route::delete('/products/{product}/units/{productUnit}', [PosController::class, 'destroyProductUnit'])->name('products.units.destroy');
 Route::redirect('/product', '/products');
 
 // Product management (simple add/search workflow)

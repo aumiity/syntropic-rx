@@ -58,9 +58,144 @@
     {{-- Content --}}
     <div class="flex-1 flex flex-col overflow-auto">
         @yield('content')
+    {{-- Toast Blade blocks --}}
+    @if(session('success'))
+        <div id="toast-data" data-type="success"
+             data-message="{{ session('success') }}"></div>
+    @endif
+    @if(session('error'))
+        <div id="toast-data" data-type="error"
+             data-message="{{ session('error') }}"></div>
+    @endif
+
+    <div id="toast-container" class="fixed top-5 left-1/2 -translate-x-1/2 z-50
+         flex flex-col gap-2 items-center pointer-events-none"></div>
     </div>
 
 </div>
 
+
+<script>
+function showToast(message, type = 'success') {
+    const colors = {
+        success: 'bg-emerald-500 text-white',
+        error:   'bg-red-500 text-white',
+        warning: 'bg-amber-400 text-gray-900',
+    };
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `pointer-events-auto min-h-[48px] px-5 py-3 rounded-xl
+        shadow-lg text-sm font-medium flex items-center gap-3
+        transition-all duration-300 opacity-0 translate-y-[-10px]
+        ${colors[type] || colors.success}`;
+    toast.innerHTML = `<span>${message}</span>
+        <button onclick="this.parentElement.remove()"
+                class="ml-2 font-bold text-lg leading-none opacity-70
+                       hover:opacity-100">×</button>`;
+    container.appendChild(toast);
+    requestAnimationFrame(() => {
+        toast.classList.remove('opacity-0', 'translate-y-[-10px]');
+        toast.classList.add('opacity-100', 'translate-y-0');
+    });
+    setTimeout(() => {
+        toast.classList.add('opacity-0');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// Auto-show toast from session
+document.addEventListener('DOMContentLoaded', () => {
+    const data = document.getElementById('toast-data');
+    if (data) {
+        showToast(data.dataset.message, data.dataset.type);
+    }
+});
+</script>
+
+<script>
+// ฟังก์ชัน show/hide error ต่อ field
+function showFieldError(field, message) {
+    field.classList.remove('border-gray-300');
+    field.classList.add('border-red-400');
+    let err = field.parentElement.querySelector('.field-error');
+    if (!err) {
+        err = document.createElement('p');
+        err.className = 'field-error text-red-500 text-xs mt-1';
+        field.parentElement.appendChild(err);
+    }
+    err.textContent = message;
+}
+
+function clearFieldError(field) {
+    field.classList.remove('border-red-400');
+    field.classList.add('border-gray-300');
+    const err = field.parentElement.querySelector('.field-error');
+    if (err) err.remove();
+}
+
+// Real-time validation: blur + input events
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-required="true"]').forEach(field => {
+        field.addEventListener('blur', () => {
+            if (!field.value || field.value.trim() === '' || field.value === '0') {
+                showFieldError(field, field.dataset.errorMsg || 'กรุณากรอกข้อมูล');
+            }
+        });
+        field.addEventListener('input', () => {
+            if (field.value && field.value.trim() !== '') {
+                clearFieldError(field);
+            }
+        });
+        field.addEventListener('change', () => {
+            if (field.value && field.value.trim() !== '') {
+                clearFieldError(field);
+            }
+        });
+    });
+});
+</script>
+
 </body>
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('form').forEach(form => {
+        // Skip forms that opt-out
+        if (form.dataset.noValidate) return;
+
+        form.addEventListener('submit', (e) => {
+            const requiredFields = form.querySelectorAll('[data-required="true"]');
+            let hasError = false;
+            let firstErrorField = null;
+
+            requiredFields.forEach(field => {
+                if (!field.value || field.value.trim() === '') {
+                    showFieldError(field, field.dataset.errorMsg || 'กรุณากรอกข้อมูล');
+                    hasError = true;
+                    if (!firstErrorField) firstErrorField = field;
+                }
+            });
+
+            if (hasError) {
+                e.preventDefault();
+                showToast('กรุณากรอกข้อมูลให้ครบถ้วน', 'warning');
+
+                // Auto switch tab if field is inside hidden tab
+                if (firstErrorField) {
+                    const tabPanel = firstErrorField.closest('.tab-panel');
+                    if (tabPanel) {
+                        const tabId = tabPanel.id;
+                        const tabBtn = document.querySelector(
+                            `[data-tab="${tabId}"]`
+                        );
+                        if (tabBtn) tabBtn.click();
+                    }
+                    setTimeout(() => firstErrorField.focus(), 300);
+                }
+            }
+        });
+    });
+});
+</script>
 </html>
