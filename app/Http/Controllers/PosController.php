@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Validator;
 use App\Models\Product;
 use App\Models\ProductUnit;
 use App\Models\Customer;
@@ -176,6 +178,9 @@ class PosController extends Controller
     public function productIndex(Request $request)
     {
         $q = trim($request->get('q', ''));
+        $category_id = $request->filled('category_id') ? (int) $request->get('category_id') : null;
+        $generic_name = trim($request->get('generic_name', ''));
+        $status = $request->get('status');
 
         // Sorting
         $allowedSortBy = ['id', 'code', 'trade_name', 'price_retail'];
@@ -188,15 +193,52 @@ class PosController extends Controller
             $sort_dir = 'desc';
         }
 
-        $products = Product::when($q, function($query) use ($q) {
-            $query->where(function($sub) use ($q) {
-                $sub->where('trade_name', 'like', "%{$q}%")
-                    ->orWhere('barcode', 'like', "%{$q}%")
-                    ->orWhere('code', 'like', "%{$q}%");
-            });
-        })->orderBy($sort_by, $sort_dir)->paginate(20);
+        if (!in_array($status, ['active', 'disabled'], true)) {
+            $status = null;
+        }
 
-        return view('pos.products_index', compact('products', 'q', 'sort_by', 'sort_dir'));
+        $genericNameColumn = Schema::hasColumn('products', 'generic_name')
+            ? 'generic_name'
+            : 'search_keywords';
+
+        $query = Product::with(['lots', 'category'])
+            ->when($q, function ($query) use ($q) {
+                $query->where(function ($sub) use ($q) {
+                    $sub->where('trade_name', 'like', "%{$q}%")
+                        ->orWhere('barcode', 'like', "%{$q}%")
+                        ->orWhere('code', 'like', "%{$q}%");
+                });
+            })
+            ->when($category_id, function ($query) use ($category_id) {
+                $query->where('category_id', $category_id);
+            })
+            ->when($generic_name !== '', function ($query) use ($generic_name, $genericNameColumn) {
+                $query->where($genericNameColumn, 'like', "%{$generic_name}%");
+            })
+            ->when($status === 'active', function ($query) {
+                $query->where('is_disabled', false);
+            })
+            ->when($status === 'disabled', function ($query) {
+                $query->where('is_disabled', true);
+            });
+
+        $totalCount = (clone $query)->count();
+
+        $products = $query->orderBy($sort_by, $sort_dir)->paginate(20);
+
+        $categories = ProductCategory::active()->orderBy('name')->get();
+
+        return view('pos.products_index', compact(
+            'products',
+            'q',
+            'sort_by',
+            'sort_dir',
+            'categories',
+            'totalCount',
+            'category_id',
+            'generic_name',
+            'status'
+        ));
     }
 
     public function editProduct(Product $product)
@@ -282,6 +324,112 @@ class PosController extends Controller
 
         return redirect()->route('products.edit', $product)
             ->with('success', 'บันทึกข้อมูลสินค้าเรียบร้อยแล้ว');
+    }
+
+    public function autoSaveProduct(Request $request, Product $product)
+    {
+        $validator = Validator::make($request->all(), [
+            'barcode'           => 'nullable|string|max:50|unique:products,barcode,' . $product->id,
+            'barcode2'          => 'nullable|string|max:50',
+            'code'              => 'nullable|string|max:50|unique:products,code,' . $product->id,
+            'trade_name'        => 'nullable|string|max:255',
+            'name_for_print'    => 'nullable|string|max:255',
+            'category_id'       => 'nullable|integer|exists:product_categories,id',
+            'dosage_form_id'    => 'nullable|integer|exists:dosage_forms,id',
+            'base_unit_name'    => 'nullable|string|max:50',
+            'price_retail'      => 'nullable|numeric|min:0',
+            'price_wholesale1'  => 'nullable|numeric|min:0',
+            'price_wholesale2'  => 'nullable|numeric|min:0',
+            'is_vat'            => 'nullable|boolean',
+            'is_not_discount'   => 'nullable|boolean',
+            'reorder_point'     => 'nullable|integer|min:0',
+            'safety_stock'      => 'nullable|integer|min:0',
+            'expiry_alert_days1'=> 'nullable|integer|min:1',
+            'expiry_alert_days2'=> 'nullable|integer|min:1',
+            'expiry_alert_days3'=> 'nullable|integer|min:1',
+            'drug_type_id'      => 'nullable|integer|exists:drug_types,id',
+            'strength'          => 'nullable|numeric|min:0',
+            'registration_no'   => 'nullable|string|max:50',
+            'tmt_id'            => 'nullable|string|max:30',
+            'is_original_drug'  => 'nullable|boolean',
+            'is_antibiotic'     => 'nullable|boolean',
+            'max_dispense_qty'  => 'nullable|numeric|min:0',
+            'default_qty'       => 'nullable|integer|min:1',
+            'indication_note'   => 'nullable|string',
+            'side_effect_note'  => 'nullable|string',
+            'is_fda_report'     => 'nullable|boolean',
+            'is_fda11_report'   => 'nullable|boolean',
+            'is_fda13_report'   => 'nullable|boolean',
+            'is_sale_control'   => 'nullable|boolean',
+            'sale_control_qty'  => 'nullable|numeric|min:0',
+            'note'              => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $fillableFields = [
+            'barcode',
+            'barcode2',
+            'code',
+            'trade_name',
+            'name_for_print',
+            'category_id',
+            'dosage_form_id',
+            'price_retail',
+            'price_wholesale1',
+            'price_wholesale2',
+            'reorder_point',
+            'safety_stock',
+            'expiry_alert_days1',
+            'expiry_alert_days2',
+            'expiry_alert_days3',
+            'drug_type_id',
+            'strength',
+            'registration_no',
+            'tmt_id',
+            'max_dispense_qty',
+            'default_qty',
+            'indication_note',
+            'side_effect_note',
+            'sale_control_qty',
+            'note',
+        ];
+
+        $data = $request->only($fillableFields);
+
+        if ($request->has('base_unit_name')) {
+            $data['unit_name'] = $request->input('base_unit_name');
+        }
+
+        $booleanFields = [
+            'is_vat',
+            'is_not_discount',
+            'is_original_drug',
+            'is_antibiotic',
+            'is_fda_report',
+            'is_fda11_report',
+            'is_fda13_report',
+            'is_sale_control',
+        ];
+
+        foreach ($booleanFields as $field) {
+            if ($request->has($field)) {
+                $data[$field] = $request->boolean($field);
+            }
+        }
+
+        $product->fill($data);
+        $product->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'บันทึกอัตโนมัติแล้ว',
+        ]);
     }
 
     public function createProduct()

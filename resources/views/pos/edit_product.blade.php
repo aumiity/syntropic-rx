@@ -31,7 +31,7 @@
         <div class="mb-6 flex flex-wrap gap-2 border-b border-gray-200">
             <button type="button" data-tab="tab-1" class="tab-button active min-h-11 px-4 py-2.5 text-sm font-medium text-emerald-600 border-b-2 border-emerald-600 rounded-t-lg">ข้อมูลหลัก</button>
             <button type="button" data-tab="tab-2" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">หน่วยสินค้า</button>
-            <button type="button" data-tab="tab-3" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">ประเภทยาตามกฎหมาย</button>
+            <button type="button" data-tab="tab-3" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">ยาและประเภทยา</button>
             <button type="button" data-tab="tab-4" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">ฉลาก</button>
             <button type="button" data-tab="tab-5" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">สต๊อค</button>
             <button type="button" data-tab="tab-6" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">ข้อมูลอื่นๆ</button>
@@ -43,119 +43,147 @@
 
             <!-- Tab 1: ข้อมูลหลัก -->
             <div id="tab-1" class="tab-panel active bg-white border border-gray-200 rounded-xl p-5">
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <!-- รหัสสินค้า -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">รหัสสินค้า <span class="text-gray-400 text-xs">(สร้างอัตโนมัติ)</span></label>
-                        <input type="text" readonly value="{{ $product->code }}" class="w-full h-10 rounded-lg bg-gray-100 border border-gray-200 px-3 text-sm text-gray-600">
-                    </div>
-                    <!-- ชื่อสินค้า (Trade Name) -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">ชื่อสินค้า (Trade Name) <span class="text-red-500">*</span></label>
-                        <input type="text" name="trade_name" value="{{ old('trade_name', $product->trade_name) }}" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400" data-required="true" data-error-msg="กรุณากรอกชื่อสินค้า">
-                    </div>
-                    <!-- ชื่อพิมพ์ (ฉลากยา) -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">ชื่อพิมพ์ (ฉลากยา)</label>
-                        <input type="text" name="name_for_print" value="{{ old('name_for_print', $product->name_for_print) }}" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
-                    </div>
-                    <!-- ชื่อที่ตั้งเอง (คำค้น) -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">ชื่อที่ตั้งเอง (คำค้น)</label>
-                        <input type="text" name="search_keywords" value="{{ old('search_keywords', $product->search_keywords) }}" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
-                    </div>
-                    <!-- ประเภทสินค้า -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">ประเภทสินค้า</label>
-                        <select name="category_id" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
-                            <option value="">-- เลือกประเภท --</option>
-                            @foreach($categories as $cat)
-                                <option value="{{ $cat->id }}" {{ old('category_id', $product->category_id) == $cat->id ? 'selected' : '' }}>
-                                    {{ $cat->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <!-- หน่วยขาย -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">หน่วยขายหลัก <span class="text-red-500">*</span></label>
-                        <input type="text" name="base_unit_name" value="{{ old('base_unit_name', $baseUnitName) }}" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400" placeholder="เช่น เม็ด, ขวด, หลอด" required>
-                    </div>
-                    <!-- เลขบาร์โค้ด 1 -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">เลขบาร์โค้ด 1</label>
-                        <input type="text" name="barcode" value="{{ old('barcode', $product->barcode) }}" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
-                    </div>
-                    <!-- เลขบาร์โค้ด 2 -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">เลขบาร์โค้ด 2</label>
-                        <input type="text" name="barcode2" value="{{ old('barcode2', $product->barcode2) }}" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
-                    </div>
-                    <!-- จำนวนเริ่มต้นการขาย -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">จำนวนเริ่มต้นการขาย</label>
-                        <input type="number" name="default_qty" value="{{ old('default_qty', $product->default_qty ?? 1) }}" min="1" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
-                    </div>
-                </div>
+                @php
+                    $latestCost = $product->lots?->sortByDesc('created_at')->first()?->cost_price ?? 0;
+                    $avgCost = $product->lots?->avg('cost_price') ?? 0;
+                @endphp
 
-                <!-- Info Row: ราคาทุนเฉลี่ย, จำนวนคงเหลือ -->
-                <div class="grid grid-cols-3 gap-4 bg-gray-50 rounded-lg p-4 border border-gray-200 mb-6">
-                    <div>
-                        <p class="text-xs font-medium text-gray-500 mb-1">ราคาทุนเฉลี่ย</p>
-                        <p class="text-sm font-semibold text-gray-800" data-avg="{{ $product->lots?->avg('cost_price') ?? 0 }}">฿{{ number_format($product->lots?->avg('cost_price') ?? 0, 2) }}</p>
-                    </div>
-                    <div>
-                        <p class="text-xs font-medium text-gray-500 mb-1">จำนวนคงเหลือ</p>
-                        <p class="text-sm font-semibold text-gray-800">{{ $product->lots?->sum('qty_on_hand') ?? 0 }} หน่วย</p>
-                    </div>
-                    <div>
-                        <p class="text-xs font-medium text-gray-500 mb-1">ราคาทุนล่าสุด</p>
-                        <p class="text-sm font-semibold text-gray-800">
-                            ฿{{ number_format($product->lots?->sortByDesc('created_at')->first()?->cost_price ?? 0, 2) }}
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Price Section -->
-                <div class="mb-6">
-                    <h3 class="text-sm font-semibold text-gray-600 mb-4 pb-2 border-b border-gray-100">ราคา</h3>
-                    <div class="grid grid-cols-3 gap-4 mb-4">
-                        <!-- ราคาขายปลีก -->
+                <div class="grid grid-cols-2 gap-6">
+                    <div class="space-y-5">
                         <div>
-                            <label class="block text-sm font-medium text-gray-600 mb-1">ราคาขายปลีก <span class="text-red-500">*</span></label>
+                            <label class="block text-sm font-medium text-gray-600 mb-2">รหัสสินค้า</label>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">รหัสสินค้า (auto)</label>
+                                    <input type="text" readonly value="{{ $product->code }}" class="w-full h-10 rounded-lg bg-gray-100 border border-gray-200 px-3 text-sm text-gray-600">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">ID</label>
+                                    <input type="text" readonly value="{{ $product->id }}" class="w-full h-10 rounded-lg bg-gray-100 border border-gray-200 px-3 text-sm text-gray-600">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">ชื่อสินค้า <span class="text-red-500">*</span></label>
+                            <input type="text" name="trade_name" value="{{ old('trade_name', $product->trade_name) }}" required class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400" data-required="true" data-error-msg="กรุณากรอกชื่อสินค้า">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">ชื่อพิมพ์</label>
+                            <input type="text" name="name_for_print" value="{{ old('name_for_print', $product->name_for_print) }}" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">ประเภทสินค้า</label>
+                            <select name="category_id" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                                <option value="">-- เลือกประเภท --</option>
+                                @foreach($categories as $cat)
+                                    <option value="{{ $cat->id }}" {{ old('category_id', $product->category_id) == $cat->id ? 'selected' : '' }}>
+                                        {{ $cat->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">หน่วยขาย (เล็กที่สุด)</label>
+                            <div class="flex items-center gap-3">
+                                <div id="base-unit-display" class="flex-1 h-10 rounded-lg bg-gray-100 border border-gray-200 px-3 text-sm text-gray-700 flex items-center">
+                                    {{ $baseUnitName }}
+                                </div>
+                                <button
+                                    type="button"
+                                    class="h-10 px-4 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm"
+                                    onclick="document.getElementById('modal-edit-unit').classList.remove('hidden')"
+                                >
+                                    แก้ไขหน่วยขาย
+                                </button>
+                            </div>
+                            <input id="base-unit-hidden" type="hidden" name="base_unit_name" value="{{ old('base_unit_name', $baseUnitName) }}">
+                        </div>
+
+                        <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                            ราคาทุนล่าสุด: ฿{{ number_format($latestCost, 4) }} | ทุนเฉลี่ย: ฿<span data-avg="{{ $avgCost }}">{{ number_format($avgCost, 4) }}</span>
+                        </div>
+
+                        <div>
+                            <label class="block text-base font-semibold text-gray-700 mb-1">ราคาขายปลีก</label>
                             <input type="number" name="price_retail" id="price_retail" value="{{ old('price_retail', $product->price_retail) }}" step="0.01" min="0" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400" data-required="true" data-error-msg="กรุณากรอกราคาขายปลีก">
+                            <p id="retail-unit-text" class="mt-1 text-xs text-gray-500">ต่อ 1 ({{ $baseUnitName }})</p>
                         </div>
-                        <!-- ราคาส่ง ระดับ 1 -->
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">ราคาส่ง ระดับ 1</label>
+                                <input type="number" name="price_wholesale1" value="{{ old('price_wholesale1', $product->price_wholesale1) }}" step="0.01" min="0" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">ราคาส่ง ระดับ 2</label>
+                                <input type="number" name="price_wholesale2" value="{{ old('price_wholesale2', $product->price_wholesale2) }}" step="0.01" min="0" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                            </div>
+                        </div>
+
+                        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 grid grid-cols-3 gap-4">
+                            <div>
+                                <p class="text-xs font-medium text-amber-600 mb-1">กำไรต่อหน่วย</p>
+                                <p class="text-sm font-semibold text-amber-800">฿<span id="profit-per-unit">0.00</span></p>
+                            </div>
+                            <div>
+                                <p class="text-xs font-medium text-amber-600 mb-1">เทียบทุน</p>
+                                <p class="text-sm font-semibold text-amber-800"><span id="profit-vs-cost">0.00</span>%</p>
+                            </div>
+                            <div>
+                                <p class="text-xs font-medium text-amber-600 mb-1">เทียบขาย</p>
+                                <p class="text-sm font-semibold text-amber-800"><span id="profit-vs-sale">0.00</span>%</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-5">
                         <div>
-                            <label class="block text-sm font-medium text-gray-600 mb-1">ราคาส่ง ระดับ 1</label>
-                            <input type="number" name="price_wholesale1" value="{{ old('price_wholesale1', $product->price_wholesale1) }}" step="0.01" min="0" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                            <label class="block text-sm font-medium text-gray-600 mb-1">บาร์โค้ด 1</label>
+                            <input type="text" name="barcode" value="{{ old('barcode', $product->barcode) }}" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
                         </div>
-                        <!-- ราคาส่ง ระดับ 2 -->
+
                         <div>
-                            <label class="block text-sm font-medium text-gray-600 mb-1">ราคาส่ง ระดับ 2</label>
-                            <input type="number" name="price_wholesale2" value="{{ old('price_wholesale2', $product->price_wholesale2) }}" step="0.01" min="0" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                            <label class="block text-sm font-medium text-gray-600 mb-1">บาร์โค้ด 2</label>
+                            <input type="text" name="barcode2" value="{{ old('barcode2', $product->barcode2) }}" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
                         </div>
-                        <!-- จุดสั่งซื้อ -->
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">ชื่อที่ตั้งเอง (คำค้น)</label>
+                            <input type="text" name="search_keywords" value="{{ old('search_keywords', $product->search_keywords) }}" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">ให้ลงขายเริ่มต้น</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" name="default_qty" value="{{ old('default_qty', $product->default_qty ?? 1) }}" min="1" class="flex-1 h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                                <span class="text-sm text-gray-500">{{ $baseUnitName }}</span>
+                            </div>
+                        </div>
+
                         <div>
                             <label class="block text-sm font-medium text-gray-600 mb-1">จุดสั่งซื้อ (Reorder Point)</label>
-                            <input type="number" name="reorder_point" value="{{ old('reorder_point', $product->reorder_point) }}" min="0" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                            <div class="flex items-center gap-2">
+                                <input type="number" name="reorder_point" value="{{ old('reorder_point', $product->reorder_point) }}" min="0" class="flex-1 h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                                <span class="text-sm text-gray-500">{{ $baseUnitName }}</span>
+                            </div>
                         </div>
-                        <!-- จำนวนที่ต้องการมี -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-600 mb-1">จำนวนที่ต้องการมี (Safety Stock)</label>
-                            <input type="number" name="safety_stock" value="{{ old('safety_stock', $product->safety_stock) }}" min="0" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
-                        </div>
-                    </div>
 
-                    <!-- Profit Calculation Row (Read-only) -->
-                    <div class="grid grid-cols-3 gap-4 bg-amber-50 rounded-lg p-4 border border-amber-200">
                         <div>
-                            <p class="text-xs font-medium text-amber-600 mb-1">กำไรต่อหน่วย</p>
-                            <p class="text-sm font-semibold text-amber-800">฿<span id="profit-per-unit">0.00</span></p>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Safety Stock</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" name="safety_stock" value="{{ old('safety_stock', $product->safety_stock) }}" min="0" class="flex-1 h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                                <span class="text-sm text-gray-500">{{ $baseUnitName }}</span>
+                            </div>
                         </div>
-                        <div>
-                            <p class="text-xs font-medium text-amber-600 mb-1">กำไรเทียบทุน (%)</p>
-                            <p class="text-sm font-semibold text-amber-800"><span id="profit-vs-cost">0.00</span>%</p>
+
+                        <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                            <p class="text-sm font-medium text-gray-700">
+                                จำนวนคงเหลือ: {{ $product->lots?->sum('qty_on_hand') ?? 0 }} {{ $baseUnitName }}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -175,7 +203,7 @@
                         <thead class="bg-gray-50 text-gray-600">
                             <tr>
                                 <th class="px-3 py-2 text-left font-medium">หน่วย</th>
-                                <th class="px-3 py-2 text-right font-medium">จำนวนต่อหน่วยฐาน</th>
+                                <th class="px-3 py-2 text-right font-medium">ขนาดบรรจุ</th>
                                 <th class="px-3 py-2 text-left font-medium">ขายได้ / รับเข้าได้</th>
                                 <th class="px-3 py-2 text-right font-medium">ราคาปลีก</th>
                                 <th class="px-3 py-2 text-center font-medium w-32">จัดการ</th>
@@ -443,6 +471,35 @@
 
         </div>
     </form>
+
+    <div id="modal-edit-unit" class="fixed inset-0 bg-black/40 z-50 hidden items-center justify-center p-4">
+        <div class="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+            <h3 class="text-sm font-semibold text-gray-800 mb-3">แก้ไขหน่วยขาย</h3>
+            <input
+                type="text"
+                id="modal-unit-input"
+                placeholder="เช่น เม็ด, ขวด, หลอด"
+                class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400"
+            >
+            <div class="mt-4 flex justify-end gap-2">
+                <button
+                    type="button"
+                    class="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50"
+                    onclick="window.closeBaseUnitModal()"
+                >
+                    ยกเลิก
+                </button>
+                <button
+                    type="button"
+                    class="px-4 py-2 rounded-lg bg-emerald-500 text-white text-sm hover:bg-emerald-600"
+                    onclick="window.confirmBaseUnitEdit()"
+                >
+                    ยืนยัน
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="unit-modal" class="fixed inset-0 bg-black/40 hidden z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-xl p-6 w-full max-w-xl shadow-xl">
             <div class="flex items-center justify-between mb-5">
@@ -503,6 +560,7 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const csrfToken = document.querySelector('input[name="_token"]')?.value;
+        const mainForm = document.querySelector('form[action="{{ route('products.update', $product) }}"]');
         const unitModal = document.getElementById('unit-modal');
         const unitModalTitle = document.getElementById('unit-modal-title');
         const unitModalForm = document.getElementById('unit-modal-form');
@@ -513,8 +571,66 @@
         const qtyPerBaseInput = document.getElementById('qty_per_base');
 
         const storeUnitUrl = "{{ route('product_units.store', $product) }}";
+        const autoSaveUrl = "{{ route('products.autosave', $product) }}";
         const unitBaseUrl = "{{ url('/products/units') }}";
+        const baseUnitModal = document.getElementById('modal-edit-unit');
+        const baseUnitInput = document.getElementById('modal-unit-input');
+        const baseUnitHidden = document.getElementById('base-unit-hidden');
+        const baseUnitDisplay = document.getElementById('base-unit-display');
+        const retailUnitText = document.getElementById('retail-unit-text');
         let modalMode = 'create';
+        let isDirty = false;
+
+        window.closeBaseUnitModal = function() {
+            baseUnitModal?.classList.add('hidden');
+            baseUnitModal?.classList.remove('flex');
+        };
+
+        window.confirmBaseUnitEdit = function() {
+            const unitName = (baseUnitInput?.value || '').trim();
+            if (!unitName) {
+                notify('กรุณาระบุหน่วยขาย', 'error');
+                return;
+            }
+
+            if (baseUnitHidden) baseUnitHidden.value = unitName;
+            if (baseUnitDisplay) baseUnitDisplay.textContent = unitName;
+            if (retailUnitText) retailUnitText.textContent = `ต่อ 1 (${unitName})`;
+            isDirty = true;
+            window.closeBaseUnitModal();
+        };
+
+        if (baseUnitModal) {
+            baseUnitModal.addEventListener('click', function(e) {
+                if (e.target === baseUnitModal) {
+                    window.closeBaseUnitModal();
+                }
+            });
+        }
+
+        function notify(message, type = 'info') {
+            if (typeof showToast === 'function') {
+                showToast(message, type);
+            } else {
+                console.log(`[${type}] ${message}`);
+            }
+        }
+
+        function activateTab(button, targetTab) {
+            tabButtons.forEach(btn => {
+                btn.classList.remove('active', 'text-emerald-600', 'border-emerald-600');
+                btn.classList.add('text-gray-600', 'border-transparent');
+            });
+            tabPanels.forEach(panel => {
+                panel.classList.add('hidden');
+                panel.classList.remove('active');
+            });
+
+            button.classList.add('active', 'text-emerald-600', 'border-emerald-600');
+            button.classList.remove('text-gray-600', 'border-transparent');
+            document.getElementById(targetTab).classList.remove('hidden');
+            document.getElementById(targetTab).classList.add('active');
+        }
 
         function openModal() {
             unitModal.classList.remove('hidden');
@@ -674,27 +790,54 @@
         const isSaleControlCheckbox = document.getElementById('is_sale_control');
         const saleControlQtyInput = document.querySelector('input[name="sale_control_qty"]');
 
+        function markDirty(e) {
+            if (!e || !e.target) return;
+            if (e.target.closest('#unit-modal-form')) return;
+            isDirty = true;
+        }
+
+        if (mainForm) {
+            mainForm.addEventListener('input', markDirty);
+            mainForm.addEventListener('change', markDirty);
+        }
+
         // Tab switching
         tabButtons.forEach(button => {
-            button.addEventListener('click', function(e) {
+            button.addEventListener('click', async function(e) {
                 e.preventDefault();
                 const targetTab = this.getAttribute('data-tab');
 
-                // Remove active state from all buttons and panels
-                tabButtons.forEach(btn => {
-                    btn.classList.remove('active', 'text-emerald-600', 'border-emerald-600');
-                    btn.classList.add('text-gray-600', 'border-transparent');
-                });
-                tabPanels.forEach(panel => {
-                    panel.classList.add('hidden');
-                    panel.classList.remove('active');
-                });
+                if (isDirty && mainForm) {
+                    notify('กำลังบันทึกอัตโนมัติ...', 'info');
 
-                // Add active state to clicked button and corresponding panel
-                this.classList.add('active', 'text-emerald-600', 'border-emerald-600');
-                this.classList.remove('text-gray-600', 'border-transparent');
-                document.getElementById(targetTab).classList.remove('hidden');
-                document.getElementById(targetTab).classList.add('active');
+                    const formData = new FormData(mainForm);
+                    formData.append('_method', 'PUT');
+
+                    try {
+                        formData.set('_method', 'PUT');
+                        const response = await fetch(autoSaveUrl, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: formData,
+                        });
+
+                        const data = await response.json().catch(() => ({}));
+                        if (!response.ok) {
+                            throw new Error(data.message || 'autosave failed');
+                        }
+
+                        notify('บันทึกอัตโนมัติแล้ว ✓', 'success');
+                    } catch (error) {
+                        notify('บันทึกไม่สำเร็จ กรุณาบันทึกด้วยตนเอง', 'error');
+                    } finally {
+                        isDirty = false;
+                    }
+                }
+
+                activateTab(this, targetTab);
             });
         });
 
@@ -712,9 +855,14 @@
             const avgCost = parseFloat(avgCostElement.getAttribute('data-avg')) || 0;
             const profitPerUnit = priceRetail - avgCost;
             const profitVsCost = avgCost > 0 ? (profitPerUnit / avgCost) * 100 : 0;
+            const profitVsSale = priceRetail > 0 ? (profitPerUnit / priceRetail) * 100 : 0;
+            const profitVsSaleEl = document.getElementById('profit-vs-sale');
 
             profitPerUnitSpan.textContent = profitPerUnit.toFixed(2);
             profitVsCostSpan.textContent = profitVsCost.toFixed(2);
+            if (profitVsSaleEl) {
+                profitVsSaleEl.textContent = profitVsSale.toFixed(2);
+            }
         }
 
         // Listen to price_retail input changes

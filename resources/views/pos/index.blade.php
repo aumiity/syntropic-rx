@@ -2,7 +2,7 @@
 
 @section('content')
 
-<div class="flex flex-col h-screen bg-slate-50 font-sans text-slate-800 overflow-hidden px-4 py-4">
+<div class="flex flex-col h-screen bg-slate-50 text-slate-800 overflow-hidden px-4 py-4" style="font-family: 'SF Pro TH', 'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif;">
 
     {{-- Hygeia Header (temporary mockup) --}}
     <div class="mb-4 px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-sky-600 text-white shadow-md">

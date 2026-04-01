@@ -12,6 +12,7 @@ Route::get('/pos/search', [PosController::class, 'search'])->name('pos.search');
 // Product menu route (จาก sidebar)
 Route::get('/products', [PosController::class, 'productIndex'])->name('products.index');
 Route::get('/products/{product}/edit', [PosController::class, 'editProduct'])->name('products.edit');
+Route::put('/products/{product}/autosave', [PosController::class, 'autoSaveProduct'])->name('products.autosave');
 Route::put('/products/{product}', [PosController::class, 'updateProduct'])->name('products.update');
 // Product Units management
 Route::post('/products/{product}/units', [ProductUnitController::class, 'store'])->name('product_units.store');
