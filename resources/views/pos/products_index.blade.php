@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="p-6 w-[1600px] mx-auto">
+<div class="p-6 w-full mx-auto">
     <div class="mb-4 flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-bold">หน้าจอจัดการสินค้า</h1>

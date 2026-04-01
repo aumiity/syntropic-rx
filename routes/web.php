@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\ProductUnitController;
 
 Route::get('/', [PosController::class, 'index'])->name('pos.index');
 Route::get('/pos', [PosController::class, 'index'])->name('pos');
@@ -13,8 +14,9 @@ Route::get('/products', [PosController::class, 'productIndex'])->name('products.
 Route::get('/products/{product}/edit', [PosController::class, 'editProduct'])->name('products.edit');
 Route::put('/products/{product}', [PosController::class, 'updateProduct'])->name('products.update');
 // Product Units management
-Route::post('/products/{product}/units', [PosController::class, 'storeProductUnit'])->name('products.units.store');
-Route::delete('/products/{product}/units/{productUnit}', [PosController::class, 'destroyProductUnit'])->name('products.units.destroy');
+Route::post('/products/{product}/units', [ProductUnitController::class, 'store'])->name('product_units.store');
+Route::put('/products/units/{unit}', [ProductUnitController::class, 'update'])->name('product_units.update');
+Route::delete('/products/units/{unit}', [ProductUnitController::class, 'destroy'])->name('product_units.destroy');
 Route::redirect('/product', '/products');
 
 // Product management (simple add/search workflow)

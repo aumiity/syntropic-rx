@@ -11,7 +11,6 @@ use App\Models\ProductLot;
 use App\Models\Supplier;
 use App\Models\DrugType;
 use App\Models\DosageForm;
-use App\Models\ItemUnit;
 use App\Models\ProductCategory;
 
 class PosController extends Controller
@@ -205,9 +204,12 @@ class PosController extends Controller
         $product->load('productUnits');
         $drugTypes   = DrugType::where('is_disabled', false)->orderBy('name_th')->get();
         $dosageForms = DosageForm::where('is_disabled', false)->orderBy('name_th')->get();
-        $itemUnits   = ItemUnit::orderBy('name')->get();
         $categories = ProductCategory::active()->get();
-        return view('pos.edit_product', compact('product', 'drugTypes', 'dosageForms', 'itemUnits', 'categories'));
+        $baseUnitName = optional($product->productUnits->firstWhere('is_base_unit', true))->unit_name
+            ?? optional($product->productUnits->firstWhere('qty_per_base', '1.0000'))->unit_name
+            ?? optional($product->productUnits->first())->unit_name;
+
+        return view('pos.edit_product', compact('product', 'drugTypes', 'dosageForms', 'categories', 'baseUnitName'));
     }
 
     public function updateProduct(Request $request, Product $product)
@@ -220,7 +222,7 @@ class PosController extends Controller
             'name_for_print'    => 'nullable|string|max:255',
             'category_id'       => 'nullable|integer|exists:product_categories,id',
             'dosage_form_id'    => 'nullable|integer|exists:dosage_forms,id',
-            'unit_id'           => 'nullable|integer|exists:item_units,id',
+            'base_unit_name'    => 'required|string|max:50',
             'price_retail'      => 'required|numeric|min:0',
             'price_wholesale1'  => 'nullable|numeric|min:0',
             'price_wholesale2'  => 'nullable|numeric|min:0',
@@ -258,8 +260,25 @@ class PosController extends Controller
         $data['is_fda13_report'] = $request->boolean('is_fda13_report');
         $data['is_sale_control'] = $request->boolean('is_sale_control');
         $data['default_qty']     = $data['default_qty'] ?? 1;
+        $baseUnitName = $data['base_unit_name'];
+        $data['unit_name'] = $baseUnitName;
+        unset($data['base_unit_name']);
 
         $product->update($data);
+
+        $product->productUnits()->updateOrCreate(
+            ['is_base_unit' => true],
+            [
+                'unit_name' => $baseUnitName,
+                'qty_per_base' => 1,
+                'is_for_sale' => true,
+                'is_for_purchase' => true,
+                'is_disabled' => false,
+                'price_retail' => $product->price_retail ?? 0,
+                'price_wholesale1' => $product->price_wholesale1 ?? 0,
+                'price_wholesale2' => $product->price_wholesale2 ?? 0,
+            ]
+        );
 
         return redirect()->route('products.edit', $product)
             ->with('success', 'บันทึกข้อมูลสินค้าเรียบร้อยแล้ว');
@@ -269,11 +288,10 @@ class PosController extends Controller
     {
         $drugTypes   = DrugType::where('is_disabled', false)->orderBy('name_th')->get();
         $dosageForms = DosageForm::where('is_disabled', false)->orderBy('name_th')->get();
-        $itemUnits   = ItemUnit::orderBy('name')->get();
         $categories  = \App\Models\ProductCategory::where('is_disabled', false)
                            ->orderBy('sort_order')
                            ->get();
-        return view('pos.create_product', compact('drugTypes', 'dosageForms', 'itemUnits', 'categories'));
+        return view('pos.create_product', compact('drugTypes', 'dosageForms', 'categories'));
     }
 
     public function storeProduct(Request $request)
@@ -286,7 +304,7 @@ class PosController extends Controller
             'name_for_print'    => 'nullable|string|max:255',
             'category_id'       => 'nullable|integer|exists:product_categories,id',
             'dosage_form_id'    => 'nullable|integer|exists:dosage_forms,id',
-            'unit_id'           => 'nullable|integer|exists:item_units,id',
+            'base_unit_name'    => 'required|string|max:50',
             'price_retail'      => 'required|numeric|min:0',
             'price_wholesale1'  => 'nullable|numeric|min:0',
             'price_wholesale2'  => 'nullable|numeric|min:0',
@@ -326,12 +344,26 @@ class PosController extends Controller
         $data['default_qty']     = $data['default_qty'] ?? 1;
         $data['is_disabled']     = false;
         $data['is_hidden']       = false;
+        $baseUnitName = $data['base_unit_name'];
+        $data['unit_name'] = $baseUnitName;
+        unset($data['base_unit_name']);
         if (empty($data['code'])) {
             $lastId = Product::max('id') ?? 0;
             $data['code'] = 'PRD-' . str_pad($lastId + 1, 5, '0', STR_PAD_LEFT);
         }
 
-        Product::create($data);
+        $product = Product::create($data);
+        $product->productUnits()->create([
+            'unit_name' => $baseUnitName,
+            'qty_per_base' => 1,
+            'is_base_unit' => true,
+            'is_for_sale' => true,
+            'is_for_purchase' => true,
+            'is_disabled' => false,
+            'price_retail' => $product->price_retail ?? 0,
+            'price_wholesale1' => $product->price_wholesale1 ?? 0,
+            'price_wholesale2' => $product->price_wholesale2 ?? 0,
+        ]);
 
         return redirect()->route('pos.products.create')
             ->with('success', 'เพิ่มสินค้าเรียบร้อยแล้ว');

@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="p-6 max-w-10xl mx-auto">
+<div class="p-6 w-full mx-auto">
 
     <div class="mb-5 flex items-center justify-between">
         <div>
@@ -30,7 +30,7 @@
         <!-- Tab Bar -->
         <div class="mb-6 flex flex-wrap gap-2 border-b border-gray-200">
             <button type="button" data-tab="tab-1" class="tab-button active min-h-11 px-4 py-2.5 text-sm font-medium text-emerald-600 border-b-2 border-emerald-600 rounded-t-lg">ข้อมูลหลัก</button>
-            <button type="button" data-tab="tab-2" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">หน่วยอื่นๆ</button>
+            <button type="button" data-tab="tab-2" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">หน่วยสินค้า</button>
             <button type="button" data-tab="tab-3" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">ประเภทยาตามกฎหมาย</button>
             <button type="button" data-tab="tab-4" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">ฉลาก</button>
             <button type="button" data-tab="tab-5" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">สต๊อค</button>
@@ -78,13 +78,8 @@
                     </div>
                     <!-- หน่วยขาย -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">หน่วยขาย</label>
-                        <select name="unit_id" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
-                            <option value="">-- เลือกหน่วย --</option>
-                            @foreach($itemUnits as $unit)
-                                <option value="{{ $unit->id }}" {{ old('unit_id', $product->unit_id) == $unit->id ? 'selected' : '' }}>{{ $unit->name }}</option>
-                            @endforeach
-                        </select>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">หน่วยขายหลัก <span class="text-red-500">*</span></label>
+                        <input type="text" name="base_unit_name" value="{{ old('base_unit_name', $baseUnitName) }}" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400" placeholder="เช่น เม็ด, ขวด, หลอด" required>
                     </div>
                     <!-- เลขบาร์โค้ด 1 -->
                     <div>
@@ -166,71 +161,86 @@
                 </div>
             </div>
 
-            <!-- Tab 2: หน่วยอื่นๆ -->
-
+            <!-- Tab 2: หน่วยสินค้า -->
             <div id="tab-2" class="tab-panel hidden bg-white border border-gray-200 rounded-xl p-5">
-                <div class="mb-4">
-                    <span class="block text-sm font-medium text-gray-700 mb-1">หน่วยย่อยของสินค้า:</span>
-                    <span class="inline-block px-3 py-2 rounded bg-gray-100 text-gray-800 text-base font-semibold min-h-[44px]">{{ $product->unit->name ?? '-' }}</span>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-semibold text-gray-700">หน่วยสินค้า</h3>
+                    <button type="button" id="btn-add-unit" class="h-10 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium">
+                        + เพิ่มหน่วย
+                    </button>
                 </div>
 
-                <div class="overflow-x-auto mb-6">
+                <div class="overflow-x-auto">
                     <table class="min-w-full text-sm border border-gray-200 rounded-lg">
-                        <thead class="bg-gray-50">
+                        <thead class="bg-gray-50 text-gray-600">
                             <tr>
-                                <th class="px-3 py-2 text-left font-medium text-gray-600">หน่วย</th>
-                                <th class="px-3 py-2 text-right font-medium text-gray-600">จำนวนของหน่วยย่อย</th>
-                                <th class="px-3 py-2 text-right font-medium text-gray-600">ราคาปลีก</th>
-                                <th class="px-3 py-2 text-left font-medium text-gray-600">Barcode</th>
-                                <th class="px-3 py-2 text-center font-medium text-gray-600">ขายได้</th>
-                                <th class="px-3 py-2 text-center font-medium text-gray-600">รับเข้าได้</th>
-                                <th class="px-3 py-2 text-center font-medium text-gray-600">ลบ</th>
+                                <th class="px-3 py-2 text-left font-medium">หน่วย</th>
+                                <th class="px-3 py-2 text-right font-medium">จำนวนต่อหน่วยฐาน</th>
+                                <th class="px-3 py-2 text-left font-medium">ขายได้ / รับเข้าได้</th>
+                                <th class="px-3 py-2 text-right font-medium">ราคาปลีก</th>
+                                <th class="px-3 py-2 text-center font-medium w-32">จัดการ</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($product->productUnits as $unit)
-                                <tr class="border-b border-gray-100">
-                                    <td class="px-3 py-2 min-h-[44px]">{{ $unit->unit_name }}</td>
-                                    <td class="px-3 py-2 text-right min-h-[44px]">{{ $unit->qty_per_base }}</td>
-                                    <td class="px-3 py-2 text-right min-h-[44px]">{{ number_format($unit->price_retail, 2) }}</td>
-                                    <td class="px-3 py-2 min-h-[44px]">{{ $unit->barcode }}</td>
-                                    <td class="px-3 py-2 text-center min-h-[44px]">
-                                        @if($unit->is_for_sale)
-                                            <span class="inline-block w-6 h-6 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">✓</span>
-                                        @endif
+                            @forelse($product->productUnits->where('is_base_unit', false) as $unit)
+                                <tr class="border-t border-gray-100">
+                                    <td class="px-3 py-2">
+                                        <div class="font-medium text-gray-800">{{ $unit->unit_name }}</div>
+                                        <div class="text-xs text-gray-400">{{ $unit->barcode ?: '-' }}</div>
                                     </td>
-                                    <td class="px-3 py-2 text-center min-h-[44px]">
-                                        @if($unit->is_for_purchase)
-                                            <span class="inline-block w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">✓</span>
-                                        @endif
+                                    <td class="px-3 py-2 text-right text-gray-700">{{ rtrim(rtrim(number_format($unit->qty_per_base, 4, '.', ''), '0'), '.') }}</td>
+                                    <td class="px-3 py-2">
+                                        <div class="flex flex-wrap gap-1">
+                                            @if($unit->is_for_sale)
+                                                <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs">ขายได้</span>
+                                            @endif
+                                            @if($unit->is_for_purchase)
+                                                <span class="px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 text-xs">รับเข้าได้</span>
+                                            @endif
+                                        </div>
                                     </td>
-                                    <td class="px-3 py-2 text-center min-h-[44px]">
-                                        <form action="{{ route('products.units.destroy', [$product, $unit]) }}" method="POST" onsubmit="return confirm('ลบหน่วยนี้?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="inline-flex items-center justify-center px-3 py-2 rounded bg-red-50 text-red-600 hover:bg-red-100 min-h-[44px]" title="ลบ">
-                                                ลบ
+                                    <td class="px-3 py-2 text-right text-gray-800">{{ number_format($unit->price_retail ?? 0, 2) }}</td>
+                                    <td class="px-3 py-2">
+                                        <div class="flex items-center justify-center gap-2">
+                                            <button
+                                                type="button"
+                                                class="w-9 h-9 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
+                                                title="แก้ไข"
+                                                onclick='openUnitModal({
+                                                    mode: "edit",
+                                                    id: {{ $unit->id }},
+                                                    unit_name: @json($unit->unit_name),
+                                                    qty_per_base: {{ (float) $unit->qty_per_base }},
+                                                    barcode: @json($unit->barcode),
+                                                    price_retail: {{ (float) ($unit->price_retail ?? 0) }},
+                                                    price_wholesale1: {{ (float) ($unit->price_wholesale1 ?? 0) }},
+                                                    is_for_sale: {{ $unit->is_for_sale ? "true" : "false" }},
+                                                    is_for_purchase: {{ $unit->is_for_purchase ? "true" : "false" }}
+                                                })'>
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor" class="w-4 h-4 mx-auto">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 3.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 15.07a4.5 4.5 0 0 1-1.897 1.13L6 17l.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.862 3.487Z" />
+                                                </svg>
                                             </button>
-                                        <!-- ...existing code... -->
-                                        </form>
 
-
+                                            <button
+                                                type="button"
+                                                class="w-9 h-9 rounded-lg border border-red-200 text-red-600 hover:bg-red-50"
+                                                title="ลบ"
+                                                onclick="deleteUnit({{ $unit->id }})">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor" class="w-4 h-4 mx-auto">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673A2.25 2.25 0 0 1 15.916 21.75H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0C9.16 2.313 8.25 3.297 8.25 4.477v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="6" class="text-center text-gray-400 py-4">ไม่มีหน่วยอื่นๆ</td></tr>
+                                <tr>
+                                    <td colspan="5" class="text-center text-gray-400 py-6">ยังไม่มีหน่วยสินค้า</td>
+                                </tr>
                             @endforelse
                         </tbody>
                     </table>
-                </div>
-
-                <div class="border-t border-gray-200 pt-4 mt-4">
-                    <button type="button" id="btn-add-unit"
-                        onclick="document.getElementById('modal-add-unit').classList.remove('hidden')"
-                        class="h-11 px-5 rounded-lg bg-emerald-500 hover:bg-emerald-600
-                               text-white text-sm font-medium min-h-[44px]">
-                        + เพิ่มหน่วยสินค้า
-                    </button>
                 </div>
             </div>
 
@@ -433,90 +443,228 @@
 
         </div>
     </form>
-    <div id="modal-add-unit"
-                                                 class="fixed inset-0 bg-black/40 hidden z-50 flex items-center justify-center p-4">
-                                            <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
-                                                <h2 class="text-sm font-semibold text-gray-800 mb-5">เพิ่มหน่วยสินค้า</h2>
-                                                <form action="{{ route('products.units.store', $product) }}" method="POST">
-                                                    @csrf
-                                                    <div class="space-y-4">
-                                                        <div>
-                                                            <label class="block text-xs font-medium text-gray-600 mb-1">
-                                                                ชื่อหน่วย <span class="text-red-500">*</span>
-                                                            </label>
-                                                            <input type="text" name="unit_name" placeholder="เช่น กล่อง, ลัง, แพ็ค"
-                                                                data-required="true" data-error-msg="กรุณากรอกชื่อหน่วย"
-                                                                class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm
-                                                                             focus:outline-none focus:border-emerald-400">
-                                                        </div>
-                                                        <div>
-                                                            <label class="block text-xs font-medium text-gray-600 mb-1">
-                                                                จำนวนของหน่วยย่อย <span class="text-red-500">*</span>
-                                                            </label>
-                                                            <input type="number" name="qty_per_base" step="0.0001" min="0.0001"
-                                                                placeholder="เช่น 50 (แปลว่า 1 กล่อง = 50 หน่วยย่อย)"
-                                                                data-required="true" data-error-msg="กรุณากรอกจำนวน"
-                                                                class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm
-                                                                             focus:outline-none focus:border-emerald-400">
-                                                        </div>
-                                                        <div>
-                                                            <label class="block text-xs font-medium text-gray-600 mb-1">บาร์โค้ด</label>
-                                                            <input type="text" name="barcode" placeholder="บาร์โค้ดของหน่วยนี้ (ถ้ามี)"
-                                                                class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm
-                                                                             focus:outline-none focus:border-emerald-400">
-                                                        </div>
-                                                        <div class="grid grid-cols-3 gap-3">
-                                                            <div>
-                                                                <label class="block text-xs font-medium text-gray-600 mb-1">ราคาปลีก</label>
-                                                                <input type="number" name="price_retail" step="0.01" min="0" value="0"
-                                                                    class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm
-                                                                                 focus:outline-none focus:border-emerald-400">
-                                                            </div>
-                                                            <div>
-                                                                <label class="block text-xs font-medium text-gray-600 mb-1">ราคาส่ง 1</label>
-                                                                <input type="number" name="price_wholesale1" step="0.01" min="0" value="0"
-                                                                    class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm
-                                                                                 focus:outline-none focus:border-emerald-400">
-                                                            </div>
-                                                            <div>
-                                                                <label class="block text-xs font-medium text-gray-600 mb-1">ราคาส่ง 2</label>
-                                                                <input type="number" name="price_wholesale2" step="0.01" min="0" value="0"
-                                                                    class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm
-                                                                                 focus:outline-none focus:border-emerald-400">
-                                                            </div>
-                                                        </div>
-                                                        <div class="flex gap-4">
-                                                            <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                                                                <input type="checkbox" name="is_for_sale" value="1" checked
-                                                                    class="w-5 h-5 rounded accent-emerald-500"> ขายได้
-                                                            </label>
-                                                            <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                                                                <input type="checkbox" name="is_for_purchase" value="1" checked
-                                                                    class="w-5 h-5 rounded accent-emerald-500"> รับเข้าได้
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                    <div class="flex justify-end gap-3 mt-6">
-                                                        <button type="button"
-                                                            onclick="document.getElementById('modal-add-unit').classList.add('hidden')"
-                                                            class="px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-600
-                                                                         hover:bg-gray-50">
-                                                            ยกเลิก
-                                                        </button>
-                                                        <button type="submit"
-                                                            class="px-5 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600
-                                                                         text-white text-sm font-medium">
-                                                            บันทึก
-                                                        </button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
+    <div id="unit-modal" class="fixed inset-0 bg-black/40 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl p-6 w-full max-w-xl shadow-xl">
+            <div class="flex items-center justify-between mb-5">
+                <h2 id="unit-modal-title" class="text-sm font-semibold text-gray-800">เพิ่มหน่วยสินค้า</h2>
+                <button type="button" id="unit-modal-close" class="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-500">✕</button>
+            </div>
+
+            <form id="unit-modal-form" class="space-y-4" novalidate>
+                <input type="hidden" id="unit-id" name="unit_id">
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">ชื่อหน่วย <span class="text-red-500">*</span></label>
+                        <input type="text" id="unit_name" name="unit_name" required class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">จำนวนต่อหน่วยฐาน <span class="text-red-500">*</span></label>
+                        <input type="number" id="qty_per_base" name="qty_per_base" step="0.0001" min="0.0001" required class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Barcode</label>
+                        <input type="text" id="barcode" name="barcode" class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">ราคาปลีก</label>
+                        <input type="number" id="price_retail_unit" name="price_retail" step="0.01" min="0" class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">ราคาส่ง 1</label>
+                        <input type="number" id="price_wholesale1" name="price_wholesale1" step="0.01" min="0" class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-5 pt-1">
+                    <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                        <input type="checkbox" id="is_for_sale" name="is_for_sale" class="w-4 h-4 rounded accent-emerald-500" checked>
+                        ขายได้
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                        <input type="checkbox" id="is_for_purchase" name="is_for_purchase" class="w-4 h-4 rounded accent-emerald-500" checked>
+                        รับเข้าได้
+                    </label>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" id="unit-cancel" class="px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+                    <button type="submit" id="unit-save" class="px-5 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <!-- Tab Switching & Profit Calculation JavaScript -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const csrfToken = document.querySelector('input[name="_token"]')?.value;
+        const unitModal = document.getElementById('unit-modal');
+        const unitModalTitle = document.getElementById('unit-modal-title');
+        const unitModalForm = document.getElementById('unit-modal-form');
+        const addUnitBtn = document.getElementById('btn-add-unit');
+        const closeUnitBtn = document.getElementById('unit-modal-close');
+        const cancelUnitBtn = document.getElementById('unit-cancel');
+        const saveUnitBtn = document.getElementById('unit-save');
+        const qtyPerBaseInput = document.getElementById('qty_per_base');
+
+        const storeUnitUrl = "{{ route('product_units.store', $product) }}";
+        const unitBaseUrl = "{{ url('/products/units') }}";
+        let modalMode = 'create';
+
+        function openModal() {
+            unitModal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            unitModal.classList.add('hidden');
+        }
+
+        function resetUnitForm() {
+            unitModalForm.reset();
+            document.getElementById('unit-id').value = '';
+            qtyPerBaseInput.value = '';
+            document.getElementById('is_for_sale').checked = true;
+            document.getElementById('is_for_purchase').checked = true;
+        }
+
+        function collectUnitPayload() {
+            return {
+                unit_name: document.getElementById('unit_name').value,
+                qty_per_base: document.getElementById('qty_per_base').value,
+                barcode: document.getElementById('barcode').value,
+                price_retail: document.getElementById('price_retail_unit').value,
+                price_wholesale1: document.getElementById('price_wholesale1').value,
+                is_for_sale: document.getElementById('is_for_sale').checked ? '1' : '0',
+                is_for_purchase: document.getElementById('is_for_purchase').checked ? '1' : '0',
+            };
+        }
+
+        function parseErrorMessage(data) {
+            if (!data) return 'เกิดข้อผิดพลาดในการบันทึกข้อมูล';
+            if (data.message && !data.errors) return data.message;
+            if (data.errors) {
+                const messages = Object.values(data.errors).flat();
+                return messages.join('\n');
+            }
+            return 'เกิดข้อผิดพลาดในการบันทึกข้อมูล';
+        }
+
+        async function submitUnitForm(e) {
+            e.preventDefault();
+            if (!unitModalForm.reportValidity()) return;
+
+            const unitId = document.getElementById('unit-id').value;
+            const payload = collectUnitPayload();
+            const isEdit = modalMode === 'edit' && unitId;
+            const targetUrl = isEdit ? `${unitBaseUrl}/${unitId}` : storeUnitUrl;
+
+            const formData = new FormData();
+            Object.entries(payload).forEach(([key, value]) => formData.append(key, value));
+            if (isEdit) formData.append('_method', 'PUT');
+
+            saveUnitBtn.disabled = true;
+
+            try {
+                const response = await fetch(targetUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                    body: formData,
+                });
+
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(parseErrorMessage(data));
+                }
+
+                if (typeof showToast === 'function') {
+                    showToast(data.message || 'บันทึกสำเร็จ', 'success');
+                }
+
+                window.location.reload();
+            } catch (error) {
+                if (typeof showToast === 'function') {
+                    showToast(error.message, 'error');
+                } else {
+                    alert(error.message);
+                }
+            } finally {
+                saveUnitBtn.disabled = false;
+            }
+        }
+
+        window.openUnitModal = function(unit = null) {
+            resetUnitForm();
+
+            if (unit && unit.mode === 'edit') {
+                modalMode = 'edit';
+                unitModalTitle.textContent = 'แก้ไขหน่วยสินค้า';
+                document.getElementById('unit-id').value = unit.id;
+                document.getElementById('unit_name').value = unit.unit_name ?? '';
+                document.getElementById('qty_per_base').value = unit.qty_per_base ?? '';
+                document.getElementById('barcode').value = unit.barcode ?? '';
+                document.getElementById('price_retail_unit').value = unit.price_retail ?? '';
+                document.getElementById('price_wholesale1').value = unit.price_wholesale1 ?? '';
+                document.getElementById('is_for_sale').checked = !!unit.is_for_sale;
+                document.getElementById('is_for_purchase').checked = !!unit.is_for_purchase;
+            } else {
+                modalMode = 'create';
+                unitModalTitle.textContent = 'เพิ่มหน่วยสินค้า';
+            }
+
+            openModal();
+        };
+
+        window.deleteUnit = async function(unitId) {
+            if (!confirm('ยืนยันการลบหน่วยนี้?')) return;
+
+            const formData = new FormData();
+            formData.append('_method', 'DELETE');
+
+            try {
+                const response = await fetch(`${unitBaseUrl}/${unitId}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                    body: formData,
+                });
+
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(parseErrorMessage(data));
+                }
+
+                if (typeof showToast === 'function') {
+                    showToast(data.message || 'ลบสำเร็จ', 'success');
+                }
+
+                window.location.reload();
+            } catch (error) {
+                if (typeof showToast === 'function') {
+                    showToast(error.message, 'error');
+                } else {
+                    alert(error.message);
+                }
+            }
+        };
+
+        addUnitBtn?.addEventListener('click', () => window.openUnitModal());
+        closeUnitBtn?.addEventListener('click', closeModal);
+        cancelUnitBtn?.addEventListener('click', closeModal);
+        unitModal?.addEventListener('click', (e) => {
+            if (e.target === unitModal) closeModal();
+        });
+        unitModalForm?.addEventListener('submit', submitUnitForm);
+
         const tabButtons = document.querySelectorAll('.tab-button');
         const tabPanels = document.querySelectorAll('.tab-panel');
         const priceRetailInput = document.getElementById('price_retail');

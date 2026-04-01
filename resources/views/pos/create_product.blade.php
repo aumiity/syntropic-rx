@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="p-6 max-w-10xl mx-auto">
+<div class="p-6 w-full mx-auto">
 
     <div class="mb-5 flex items-center justify-between">
         <div>
@@ -68,13 +68,8 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-600 mb-1">หน่วยนับ</label>
-                        <select name="unit_id" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
-                            <option value="">-- เลือกหน่วย --</option>
-                            @foreach($itemUnits as $unit)
-                                <option value="{{ $unit->id }}" {{ old('unit_id')==$unit->id ? 'selected':'' }}>{{ $unit->name }}</option>
-                            @endforeach
-                        </select>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">หน่วยนับหลัก <span class="text-red-500">*</span></label>
+                        <input type="text" name="base_unit_name" value="{{ old('base_unit_name') }}" placeholder="เช่น เม็ด, ขวด, หลอด" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400" required>
                     </div>
                 </div>
             </div>

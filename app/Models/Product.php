@@ -12,8 +12,7 @@ class Product extends Model
     }
     protected $fillable = [
         'barcode', 'barcode2', 'code', 'trade_name', 'name_for_print', 'search_keywords',
-        'category_id', 'dosage_form_id', 'unit_id', 'unit_small_id', 'unit_large_id',
-        'conversion', 'default_qty',
+        'category_id', 'dosage_form_id', 'default_qty', 'unit_name',
         'price_retail', 'price_wholesale1', 'price_wholesale2',
         'is_vat', 'is_not_discount',
         'reorder_point', 'safety_stock',
@@ -34,7 +33,6 @@ class Product extends Model
         'is_fda13_report'  => 'boolean',
         'price_retail'    => 'decimal:2',
         'price_wholesale1'=> 'decimal:2',
-        'conversion'      => 'integer',
     ];
 
     public function category()
@@ -54,17 +52,18 @@ class Product extends Model
 
     public function unit()
     {
-        return $this->belongsTo(ItemUnit::class);
+        return $this->hasOne(ProductUnit::class)
+            ->where(function ($query) {
+                $query->where('is_base_unit', true)
+                    ->orWhere('qty_per_base', 1);
+            })
+            ->orderByDesc('is_base_unit')
+            ->orderBy('id');
     }
 
-    public function unitSmall()
+    public function baseUnit()
     {
-        return $this->belongsTo(ItemUnit::class, 'unit_small_id');
-    }
-
-    public function unitLarge()
-    {
-        return $this->belongsTo(ItemUnit::class, 'unit_large_id');
+        return $this->unit();
     }
 
     // stock คงเหลือรวมทุก lot

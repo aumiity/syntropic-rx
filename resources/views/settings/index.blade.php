@@ -73,35 +73,22 @@
     <!-- ==================== Tab: หน่วยนับ ==================== -->
     <div id="tab-units" class="tab-panel {{ $activeTab == 'units' ? '' : 'hidden' }}">
         <div class="bg-white border border-gray-200 rounded-xl p-5">
-            <form action="{{ route('settings.units.store') }}" method="POST" class="flex gap-3 mb-5 pb-5 border-b border-gray-100">
-                @csrf
-                <input type="text" name="name" placeholder="ชื่อหน่วย *" required class="flex-1 h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
-                <input type="number" name="multiply" placeholder="ตัวคูณ" step="0.0001" min="0.0001" value="1" class="w-28 h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
-                <button type="submit" class="h-10 px-5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium">+ เพิ่ม</button>
-            </form>
+            <div class="mb-5 pb-5 border-b border-gray-100 text-sm text-gray-600">
+                หน่วยนับถูกจัดการในระดับสินค้าแล้ว (จากตาราง product_units) กรุณาเพิ่ม/แก้ไขหน่วยที่หน้าแก้ไขสินค้า
+            </div>
             <table class="w-full text-sm">
                 <thead><tr class="border-b border-gray-100 text-xs text-gray-500 uppercase">
                     <th class="py-2 text-left">ชื่อหน่วย</th>
-                    <th class="py-2 text-right w-28">ตัวคูณ</th>
-                    <th class="py-2 w-32"></th>
+                    <th class="py-2 text-right w-28">จำนวนที่ใช้งาน</th>
                 </tr></thead>
                 <tbody>
                 @forelse($itemUnits as $unit)
                 <tr class="border-b border-gray-50 hover:bg-gray-50">
-                    <td class="py-2.5 text-gray-800 font-medium">{{ $unit->name }}</td>
-                    <td class="py-2.5 text-right text-gray-500">{{ $unit->multiply }}</td>
-                    <td class="py-2.5 text-right flex gap-2 justify-end">
-                        <button type="button"
-                            onclick="openEditModal('units', {{ $unit->id }}, '', '{{ addslashes($unit->name) }}', {{ $unit->multiply }})"
-                            class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600">แก้ไข</button>
-                        <form action="{{ route('settings.units.delete', $unit) }}" method="POST" onsubmit="return confirm('ลบหน่วย {{ $unit->name }} ใช่ไหม?')">
-                            @csrf @method('DELETE')
-                            <button type="submit" class="text-xs px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-500">ลบ</button>
-                        </form>
-                    </td>
+                    <td class="py-2.5 text-gray-800 font-medium">{{ $unit->unit_name }}</td>
+                    <td class="py-2.5 text-right text-gray-500">{{ $unit->usage_count }}</td>
                 </tr>
                 @empty
-                <tr><td colspan="3" class="py-6 text-center text-gray-400 text-sm">ยังไม่มีข้อมูล</td></tr>
+                <tr><td colspan="2" class="py-6 text-center text-gray-400 text-sm">ยังไม่มีข้อมูล</td></tr>
                 @endforelse
                 </tbody>
             </table>
@@ -190,13 +177,11 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 // Modal config
 const routeMap = {
     categories: '/settings/categories/',
-    units:      '/settings/units/',
     drugtypes:  '/settings/drug-types/',
 };
 
 const titleMap = {
     categories: 'แก้ไขประเภทสินค้า',
-    units:      'แก้ไขหน่วยนับ',
     drugtypes:  'แก้ไขประเภทยาตามกฎหมาย',
 };
 
@@ -210,12 +195,6 @@ const fieldMap = {
         <input type="text" name="name" value="${name}" required class="${inputClass}"></div>
         <div><label class="block text-xs text-gray-500 mb-1">ลำดับ</label>
         <input type="number" name="sort_order" value="${sort}" min="0" class="${inputClass}"></div>`,
-
-    units: (code, name, sort) => `
-        <div><label class="block text-xs text-gray-500 mb-1">ชื่อหน่วย *</label>
-        <input type="text" name="name" value="${name}" required class="${inputClass}"></div>
-        <div><label class="block text-xs text-gray-500 mb-1">ตัวคูณ</label>
-        <input type="number" name="multiply" value="${sort}" step="0.0001" min="0.0001" class="${inputClass}"></div>`,
 
     drugtypes: (code, name, sort) => `
         <div><label class="block text-xs text-gray-500 mb-1">รหัส *</label>

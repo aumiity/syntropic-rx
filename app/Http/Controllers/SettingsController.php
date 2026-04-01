@@ -4,16 +4,21 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\ProductCategory;
-use App\Models\ItemUnit;
 use App\Models\DrugType;
-use App\Models\Product;
+use App\Models\ProductUnit;
 
 class SettingsController extends Controller
 {
     public function index()
     {
         $categories = ProductCategory::orderBy('sort_order')->get();
-        $itemUnits  = ItemUnit::orderBy('name')->get();
+        $itemUnits  = ProductUnit::query()
+            ->select('unit_name')
+            ->selectRaw('COUNT(*) as usage_count')
+            ->whereNotNull('unit_name')
+            ->groupBy('unit_name')
+            ->orderBy('unit_name')
+            ->get();
         $drugTypes  = DrugType::orderBy('name_th')->get();
 
         return view('settings.index', compact('categories', 'itemUnits', 'drugTypes'));
@@ -52,33 +57,17 @@ class SettingsController extends Controller
     // --- Item Units ---
     public function storeUnit(Request $request)
     {
-        $data = $request->validate([
-            'name'     => 'required|string|max:50',
-            'multiply' => 'nullable|numeric|min:0.0001',
-        ]);
-        $data['multiply'] = $data['multiply'] ?? 1;
-        ItemUnit::create($data);
-        return back()->with('success', 'เพิ่มหน่วยนับเรียบร้อยแล้ว')->with('active_tab', 'units');
+        return back()->with('error', 'หน่วยนับถูกผูกกับสินค้าแล้ว กรุณาจัดการที่หน้าแก้ไขสินค้า')->with('active_tab', 'units');
     }
 
-    public function updateUnit(Request $request, ItemUnit $unit)
+    public function updateUnit(Request $request, string $unit)
     {
-        $data = $request->validate([
-            'name'     => 'required|string|max:50',
-            'multiply' => 'nullable|numeric|min:0.0001',
-        ]);
-        $unit->update($data);
-        return back()->with('success', 'แก้ไขหน่วยนับเรียบร้อยแล้ว')->with('active_tab', 'units');
+        return back()->with('error', 'หน่วยนับถูกผูกกับสินค้าแล้ว กรุณาจัดการที่หน้าแก้ไขสินค้า')->with('active_tab', 'units');
     }
 
-    public function deleteUnit(ItemUnit $unit)
+    public function deleteUnit(string $unit)
     {
-        $inUse = Product::where('unit_id', $unit->id)->exists();
-        if ($inUse) {
-            return back()->with('error', 'ไม่สามารถลบได้ มีสินค้าใช้หน่วยนี้อยู่')->with('active_tab', 'units');
-        }
-        $unit->delete();
-        return back()->with('success', 'ลบหน่วยนับเรียบร้อยแล้ว')->with('active_tab', 'units');
+        return back()->with('error', 'หน่วยนับถูกผูกกับสินค้าแล้ว กรุณาจัดการที่หน้าแก้ไขสินค้า')->with('active_tab', 'units');
     }
 
     // --- Drug Types ---
