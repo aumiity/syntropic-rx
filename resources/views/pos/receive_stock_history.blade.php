@@ -81,14 +81,14 @@
                 <tbody>
                     @foreach($movements as $movement)
                         <tr class="border-t border-slate-200">
-                            <td class="px-3 py-2 text-sm">{{ $movement->created_at->format('d/m/Y H:i') }}</td>
+                            <td class="px-3 py-2 text-sm">{{ \Carbon\Carbon::parse($movement->created_at)->format('d/m/Y H:i') }}</td>
                             <td class="px-3 py-2 text-sm">
                                 {{ $movement->trade_name }}<br>
                                 <small class="text-slate-500">{{ $movement->barcode ?? $movement->code }}</small>
                             </td>
                             <td class="px-3 py-2 text-sm">
                                 {{ $movement->lot_number }}<br>
-                                <small class="text-slate-500">หมดอายุ: {{ $movement->expiry_date ? $movement->expiry_date->format('d/m/Y') : '-' }}</small>
+                                <small class="text-slate-500">หมดอายุ: {{ $movement->expiry_date ? \Carbon\Carbon::parse($movement->expiry_date)->format('d/m/Y') : '-' }}</small>
                             </td>
                             <td class="px-3 py-2 text-sm">{{ $movement->supplier_name ?? '-' }}</td>
                             <td class="px-3 py-2 text-sm text-center">{{ number_format($movement->qty_change) }}</td>

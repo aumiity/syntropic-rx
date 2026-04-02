@@ -13,6 +13,7 @@ class Product extends Model
     protected $fillable = [
         'barcode', 'barcode2', 'code', 'trade_name', 'name_for_print', 'search_keywords',
         'category_id', 'dosage_form_id', 'default_qty', 'unit_name',
+        'drug_generic_name_id',
         'price_retail', 'price_wholesale1', 'price_wholesale2',
         'is_vat', 'is_not_discount',
         'reorder_point', 'safety_stock',
@@ -48,6 +49,11 @@ class Product extends Model
     public function drugType()
     {
         return $this->belongsTo(DrugType::class);
+    }
+
+    public function genericName()
+    {
+        return $this->belongsTo(DrugGenericName::class, 'drug_generic_name_id');
     }
 
     public function unit()

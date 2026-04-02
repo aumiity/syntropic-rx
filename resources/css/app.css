@@ -22,6 +22,27 @@
 }
 
 @font-face {
+    font-family: "Thonburi";
+    src: url("/fonts/Thonburi-Light.ttf") format("truetype");
+    font-weight: 300;
+    font-display: block;
+}
+
+@font-face {
+    font-family: "Thonburi";
+    src: url("/fonts/Thonburi-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-display: block;
+}
+
+@font-face {
+    font-family: "Thonburi";
+    src: url("/fonts/Thonburi-Bold.ttf") format("truetype");
+    font-weight: 700;
+    font-display: block;
+}
+
+@font-face {
     font-family: "SF Pro Text";
     src: url("/fonts/sf-pro-text_semibold.woff2") format("woff2");
     font-weight: 600;
@@ -37,7 +58,7 @@
 
 @layer base {
     html {
-        font-family: "SF Pro TH", "SF Pro Text", -apple-system, BlinkMacSystemFont, sans-serif;
+        font-family: "Thonburi", "SF Pro TH", "SF Pro Text", -apple-system, BlinkMacSystemFont, sans-serif;
         color: #047857;
         line-height: 1.6;
         -webkit-font-smoothing: antialiased;
@@ -47,6 +68,7 @@
 
     body {
         font-family: 
+            "Thonburi",
             'SF Pro TH',
             'SF Pro Text',
             -apple-system,
@@ -64,9 +86,12 @@
 
     h1, h2, h3, h4, h5, h6 {
         font-family:
+            "Thonburi",
             "SF Pro TH",
             "SF Pro Display",
             "SF Pro Text",
+            -apple-system,
+            BlinkMacSystemFont,
             sans-serif;
         font-weight: 600;
         line-height: 1.25;

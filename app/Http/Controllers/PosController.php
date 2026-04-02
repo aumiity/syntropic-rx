@@ -14,6 +14,7 @@ use App\Models\Supplier;
 use App\Models\DrugType;
 use App\Models\DosageForm;
 use App\Models\ProductCategory;
+use App\Models\DrugGenericName;
 
 class PosController extends Controller
 {
@@ -175,6 +176,22 @@ class PosController extends Controller
         return response()->json($products);
     }
 
+    public function searchGenericName(Request $request)
+    {
+        $q = trim((string) $request->query('q', ''));
+        if ($q === '') {
+            return response()->json([]);
+        }
+
+        $rows = DrugGenericName::query()
+            ->where('name', 'like', "%{$q}%")
+            ->orderBy('name')
+            ->limit(10)
+            ->get(['id', 'name']);
+
+        return response()->json($rows);
+    }
+
     public function productIndex(Request $request)
     {
         $q = trim($request->get('q', ''));
@@ -243,14 +260,16 @@ class PosController extends Controller
 
     public function editProduct(Product $product)
     {
-        $product->load('productUnits');
+        $product->load(['productUnits', 'genericName']);
         $drugTypes   = DrugType::where('is_disabled', false)->orderBy('name_th')->get();
         $dosageForms = DosageForm::where('is_disabled', false)->orderBy('name_th')->get();
         $categories = ProductCategory::active()->get();
         $baseUnitName = optional($product->productUnits->firstWhere('is_base_unit', true))->unit_name
             ?? optional($product->productUnits->firstWhere('qty_per_base', '1.0000'))->unit_name
-            ?? optional($product->productUnits->first())->unit_name;
-
+            ?? optional($product->productUnits->first())->unit_name
+            ?? $product->unit_name
+            ?? '';
+            
         return view('pos.edit_product', compact('product', 'drugTypes', 'dosageForms', 'categories', 'baseUnitName'));
     }
 
@@ -268,6 +287,8 @@ class PosController extends Controller
             'price_retail'      => 'required|numeric|min:0',
             'price_wholesale1'  => 'nullable|numeric|min:0',
             'price_wholesale2'  => 'nullable|numeric|min:0',
+            'has_wholesale1'    => 'nullable|boolean',
+            'has_wholesale2'    => 'nullable|boolean',
             'is_vat'            => 'nullable|boolean',
             'is_not_discount'   => 'nullable|boolean',
             'reorder_point'     => 'nullable|integer|min:0',
@@ -276,6 +297,7 @@ class PosController extends Controller
             'expiry_alert_days2'=> 'nullable|integer|min:1',
             'expiry_alert_days3'=> 'nullable|integer|min:1',
             'drug_type_id'      => 'nullable|integer|exists:drug_types,id',
+            'drug_generic_name_id' => 'nullable|integer|exists:drug_generic_names,id',
             'strength'          => 'nullable|numeric|min:0',
             'registration_no'   => 'nullable|string|max:50',
             'tmt_id'            => 'nullable|string|max:30',
@@ -301,12 +323,31 @@ class PosController extends Controller
         $data['is_fda11_report'] = $request->boolean('is_fda11_report');
         $data['is_fda13_report'] = $request->boolean('is_fda13_report');
         $data['is_sale_control'] = $request->boolean('is_sale_control');
+        $hasWholesale1 = $request->boolean('has_wholesale1');
+        $hasWholesale2 = $request->boolean('has_wholesale2');
+        if (!$hasWholesale1) {
+            $data['price_wholesale1'] = 0;
+        }
+        if (!$hasWholesale2) {
+            $data['price_wholesale2'] = 0;
+        }
         $data['default_qty']     = $data['default_qty'] ?? 1;
         $baseUnitName = $data['base_unit_name'];
         $data['unit_name'] = $baseUnitName;
         unset($data['base_unit_name']);
 
         $product->update($data);
+
+        $wholesaleFlags = [];
+        if (Schema::hasColumn('products', 'has_wholesale1')) {
+            $wholesaleFlags['has_wholesale1'] = $hasWholesale1;
+        }
+        if (Schema::hasColumn('products', 'has_wholesale2')) {
+            $wholesaleFlags['has_wholesale2'] = $hasWholesale2;
+        }
+        if (!empty($wholesaleFlags)) {
+            $product->forceFill($wholesaleFlags)->save();
+        }
 
         $product->productUnits()->updateOrCreate(
             ['is_base_unit' => true],
@@ -340,6 +381,8 @@ class PosController extends Controller
             'price_retail'      => 'nullable|numeric|min:0',
             'price_wholesale1'  => 'nullable|numeric|min:0',
             'price_wholesale2'  => 'nullable|numeric|min:0',
+            'has_wholesale1'    => 'nullable|boolean',
+            'has_wholesale2'    => 'nullable|boolean',
             'is_vat'            => 'nullable|boolean',
             'is_not_discount'   => 'nullable|boolean',
             'reorder_point'     => 'nullable|integer|min:0',
@@ -348,6 +391,7 @@ class PosController extends Controller
             'expiry_alert_days2'=> 'nullable|integer|min:1',
             'expiry_alert_days3'=> 'nullable|integer|min:1',
             'drug_type_id'      => 'nullable|integer|exists:drug_types,id',
+            'drug_generic_name_id' => 'nullable|integer|exists:drug_generic_names,id',
             'strength'          => 'nullable|numeric|min:0',
             'registration_no'   => 'nullable|string|max:50',
             'tmt_id'            => 'nullable|string|max:30',
@@ -383,12 +427,15 @@ class PosController extends Controller
             'price_retail',
             'price_wholesale1',
             'price_wholesale2',
+            'has_wholesale1',
+            'has_wholesale2',
             'reorder_point',
             'safety_stock',
             'expiry_alert_days1',
             'expiry_alert_days2',
             'expiry_alert_days3',
             'drug_type_id',
+            'drug_generic_name_id',
             'strength',
             'registration_no',
             'tmt_id',
@@ -397,6 +444,7 @@ class PosController extends Controller
             'indication_note',
             'side_effect_note',
             'sale_control_qty',
+            'search_keywords',
             'note',
         ];
 
@@ -423,8 +471,43 @@ class PosController extends Controller
             }
         }
 
+        $hasWholesale1 = $request->boolean('has_wholesale1');
+        $hasWholesale2 = $request->boolean('has_wholesale2');
+        $data['price_wholesale1'] = !$hasWholesale1 ? 0 : (float) ($request->input('price_wholesale1') ?? 0);
+        $data['price_wholesale2'] = !$hasWholesale2 ? 0 : (float) ($request->input('price_wholesale2') ?? 0);
+
+        unset($data['has_wholesale1'], $data['has_wholesale2']);
+
         $product->fill($data);
         $product->save();
+
+        $wholesaleFlags = [];
+        if (Schema::hasColumn('products', 'has_wholesale1')) {
+            $wholesaleFlags['has_wholesale1'] = $hasWholesale1;
+        }
+        if (Schema::hasColumn('products', 'has_wholesale2')) {
+            $wholesaleFlags['has_wholesale2'] = $hasWholesale2;
+        }
+        if (!empty($wholesaleFlags)) {
+            $product->forceFill($wholesaleFlags)->save();
+        }
+
+        if ($request->has('base_unit_name')) {
+            $baseUnitName = $request->input('base_unit_name');
+            $product->productUnits()->updateOrCreate(
+                ['is_base_unit' => true],
+                [
+                    'unit_name'       => $baseUnitName,
+                    'qty_per_base'    => 1,
+                    'is_for_sale'     => true,
+                    'is_for_purchase' => true,
+                    'is_disabled'     => false,
+                    'price_retail'    => $product->price_retail ?? 0,
+                    'price_wholesale1'=> $product->price_wholesale1 ?? 0,
+                    'price_wholesale2'=> $product->price_wholesale2 ?? 0,
+                ]
+            );
+        }
 
         return response()->json([
             'success' => true,

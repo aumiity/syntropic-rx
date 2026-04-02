@@ -11,10 +11,6 @@
         <a href="{{ route('products.index') }}" class="px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm text-gray-600">กลับรายการ</a>
     </div>
 
-    @if(session('success'))
-        <div class="mb-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">{{ session('success') }}</div>
-    @endif
-
     @if($errors->any())
         <div class="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
             <ul class="list-disc list-inside">
@@ -30,8 +26,9 @@
         <!-- Tab Bar -->
         <div class="mb-6 flex flex-wrap gap-2 border-b border-gray-200">
             <button type="button" data-tab="tab-1" class="tab-button active min-h-11 px-4 py-2.5 text-sm font-medium text-emerald-600 border-b-2 border-emerald-600 rounded-t-lg">ข้อมูลหลัก</button>
+            <button type="button" data-tab="tab-price" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">ราคา</button>
             <button type="button" data-tab="tab-2" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">หน่วยสินค้า</button>
-            <button type="button" data-tab="tab-3" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">ยาและประเภทยา</button>
+            <button type="button" data-tab="tab-3" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">ยาสามัญและประเภทยา</button>
             <button type="button" data-tab="tab-4" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">ฉลาก</button>
             <button type="button" data-tab="tab-5" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">สต๊อค</button>
             <button type="button" data-tab="tab-6" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">ข้อมูลอื่นๆ</button>
@@ -47,6 +44,27 @@
                     $latestCost = $product->lots?->sortByDesc('created_at')->first()?->cost_price ?? 0;
                     $avgCost = $product->lots?->avg('cost_price') ?? 0;
                 @endphp
+
+                {{-- Apple-style toggle: is_disabled --}}
+                <div class="flex items-center justify-end mb-4">
+                    <label class="inline-flex items-center gap-3 cursor-pointer select-none">
+                        <input type="checkbox" name="is_disabled" value="1" class="sr-only peer"
+                            {{ old('is_disabled', $product->is_disabled) ? 'checked' : '' }}>
+                        {{-- Track: ฟ้า=เปิด (unchecked), เทา=ปิด (checked) --}}
+                        {{-- Thumb: เริ่มที่ขวา (translate-x-5 = 20px), checked กลับซ้าย (translate-x-0) --}}
+                        <span class="text-sm font-medium text-blue-600 peer-checked:hidden">เปิดใช้งาน</span>
+                        <span class="hidden text-sm font-medium text-gray-400 peer-checked:inline">ปิดใช้งาน</span>
+                        <div class="relative w-14 h-7 rounded-full
+                                    bg-blue-500 peer-checked:bg-gray-300
+                                    transition-colors duration-300 ease-in-out
+                                    after:content-[''] after:absolute after:top-[4px] after:left-[4px]
+                                    after:h-[20px] after:w-[28px] after:rounded-full after:bg-white after:shadow-sm
+                                    after:translate-x-5
+                                    peer-checked:after:translate-x-0
+                                    after:transition-transform after:duration-300 after:ease-in-out">
+                        </div>
+                    </label>
+                </div>
 
                 <div class="grid grid-cols-2 gap-6">
                     <div class="space-y-5">
@@ -95,48 +113,17 @@
                                 <button
                                     type="button"
                                     class="h-10 px-4 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm"
-                                    onclick="document.getElementById('modal-edit-unit').classList.remove('hidden')"
+                                    onclick="
+                                        const m=document.getElementById('modal-edit-unit');
+                                        document.getElementById('modal-unit-input').value = document.getElementById('base-unit-hidden').value;
+                                        m.classList.remove('hidden');
+                                        m.classList.add('flex');
+                                    "
                                 >
                                     แก้ไขหน่วยขาย
                                 </button>
                             </div>
-                            <input id="base-unit-hidden" type="hidden" name="base_unit_name" value="{{ old('base_unit_name', $baseUnitName) }}">
-                        </div>
-
-                        <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-                            ราคาทุนล่าสุด: ฿{{ number_format($latestCost, 4) }} | ทุนเฉลี่ย: ฿<span data-avg="{{ $avgCost }}">{{ number_format($avgCost, 4) }}</span>
-                        </div>
-
-                        <div>
-                            <label class="block text-base font-semibold text-gray-700 mb-1">ราคาขายปลีก</label>
-                            <input type="number" name="price_retail" id="price_retail" value="{{ old('price_retail', $product->price_retail) }}" step="0.01" min="0" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400" data-required="true" data-error-msg="กรุณากรอกราคาขายปลีก">
-                            <p id="retail-unit-text" class="mt-1 text-xs text-gray-500">ต่อ 1 ({{ $baseUnitName }})</p>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-600 mb-1">ราคาส่ง ระดับ 1</label>
-                                <input type="number" name="price_wholesale1" value="{{ old('price_wholesale1', $product->price_wholesale1) }}" step="0.01" min="0" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-600 mb-1">ราคาส่ง ระดับ 2</label>
-                                <input type="number" name="price_wholesale2" value="{{ old('price_wholesale2', $product->price_wholesale2) }}" step="0.01" min="0" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
-                            </div>
-                        </div>
-
-                        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 grid grid-cols-3 gap-4">
-                            <div>
-                                <p class="text-xs font-medium text-amber-600 mb-1">กำไรต่อหน่วย</p>
-                                <p class="text-sm font-semibold text-amber-800">฿<span id="profit-per-unit">0.00</span></p>
-                            </div>
-                            <div>
-                                <p class="text-xs font-medium text-amber-600 mb-1">เทียบทุน</p>
-                                <p class="text-sm font-semibold text-amber-800"><span id="profit-vs-cost">0.00</span>%</p>
-                            </div>
-                            <div>
-                                <p class="text-xs font-medium text-amber-600 mb-1">เทียบขาย</p>
-                                <p class="text-sm font-semibold text-amber-800"><span id="profit-vs-sale">0.00</span>%</p>
-                            </div>
+                            <input id="base-unit-hidden" type="hidden" name="base_unit_name" value="{{ $baseUnitName }}">
                         </div>
                     </div>
 
@@ -189,6 +176,96 @@
                 </div>
             </div>
 
+            <!-- Tab Price: ราคา -->
+            <div id="tab-price" class="tab-panel hidden bg-white border border-gray-200 rounded-xl p-5">
+                @php
+                    $hasWholesale1 = (int) old('has_wholesale1', data_get($product, 'has_wholesale1', (($product->price_wholesale1 ?? 0) > 0 ? 1 : 0)));
+                    $hasWholesale2 = (int) old('has_wholesale2', data_get($product, 'has_wholesale2', (($product->price_wholesale2 ?? 0) > 0 ? 1 : 0)));
+                @endphp
+
+                <input type="hidden" name="has_wholesale1" id="has_wholesale1" value="{{ $hasWholesale1 ? 1 : 0 }}">
+                <input type="hidden" name="has_wholesale2" id="has_wholesale2" value="{{ $hasWholesale2 ? 1 : 0 }}">
+
+                <div class="overflow-hidden rounded-xl border border-gray-200 divide-y divide-gray-200" data-latest-cost="{{ $latestCost }}">
+                    <div class="px-4 py-3 bg-gray-50 space-y-2">
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-600">ราคาทุนล่าสุด</span>
+                            <span class="font-semibold text-gray-800">฿{{ number_format($latestCost, 2) }}</span>
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-600">ทุนเฉลี่ย</span>
+                            <span class="font-semibold text-gray-800">฿{{ number_format($avgCost, 2) }}</span>
+                        </div>
+                    </div>
+
+                    <div class="px-4 py-4 space-y-2">
+                        <div class="flex items-center justify-between gap-4">
+                            <label for="price_retail" class="text-sm font-medium text-gray-700">ราคาขายปลีก</label>
+                            <div class="w-full max-w-xs">
+                                <input type="number" name="price_retail" id="price_retail" value="{{ old('price_retail', $product->price_retail) }}" step="0.01" min="0" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm text-right focus:outline-none focus:border-emerald-400" data-required="true" data-error-msg="กรุณากรอกราคาขายปลีก">
+                                <p id="retail-unit-text" class="mt-1 text-xs text-gray-500 text-right">ต่อ 1 ({{ $baseUnitName }})</p>
+                            </div>
+                        </div>
+                        <div class="text-sm flex flex-wrap items-center gap-x-5 gap-y-1">
+                            <span>กำไร/หน่วย <span id="profit-retail-per-unit" class="font-semibold text-gray-700">฿0.00</span></span>
+                            <span>เทียบทุน <span id="profit-retail-vs-cost" class="font-semibold text-gray-700">0.00%</span></span>
+                            <span>เทียบขาย <span id="profit-retail-vs-sale" class="font-semibold text-gray-700">0.00%</span></span>
+                        </div>
+                        <p id="warning-retail" class="hidden text-sm text-red-600 font-medium"></p>
+                    </div>
+
+                    <div class="px-4 py-4 space-y-3">
+                        <div class="flex items-center justify-between gap-4">
+                            <span class="text-sm font-medium text-gray-700">ราคาส่ง ระดับ 1</span>
+                            <label class="inline-flex items-center gap-3 cursor-pointer select-none">
+                                <input type="checkbox" id="toggle-has-wholesale1" class="sr-only peer" {{ $hasWholesale1 ? 'checked' : '' }}>
+                                <div class="relative w-14 h-7 rounded-full bg-gray-300 peer-checked:bg-blue-500 transition-colors duration-300 ease-in-out after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:h-[20px] after:w-[28px] after:rounded-full after:bg-white after:shadow-sm after:translate-x-0 peer-checked:after:translate-x-5 after:transition-transform after:duration-300 after:ease-in-out"></div>
+                            </label>
+                        </div>
+
+                        <div id="wholesale1-section" class="overflow-hidden transition-all duration-300 ease-in-out {{ $hasWholesale1 ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0' }}">
+                            <div class="pt-1 space-y-2">
+                                <div class="flex items-center justify-between gap-4">
+                                    <label for="price_wholesale1_main" class="text-sm text-gray-600">ราคา</label>
+                                    <input type="number" name="price_wholesale1" id="price_wholesale1_main" value="{{ old('price_wholesale1', $product->price_wholesale1) }}" step="0.01" min="0" placeholder="0" class="w-full max-w-xs h-10 rounded-lg border border-gray-300 px-3 text-sm text-right focus:outline-none focus:border-emerald-400">
+                                </div>
+                                <div class="text-sm flex flex-wrap items-center gap-x-5 gap-y-1">
+                                    <span>กำไร/หน่วย <span id="profit-wh1-per-unit" class="font-semibold text-gray-700">฿0.00</span></span>
+                                    <span>เทียบทุน <span id="profit-wh1-vs-cost" class="font-semibold text-gray-700">0.00%</span></span>
+                                    <span>เทียบขาย <span id="profit-wh1-vs-sale" class="font-semibold text-gray-700">0.00%</span></span>
+                                </div>
+                                <p id="warning-wh1" class="hidden text-sm text-red-600 font-medium">⚠ ราคาส่งไม่ควรแพงกว่าปลีก</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-4 py-4 space-y-3">
+                        <div class="flex items-center justify-between gap-4">
+                            <span class="text-sm font-medium text-gray-700">ราคาส่ง ระดับ 2</span>
+                            <label class="inline-flex items-center gap-3 cursor-pointer select-none">
+                                <input type="checkbox" id="toggle-has-wholesale2" class="sr-only peer" {{ $hasWholesale2 ? 'checked' : '' }}>
+                                <div class="relative w-14 h-7 rounded-full bg-gray-300 peer-checked:bg-blue-500 transition-colors duration-300 ease-in-out after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:h-[20px] after:w-[28px] after:rounded-full after:bg-white after:shadow-sm after:translate-x-0 peer-checked:after:translate-x-5 after:transition-transform after:duration-300 after:ease-in-out"></div>
+                            </label>
+                        </div>
+
+                        <div id="wholesale2-section" class="overflow-hidden transition-all duration-300 ease-in-out {{ $hasWholesale2 ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0' }}">
+                            <div class="pt-1 space-y-2">
+                                <div class="flex items-center justify-between gap-4">
+                                    <label for="price_wholesale2_main" class="text-sm text-gray-600">ราคา</label>
+                                    <input type="number" name="price_wholesale2" id="price_wholesale2_main" value="{{ old('price_wholesale2', $product->price_wholesale2) }}" step="0.01" min="0" placeholder="0" class="w-full max-w-xs h-10 rounded-lg border border-gray-300 px-3 text-sm text-right focus:outline-none focus:border-emerald-400">
+                                </div>
+                                <div class="text-sm flex flex-wrap items-center gap-x-5 gap-y-1">
+                                    <span>กำไร/หน่วย <span id="profit-wh2-per-unit" class="font-semibold text-gray-700">฿0.00</span></span>
+                                    <span>เทียบทุน <span id="profit-wh2-vs-cost" class="font-semibold text-gray-700">0.00%</span></span>
+                                    <span>เทียบขาย <span id="profit-wh2-vs-sale" class="font-semibold text-gray-700">0.00%</span></span>
+                                </div>
+                                <p id="warning-wh2" class="hidden text-sm text-red-600 font-medium">⚠ ราคาส่งไม่ควรแพงกว่าปลีก</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Tab 2: หน่วยสินค้า -->
             <div id="tab-2" class="tab-panel hidden bg-white border border-gray-200 rounded-xl p-5">
                 <div class="flex items-center justify-between mb-4">
@@ -205,6 +282,7 @@
                                 <th class="px-3 py-2 text-left font-medium">หน่วย</th>
                                 <th class="px-3 py-2 text-right font-medium">ขนาดบรรจุ</th>
                                 <th class="px-3 py-2 text-left font-medium">ขายได้ / รับเข้าได้</th>
+                                <th class="px-3 py-2 text-center font-medium">สถานะ</th>
                                 <th class="px-3 py-2 text-right font-medium">ราคาปลีก</th>
                                 <th class="px-3 py-2 text-center font-medium w-32">จัดการ</th>
                             </tr>
@@ -226,6 +304,18 @@
                                                 <span class="px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 text-xs">รับเข้าได้</span>
                                             @endif
                                         </div>
+                                    </td>
+                                    <td class="px-3 py-2 text-center">
+                                        <button
+                                            type="button"
+                                            class="unit-disabled-toggle relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 {{ $unit->is_disabled ? 'bg-gray-300' : 'bg-blue-500' }}"
+                                            data-unit-id="{{ $unit->id }}"
+                                            data-is-disabled="{{ $unit->is_disabled ? '1' : '0' }}"
+                                            aria-label="สลับสถานะหน่วยสินค้า"
+                                            title="{{ $unit->is_disabled ? 'ปิดใช้งาน' : 'เปิดใช้งาน' }}"
+                                            onclick="toggleUnitDisabled({{ $unit->id }}, this)">
+                                            <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform duration-200 {{ $unit->is_disabled ? 'translate-x-1' : 'translate-x-6' }}"></span>
+                                        </button>
                                     </td>
                                     <td class="px-3 py-2 text-right text-gray-800">{{ number_format($unit->price_retail ?? 0, 2) }}</td>
                                     <td class="px-3 py-2">
@@ -264,7 +354,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="text-center text-gray-400 py-6">ยังไม่มีหน่วยสินค้า</td>
+                                    <td colspan="6" class="text-center text-gray-400 py-6">ยังไม่มีหน่วยสินค้า</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -274,69 +364,69 @@
 
             <!-- Tab 3: ประเภทยาตามกฎหมาย -->
             <div id="tab-3" class="tab-panel hidden bg-white border border-gray-200 rounded-xl p-5">
-
-                <!-- FDA Report Checkbox -->
-                <div class="mb-4">
-                    <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer font-medium">
-                        <input type="checkbox" name="is_fda_report" id="is_fda_report" value="1"
-                            {{ old('is_fda_report', $product->is_fda_report) ? 'checked' : '' }}
-                            class="w-4 h-4 rounded">
-                        สินค้านี้เป็นยาตามกฎหมาย (รายงาน ขย.9)
+                <div class="mb-4 flex items-center justify-between">
+                    <span class="text-sm font-medium text-gray-700">สินค้านี้เป็นยาตามกฎหมาย (รายงาน ขย.9)</span>
+                    <label class="inline-flex items-center gap-3 cursor-pointer select-none">
+                        <input type="checkbox" name="is_fda_report" id="is_fda_report" value="1" class="sr-only peer"
+                            {{ old('is_fda_report', $product->is_fda_report) ? 'checked' : '' }}>
+                        <div class="relative w-14 h-7 rounded-full bg-gray-300 peer-checked:bg-blue-500 transition-colors duration-300 ease-in-out after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:h-[20px] after:w-[28px] after:rounded-full after:bg-white after:shadow-sm after:translate-x-0 peer-checked:after:translate-x-5 after:transition-transform after:duration-300 after:ease-in-out"></div>
                     </label>
                 </div>
 
-                <!-- Drug Law Section (collapsible) -->
-                <div id="drug_law_section" class="hidden border border-gray-200 rounded-lg p-4 bg-gray-50">
+                <div id="drug_law_section" class="overflow-hidden transition-all duration-300 ease-in-out {{ old('is_fda_report', $product->is_fda_report) ? 'max-h-[520px] opacity-100' : 'max-h-0 opacity-0' }}">
+                    <div class="rounded-xl border border-gray-200 divide-y divide-gray-200">
+                        <div class="px-4 py-4">
+                            <div class="flex items-start justify-between gap-4">
+                                <label for="generic-name-search" class="pt-2 text-sm font-medium text-gray-700">ชื่อยาสามัญ</label>
+                                <div class="relative w-full max-w-xl">
+                                    <input type="hidden" name="drug_generic_name_id" id="drug_generic_name_id" value="{{ old('drug_generic_name_id', $product->drug_generic_name_id) }}">
+                                    <div class="relative">
+                                        <input type="text" id="generic-name-search" autocomplete="off"
+                                            value="{{ old('drug_generic_name_name', $product->genericName->name ?? '') }}"
+                                            placeholder="พิมพ์ค้นหาชื่อยาสามัญ"
+                                            class="w-full h-10 rounded-lg border border-gray-300 px-3 pr-10 text-sm focus:outline-none focus:border-emerald-400">
+                                        <button type="button" id="clear-generic-name" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded hover:bg-gray-100 text-gray-400 hidden">×</button>
+                                    </div>
+                                    <div id="generic-name-dropdown" class="hidden absolute z-30 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-auto"></div>
+                                </div>
+                            </div>
+                        </div>
 
-                    <!-- ประเภทยาตามกฎหมาย -->
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-600 mb-1">ประเภทยาตามกฎหมาย</label>
-                        <select name="drug_type_id" id="drug_type_id" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
-                            <option value="">-- เลือกประเภท --</option>
-                            @foreach($drugTypes->where('is_disabled', false)->sortBy('name_th') as $type)
-                                <option value="{{ $type->id }}" {{ old('drug_type_id', $product->drug_type_id) == $type->id ? 'selected' : '' }}>{{ $type->name_th }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                        <div class="px-4 py-4">
+                            <div class="flex items-center justify-between gap-4">
+                                <label for="drug_type_id" class="text-sm font-medium text-gray-700">ประเภทยาตามกฎหมาย</label>
+                                <select name="drug_type_id" id="drug_type_id" class="w-full max-w-xl h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                                    <option value="">-- เลือกประเภท --</option>
+                                    @foreach($drugTypes->where('is_disabled', false)->sortBy('name_th') as $type)
+                                        <option value="{{ $type->id }}" {{ old('drug_type_id', $product->drug_type_id) == $type->id ? 'selected' : '' }}>{{ $type->name_th }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
 
-                    <!-- Report Checkboxes -->
-                    <div class="flex flex-wrap gap-6">
-                        <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                            <input type="checkbox" name="is_fda11_report" value="1"
-                                {{ old('is_fda11_report', $product->is_fda11_report) ? 'checked' : '' }}
-                                class="w-4 h-4 rounded">
-                            ต้องรายงาน ขย.11
-                        </label>
-                        <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-                            <input type="checkbox" name="is_fda13_report" value="1"
-                                {{ old('is_fda13_report', $product->is_fda13_report) ? 'checked' : '' }}
-                                class="w-4 h-4 rounded">
-                            ต้องรายงาน ขย.13
-                        </label>
+                        <div class="px-4 py-4">
+                            <div class="flex items-center justify-between gap-4">
+                                <span class="text-sm font-medium text-gray-700">รายงาน ขย.11</span>
+                                <label class="inline-flex items-center gap-3 cursor-pointer select-none">
+                                    <input type="checkbox" name="is_fda11_report" id="is_fda11_report" value="1" class="sr-only peer"
+                                        {{ old('is_fda11_report', $product->is_fda11_report) ? 'checked' : '' }}>
+                                    <div class="relative w-14 h-7 rounded-full bg-gray-300 peer-checked:bg-blue-500 transition-colors duration-300 ease-in-out after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:h-[20px] after:w-[28px] after:rounded-full after:bg-white after:shadow-sm after:translate-x-0 peer-checked:after:translate-x-5 after:transition-transform after:duration-300 after:ease-in-out"></div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="px-4 py-4">
+                            <div class="flex items-center justify-between gap-4">
+                                <span class="text-sm font-medium text-gray-700">รายงาน ขย.13</span>
+                                <label class="inline-flex items-center gap-3 cursor-pointer select-none">
+                                    <input type="checkbox" name="is_fda13_report" id="is_fda13_report" value="1" class="sr-only peer"
+                                        {{ old('is_fda13_report', $product->is_fda13_report) ? 'checked' : '' }}>
+                                    <div class="relative w-14 h-7 rounded-full bg-gray-300 peer-checked:bg-blue-500 transition-colors duration-300 ease-in-out after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:h-[20px] after:w-[28px] after:rounded-full after:bg-white after:shadow-sm after:translate-x-0 peer-checked:after:translate-x-5 after:transition-transform after:duration-300 after:ease-in-out"></div>
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                <script>
-                    (function () {
-                        const cb = document.getElementById('is_fda_report');
-                        const section = document.getElementById('drug_law_section');
-                        const drugTypeSelect = document.getElementById('drug_type_id');
-
-                        function toggle() {
-                            if (cb.checked) {
-                                section.classList.remove('hidden');
-                            } else {
-                                section.classList.add('hidden');
-                                drugTypeSelect.value = '';
-                            }
-                        }
-
-                        // Run on page load
-                        toggle();
-
-                        cb.addEventListener('change', toggle);
-                    })();
-                </script>
 
             </div>
 
@@ -517,22 +607,66 @@
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">จำนวนต่อหน่วยฐาน <span class="text-red-500">*</span></label>
-                        <input type="number" id="qty_per_base" name="qty_per_base" step="0.0001" min="0.0001" required class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                        <input type="number" id="qty_per_base" name="qty_per_base" step="1" min="2" required class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                        <p id="qty-per-base-error" class="hidden mt-1 text-xs text-red-600">ต้องเป็นจำนวนเต็ม 2 ขึ้นไป</p>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-3 gap-4">
+                <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">Barcode</label>
                         <input type="text" id="barcode" name="barcode" class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">ราคาปลีก</label>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">ราคา</label>
                         <input type="number" id="price_retail_unit" name="price_retail" step="0.01" min="0" class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                        <p id="price-retail-unit-warning" class="hidden mt-1 text-xs text-orange-500">กรุณากรอกราคา</p>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">ราคาส่ง 1</label>
-                        <input type="number" id="price_wholesale1" name="price_wholesale1" step="0.01" min="0" class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                </div>
+
+                <div class="border-t border-gray-200 pt-4 space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">ราคาทุนเบื้องต้น (ทุนล่าสุด × qty_per_base)</label>
+                            <input type="text" id="unit-est-cost" readonly class="w-full h-10 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">ประมาณการกำไร (ราคาปลีก - ทุน)</label>
+                            <input type="text" id="unit-est-profit" readonly class="w-full h-10 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700 font-medium">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">% เทียบราคาขาย</label>
+                            <input type="text" id="unit-profit-vs-sale" readonly class="w-full h-10 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700 font-medium">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">% เทียบราคาทุน</label>
+                            <input type="text" id="unit-profit-vs-cost" readonly class="w-full h-10 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700 font-medium">
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-200 pt-4 space-y-2">
+                        <p class="text-sm font-semibold text-gray-800">ช่วยคำนวณเทียบราคา</p>
+                        <div class="rounded-lg border border-gray-200 bg-gray-50/70 divide-y divide-gray-200">
+                            <div class="px-3 py-2 text-sm flex items-center justify-between gap-4">
+                                <span id="unit-price-per-base-label" class="text-gray-600">เทียบเป็นราคาขาย ต่อ 1 ({{ $baseUnitName }})</span>
+                                <span id="unit-price-per-base" class="font-medium text-gray-700">0.00</span>
+                            </div>
+                            <div class="px-3 py-2 text-sm flex items-center justify-between gap-4">
+                                <span id="unit-base-price-label" class="text-gray-600">จากราคาขายปลีก ต่อ 1 ({{ $baseUnitName }})</span>
+                                <span class="font-medium text-gray-700">{{ number_format((float) $product->price_retail, 2) }}</span>
+                            </div>
+                            <div class="px-3 py-2 text-sm flex items-center justify-between gap-4">
+                                <span class="text-gray-600">ลูกค้าประหยัด</span>
+                                <span id="unit-saving" class="font-medium text-gray-700">0.00</span>
+                            </div>
+                            <div class="px-3 py-2 text-sm flex items-center justify-between gap-4">
+                                <span class="text-gray-600">คิดเป็น (%)</span>
+                                <span id="unit-saving-pct" class="font-medium text-gray-700">0.00%</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -569,10 +703,24 @@
         const cancelUnitBtn = document.getElementById('unit-cancel');
         const saveUnitBtn = document.getElementById('unit-save');
         const qtyPerBaseInput = document.getElementById('qty_per_base');
+        const priceRetailUnitInput = document.getElementById('price_retail_unit');
+        const unitEstCost = document.getElementById('unit-est-cost');
+        const unitEstProfit = document.getElementById('unit-est-profit');
+        const unitProfitVsSale = document.getElementById('unit-profit-vs-sale');
+        const unitProfitVsCost = document.getElementById('unit-profit-vs-cost');
+        const unitPricePerBase = document.getElementById('unit-price-per-base');
+        const unitPricePerBaseLabel = document.getElementById('unit-price-per-base-label');
+        const unitBasePriceLabel = document.getElementById('unit-base-price-label');
+        const unitSaving = document.getElementById('unit-saving');
+        const unitSavingPct = document.getElementById('unit-saving-pct');
 
         const storeUnitUrl = "{{ route('product_units.store', $product) }}";
         const autoSaveUrl = "{{ route('products.autosave', $product) }}";
         const unitBaseUrl = "{{ url('/products/units') }}";
+        const toggleDisabledBaseUrl = "{{ url('/products/' . $product->id . '/units') }}";
+        const modalLatestCost = parseFloat(document.querySelector('[data-latest-cost]')?.getAttribute('data-latest-cost')) || 0;
+        const modalBaseUnitPrice = {{ (float) $product->price_retail }};
+        const modalBaseUnitName = "{{ $baseUnitName }}";
         const baseUnitModal = document.getElementById('modal-edit-unit');
         const baseUnitInput = document.getElementById('modal-unit-input');
         const baseUnitHidden = document.getElementById('base-unit-hidden');
@@ -586,7 +734,36 @@
             baseUnitModal?.classList.remove('flex');
         };
 
-        window.confirmBaseUnitEdit = function() {
+        async function triggerAutoSave(successMessage = 'บันทึกแล้ว') {
+            if (!mainForm) return false;
+
+            const formData = new FormData(mainForm);
+            // sync base_unit_name จาก hidden input เสมอ
+            const baseUnit = document.getElementById('base-unit-hidden');
+            if (baseUnit) formData.set('base_unit_name', baseUnit.value);
+            formData.append('_method', 'PUT');
+
+            formData.set('_method', 'PUT');
+            const response = await fetch(autoSaveUrl, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                },
+                body: formData,
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data.message || 'autosave failed');
+            }
+
+            showAutosaveToast(successMessage);
+            isDirty = false;
+            return true;
+        }
+
+        window.confirmBaseUnitEdit = async function() {
             const unitName = (baseUnitInput?.value || '').trim();
             if (!unitName) {
                 notify('กรุณาระบุหน่วยขาย', 'error');
@@ -596,8 +773,9 @@
             if (baseUnitHidden) baseUnitHidden.value = unitName;
             if (baseUnitDisplay) baseUnitDisplay.textContent = unitName;
             if (retailUnitText) retailUnitText.textContent = `ต่อ 1 (${unitName})`;
-            isDirty = true;
+
             window.closeBaseUnitModal();
+            mainForm.submit(); // submit form ตรงๆ → refresh หน้าเหมือนกดปุ่มอัพเดต
         };
 
         if (baseUnitModal) {
@@ -613,6 +791,12 @@
                 showToast(message, type);
             } else {
                 console.log(`[${type}] ${message}`);
+            }
+        }
+
+        function showAutosaveToast(message = 'บันทึกแล้ว') {
+            if (typeof showToast === 'function') {
+                showToast(message, 'success');
             }
         }
 
@@ -654,7 +838,6 @@
                 qty_per_base: document.getElementById('qty_per_base').value,
                 barcode: document.getElementById('barcode').value,
                 price_retail: document.getElementById('price_retail_unit').value,
-                price_wholesale1: document.getElementById('price_wholesale1').value,
                 is_for_sale: document.getElementById('is_for_sale').checked ? '1' : '0',
                 is_for_purchase: document.getElementById('is_for_purchase').checked ? '1' : '0',
             };
@@ -670,9 +853,81 @@
             return 'เกิดข้อผิดพลาดในการบันทึกข้อมูล';
         }
 
+        function formatMoney(value) {
+            return Number(value || 0).toFixed(2);
+        }
+
+        function setSignedClass(el, value) {
+            if (!el) return;
+            el.classList.remove('text-red-600', 'text-green-600', 'text-gray-700');
+            if (value > 0) {
+                el.classList.add('text-green-600');
+            } else if (value < 0) {
+                el.classList.add('text-red-600');
+            } else {
+                el.classList.add('text-gray-700');
+            }
+        }
+
+        function updateUnitCompareCalculation() {
+            const priceRetailUnit = parseFloat(priceRetailUnitInput?.value) || 0;
+            const qtyPerBase = parseFloat(qtyPerBaseInput?.value) || 0;
+
+            if (unitPricePerBaseLabel) unitPricePerBaseLabel.textContent = `เทียบเป็นราคาขาย ต่อ 1 (${modalBaseUnitName})`;
+            if (unitBasePriceLabel) unitBasePriceLabel.textContent = `จากราคาขายปลีก ต่อ 1 (${modalBaseUnitName})`;
+
+            const costThisUnit = modalLatestCost * qtyPerBase;
+            const profitPerUnit = priceRetailUnit - costThisUnit;
+            const profitVsSale = priceRetailUnit > 0 ? (profitPerUnit / priceRetailUnit) * 100 : 0;
+            const profitVsCost = costThisUnit > 0 ? (profitPerUnit / costThisUnit) * 100 : 0;
+            const pricePerBase = qtyPerBase > 0 ? priceRetailUnit / qtyPerBase : 0;
+            const saving = modalBaseUnitPrice - pricePerBase;
+            const savingPct = modalBaseUnitPrice > 0 ? (saving / modalBaseUnitPrice) * 100 : 0;
+
+            if (unitEstCost) unitEstCost.value = formatMoney(costThisUnit);
+            if (unitEstProfit) unitEstProfit.value = formatMoney(profitPerUnit);
+            if (unitProfitVsSale) unitProfitVsSale.value = `${formatMoney(profitVsSale)}%`;
+            if (unitProfitVsCost) unitProfitVsCost.value = `${formatMoney(profitVsCost)}%`;
+            if (unitPricePerBase) unitPricePerBase.textContent = formatMoney(pricePerBase);
+            if (unitSaving) unitSaving.textContent = formatMoney(saving);
+            if (unitSavingPct) unitSavingPct.textContent = `${formatMoney(savingPct)}%`;
+
+            setSignedClass(unitEstProfit, profitPerUnit);
+            setSignedClass(unitProfitVsSale, profitVsSale);
+            setSignedClass(unitProfitVsCost, profitVsCost);
+            setSignedClass(unitSaving, saving);
+            setSignedClass(unitSavingPct, savingPct);
+            setSignedClass(unitPricePerBase, modalBaseUnitPrice - pricePerBase);
+        }
+
+        const qtyPerBaseError = document.getElementById('qty-per-base-error');
+        const priceRetailUnitWarning = document.getElementById('price-retail-unit-warning');
+
+        qtyPerBaseInput?.addEventListener('input', function() {
+            const val = parseFloat(this.value);
+            const invalid = isNaN(val) || val < 2 || !Number.isInteger(val);
+            qtyPerBaseError?.classList.toggle('hidden', !invalid);
+        });
+
+        priceRetailUnitInput?.addEventListener('blur', function() {
+            const val = parseFloat(this.value);
+            if (isNaN(val) || this.value.trim() === '') this.value = '0';
+            priceRetailUnitWarning?.classList.toggle('hidden', parseFloat(this.value) > 0);
+        });
+
         async function submitUnitForm(e) {
             e.preventDefault();
             if (!unitModalForm.reportValidity()) return;
+
+            const qtyVal = parseFloat(qtyPerBaseInput?.value);
+            if (isNaN(qtyVal) || qtyVal < 2 || !Number.isInteger(qtyVal)) {
+                qtyPerBaseError?.classList.remove('hidden');
+                qtyPerBaseInput?.focus();
+                return;
+            }
+
+            const priceVal = parseFloat(priceRetailUnitInput?.value) || 0;
+            priceRetailUnitWarning?.classList.toggle('hidden', priceVal > 0);
 
             const unitId = document.getElementById('unit-id').value;
             const payload = collectUnitPayload();
@@ -727,7 +982,6 @@
                 document.getElementById('qty_per_base').value = unit.qty_per_base ?? '';
                 document.getElementById('barcode').value = unit.barcode ?? '';
                 document.getElementById('price_retail_unit').value = unit.price_retail ?? '';
-                document.getElementById('price_wholesale1').value = unit.price_wholesale1 ?? '';
                 document.getElementById('is_for_sale').checked = !!unit.is_for_sale;
                 document.getElementById('is_for_purchase').checked = !!unit.is_for_purchase;
             } else {
@@ -735,6 +989,7 @@
                 unitModalTitle.textContent = 'เพิ่มหน่วยสินค้า';
             }
 
+            updateUnitCompareCalculation();
             openModal();
         };
 
@@ -773,6 +1028,47 @@
             }
         };
 
+        window.toggleUnitDisabled = async function(unitId, buttonEl) {
+            if (!unitId || !buttonEl) return;
+
+            buttonEl.disabled = true;
+
+            try {
+                const response = await fetch(`${toggleDisabledBaseUrl}/${unitId}/toggle-disabled`, {
+                    method: 'PATCH',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                });
+
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'เปลี่ยนสถานะไม่สำเร็จ');
+                }
+
+                const isDisabled = !!data.is_disabled;
+                buttonEl.dataset.isDisabled = isDisabled ? '1' : '0';
+                buttonEl.title = isDisabled ? 'ปิดใช้งาน' : 'เปิดใช้งาน';
+                buttonEl.classList.toggle('bg-blue-500', !isDisabled);
+                buttonEl.classList.toggle('bg-gray-300', isDisabled);
+
+                const knob = buttonEl.querySelector('span');
+                knob?.classList.toggle('translate-x-6', !isDisabled);
+                knob?.classList.toggle('translate-x-1', isDisabled);
+
+                if (typeof showToast === 'function') {
+                    showToast('อัปเดตสถานะหน่วยสินค้าเรียบร้อยแล้ว', 'success');
+                }
+            } catch (error) {
+                if (typeof showToast === 'function') {
+                    showToast(error.message || 'เปลี่ยนสถานะไม่สำเร็จ', 'error');
+                }
+            } finally {
+                buttonEl.disabled = false;
+            }
+        };
+
         addUnitBtn?.addEventListener('click', () => window.openUnitModal());
         closeUnitBtn?.addEventListener('click', closeModal);
         cancelUnitBtn?.addEventListener('click', closeModal);
@@ -780,13 +1076,31 @@
             if (e.target === unitModal) closeModal();
         });
         unitModalForm?.addEventListener('submit', submitUnitForm);
+        priceRetailUnitInput?.addEventListener('input', updateUnitCompareCalculation);
+        qtyPerBaseInput?.addEventListener('input', updateUnitCompareCalculation);
 
         const tabButtons = document.querySelectorAll('.tab-button');
         const tabPanels = document.querySelectorAll('.tab-panel');
         const priceRetailInput = document.getElementById('price_retail');
-        const avgCostElement = document.querySelector('[data-avg]');
-        const profitPerUnitSpan = document.getElementById('profit-per-unit');
-        const profitVsCostSpan = document.getElementById('profit-vs-cost');
+        const priceWholesale1Input = document.getElementById('price_wholesale1_main');
+        const priceWholesale2Input = document.getElementById('price_wholesale2_main');
+        const latestCostElement = document.querySelector('[data-latest-cost]');
+        const hasWholesale1Input = document.getElementById('has_wholesale1');
+        const hasWholesale2Input = document.getElementById('has_wholesale2');
+        const toggleWholesale1 = document.getElementById('toggle-has-wholesale1');
+        const toggleWholesale2 = document.getElementById('toggle-has-wholesale2');
+        const wholesale1Section = document.getElementById('wholesale1-section');
+        const wholesale2Section = document.getElementById('wholesale2-section');
+        const warningRetail = document.getElementById('warning-retail');
+        const warningWh1 = document.getElementById('warning-wh1');
+        const warningWh2 = document.getElementById('warning-wh2');
+        const isFdaReportCheckbox = document.getElementById('is_fda_report');
+        const drugLawSection = document.getElementById('drug_law_section');
+        const genericNameSearchInput = document.getElementById('generic-name-search');
+        const genericNameIdInput = document.getElementById('drug_generic_name_id');
+        const genericNameDropdown = document.getElementById('generic-name-dropdown');
+        const clearGenericNameBtn = document.getElementById('clear-generic-name');
+        const genericSearchUrl = "{{ url('/products/search-generic-name') }}";
         const isSaleControlCheckbox = document.getElementById('is_sale_control');
         const saleControlQtyInput = document.querySelector('input[name="sale_control_qty"]');
 
@@ -808,32 +1122,10 @@
                 const targetTab = this.getAttribute('data-tab');
 
                 if (isDirty && mainForm) {
-                    notify('กำลังบันทึกอัตโนมัติ...', 'info');
-
-                    const formData = new FormData(mainForm);
-                    formData.append('_method', 'PUT');
-
                     try {
-                        formData.set('_method', 'PUT');
-                        const response = await fetch(autoSaveUrl, {
-                            method: 'POST',
-                            headers: {
-                                'X-CSRF-TOKEN': csrfToken,
-                                'Accept': 'application/json',
-                            },
-                            body: formData,
-                        });
-
-                        const data = await response.json().catch(() => ({}));
-                        if (!response.ok) {
-                            throw new Error(data.message || 'autosave failed');
-                        }
-
-                        notify('บันทึกอัตโนมัติแล้ว ✓', 'success');
+                        await triggerAutoSave('บันทึกแล้ว');
                     } catch (error) {
                         notify('บันทึกไม่สำเร็จ กรุณาบันทึกด้วยตนเอง', 'error');
-                    } finally {
-                        isDirty = false;
                     }
                 }
 
@@ -849,28 +1141,232 @@
             });
         }
 
-        // Profit calculation function
-        function updateProfitCalculation() {
-            const priceRetail = parseFloat(priceRetailInput.value) || 0;
-            const avgCost = parseFloat(avgCostElement.getAttribute('data-avg')) || 0;
-            const profitPerUnit = priceRetail - avgCost;
-            const profitVsCost = avgCost > 0 ? (profitPerUnit / avgCost) * 100 : 0;
-            const profitVsSale = priceRetail > 0 ? (profitPerUnit / priceRetail) * 100 : 0;
-            const profitVsSaleEl = document.getElementById('profit-vs-sale');
-
-            profitPerUnitSpan.textContent = profitPerUnit.toFixed(2);
-            profitVsCostSpan.textContent = profitVsCost.toFixed(2);
-            if (profitVsSaleEl) {
-                profitVsSaleEl.textContent = profitVsSale.toFixed(2);
+        function toggleDrugLawSection(show) {
+            if (!drugLawSection) return;
+            drugLawSection.classList.remove('max-h-0', 'max-h-[520px]', 'opacity-0', 'opacity-100');
+            if (show) {
+                drugLawSection.classList.add('max-h-[520px]', 'opacity-100');
+            } else {
+                drugLawSection.classList.add('max-h-0', 'opacity-0');
             }
         }
 
-        // Listen to price_retail input changes
-        if (priceRetailInput) {
-            priceRetailInput.addEventListener('input', updateProfitCalculation);
-            // Initial calculation on page load
+        isFdaReportCheckbox?.addEventListener('change', function() {
+            toggleDrugLawSection(this.checked);
+            isDirty = true;
+        });
+
+        toggleDrugLawSection(!!isFdaReportCheckbox?.checked);
+
+        function renderGenericSuggestions(items) {
+            if (!genericNameDropdown) return;
+            if (!items.length) {
+                genericNameDropdown.innerHTML = '<div class="px-3 py-2 text-sm text-gray-400">ไม่พบข้อมูล</div>';
+                genericNameDropdown.classList.remove('hidden');
+                return;
+            }
+
+            genericNameDropdown.innerHTML = items
+                .map((item) => `<button type="button" class="generic-option w-full text-left px-3 py-2 text-sm hover:bg-gray-50" data-id="${item.id}" data-name="${String(item.name).replace(/"/g, '&quot;')}">${item.name}</button>`)
+                .join('');
+            genericNameDropdown.classList.remove('hidden');
+
+            genericNameDropdown.querySelectorAll('.generic-option').forEach((btn) => {
+                btn.addEventListener('click', function() {
+                    if (genericNameIdInput) genericNameIdInput.value = this.dataset.id || '';
+                    if (genericNameSearchInput) genericNameSearchInput.value = this.dataset.name || '';
+                    clearGenericNameBtn?.classList.remove('hidden');
+                    genericNameDropdown.classList.add('hidden');
+                    isDirty = true;
+                });
+            });
+        }
+
+        let genericSearchTimer = null;
+        genericNameSearchInput?.addEventListener('input', function() {
+            const query = (this.value || '').trim();
+            if (genericNameIdInput) {
+                genericNameIdInput.value = '';
+            }
+            clearGenericNameBtn?.classList.toggle('hidden', query.length === 0);
+            isDirty = true;
+
+            if (genericSearchTimer) {
+                clearTimeout(genericSearchTimer);
+            }
+
+            if (query.length < 2) {
+                genericNameDropdown?.classList.add('hidden');
+                return;
+            }
+
+            genericSearchTimer = setTimeout(async () => {
+                try {
+                    const response = await fetch(`${genericSearchUrl}?q=${encodeURIComponent(query)}`, {
+                        headers: { 'Accept': 'application/json' },
+                    });
+                    const data = await response.json().catch(() => []);
+                    renderGenericSuggestions(Array.isArray(data) ? data : []);
+                } catch (error) {
+                    genericNameDropdown?.classList.add('hidden');
+                }
+            }, 250);
+        });
+
+        clearGenericNameBtn?.addEventListener('click', function() {
+            if (genericNameSearchInput) genericNameSearchInput.value = '';
+            if (genericNameIdInput) genericNameIdInput.value = '';
+            genericNameDropdown?.classList.add('hidden');
+            clearGenericNameBtn.classList.add('hidden');
+            isDirty = true;
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!genericNameDropdown || !genericNameSearchInput) return;
+            const target = e.target;
+            if (!(target instanceof Element)) return;
+            if (target.closest('#generic-name-search') || target.closest('#generic-name-dropdown')) return;
+            genericNameDropdown.classList.add('hidden');
+        });
+
+        if ((genericNameSearchInput?.value || '').trim().length > 0) {
+            clearGenericNameBtn?.classList.remove('hidden');
+        }
+
+        // Profit calculation function
+        function setSectionVisible(sectionEl, show) {
+            if (!sectionEl) return;
+            sectionEl.classList.remove('max-h-0', 'max-h-40', 'opacity-0', 'opacity-100');
+            if (show) {
+                sectionEl.classList.add('max-h-40', 'opacity-100');
+            } else {
+                sectionEl.classList.add('max-h-0', 'opacity-0');
+            }
+        }
+
+        function setWarning(el, show, message) {
+            if (!el) return;
+            el.textContent = message || '';
+            el.classList.toggle('hidden', !show);
+        }
+
+        function parsePrice(inputEl) {
+            return parseFloat(inputEl?.value) || 0;
+        }
+
+        function updateProfitCalculation() {
+            const latestCost = parseFloat(latestCostElement?.getAttribute('data-latest-cost')) || 0;
+            const hasWh1 = (hasWholesale1Input?.value || '0') === '1';
+            const hasWh2 = (hasWholesale2Input?.value || '0') === '1';
+            const retailPrice = parsePrice(priceRetailInput);
+            const wh1Price = hasWh1 ? parsePrice(priceWholesale1Input) : 0;
+            const wh2Price = hasWh2 ? parsePrice(priceWholesale2Input) : 0;
+
+            const calculate = (price) => {
+                const safePrice = parseFloat(price) || 0;
+                const profitPerUnit = safePrice - latestCost;
+                const profitVsCost = latestCost > 0 ? (profitPerUnit / latestCost) * 100 : 0;
+                const profitVsSale = safePrice > 0 ? (profitPerUnit / safePrice) * 100 : 0;
+                return {
+                    profitPerUnit,
+                    profitVsCost,
+                    profitVsSale,
+                };
+            };
+
+            const retail = calculate(retailPrice);
+            const wh1 = calculate(wh1Price);
+            const wh2 = calculate(wh2Price);
+
+            const setText = (id, value) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.textContent = value.toFixed(2);
+                el.classList.remove('text-red-600', 'text-green-600', 'text-gray-700');
+                if (value > 0) {
+                    el.classList.add('text-green-600');
+                } else if (value < 0) {
+                    el.classList.add('text-red-600');
+                } else {
+                    el.classList.add('text-gray-700');
+                }
+            };
+
+            setText('profit-retail-per-unit', retail.profitPerUnit);
+            setText('profit-retail-vs-cost', retail.profitVsCost);
+            setText('profit-retail-vs-sale', retail.profitVsSale);
+
+            setText('profit-wh1-per-unit', wh1.profitPerUnit);
+            setText('profit-wh1-vs-cost', wh1.profitVsCost);
+            setText('profit-wh1-vs-sale', wh1.profitVsSale);
+
+            setText('profit-wh2-per-unit', wh2.profitPerUnit);
+            setText('profit-wh2-vs-cost', wh2.profitVsCost);
+            setText('profit-wh2-vs-sale', wh2.profitVsSale);
+
+            setWarning(warningWh1, hasWh1 && wh1Price > retailPrice, '⚠ ราคาส่งไม่ควรแพงกว่าปลีก');
+            setWarning(warningWh2, hasWh2 && wh2Price > retailPrice, '⚠ ราคาส่งไม่ควรแพงกว่าปลีก');
+            setWarning(
+                warningRetail,
+                (hasWh1 && retailPrice < wh1Price) || (hasWh2 && retailPrice < wh2Price),
+                '⚠ ราคาปลีกต่ำกว่าราคาส่ง'
+            );
+        }
+
+        function syncWholesaleToggle(level, isEnabled, markAsDirty = true) {
+            if (level === 1) {
+                if (hasWholesale1Input) hasWholesale1Input.value = isEnabled ? '1' : '0';
+                setSectionVisible(wholesale1Section, isEnabled);
+                if (!isEnabled && priceWholesale1Input) {
+                    priceWholesale1Input.value = '0';
+                }
+            }
+
+            if (level === 2) {
+                if (hasWholesale2Input) hasWholesale2Input.value = isEnabled ? '1' : '0';
+                setSectionVisible(wholesale2Section, isEnabled);
+                if (!isEnabled && priceWholesale2Input) {
+                    priceWholesale2Input.value = '0';
+                }
+            }
+
+            if (markAsDirty) {
+                isDirty = true;
+            }
             updateProfitCalculation();
         }
+
+        // Listen to price inputs and recalculate in real-time
+        if (priceRetailInput) {
+            priceRetailInput.addEventListener('input', updateProfitCalculation);
+        }
+        if (priceWholesale1Input) {
+            priceWholesale1Input.addEventListener('input', updateProfitCalculation);
+            priceWholesale1Input.addEventListener('blur', function() {
+                if (this.value === '' || isNaN(parseFloat(this.value))) this.value = '0';
+            });
+        }
+        if (priceWholesale2Input) {
+            priceWholesale2Input.addEventListener('input', updateProfitCalculation);
+            priceWholesale2Input.addEventListener('blur', function() {
+                if (this.value === '' || isNaN(parseFloat(this.value))) this.value = '0';
+            });
+        }
+
+        toggleWholesale1?.addEventListener('change', function() {
+            syncWholesaleToggle(1, this.checked, true);
+        });
+
+        toggleWholesale2?.addEventListener('change', function() {
+            syncWholesaleToggle(2, this.checked, true);
+        });
+
+        // Apply initial toggle state
+        syncWholesaleToggle(1, (hasWholesale1Input?.value || '0') === '1', false);
+        syncWholesaleToggle(2, (hasWholesale2Input?.value || '0') === '1', false);
+
+        // Initial calculation on page load
+        updateProfitCalculation();
     });
 </script>
 @endsection

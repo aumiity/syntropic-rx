@@ -11,6 +11,7 @@ Route::get('/pos/search', [PosController::class, 'search'])->name('pos.search');
 
 // Product menu route (จาก sidebar)
 Route::get('/products', [PosController::class, 'productIndex'])->name('products.index');
+Route::get('/products/search-generic-name', [PosController::class, 'searchGenericName'])->name('products.search-generic-name');
 Route::get('/products/{product}/edit', [PosController::class, 'editProduct'])->name('products.edit');
 Route::put('/products/{product}/autosave', [PosController::class, 'autoSaveProduct'])->name('products.autosave');
 Route::put('/products/{product}', [PosController::class, 'updateProduct'])->name('products.update');
@@ -18,6 +19,7 @@ Route::put('/products/{product}', [PosController::class, 'updateProduct'])->name
 Route::post('/products/{product}/units', [ProductUnitController::class, 'store'])->name('product_units.store');
 Route::put('/products/units/{unit}', [ProductUnitController::class, 'update'])->name('product_units.update');
 Route::delete('/products/units/{unit}', [ProductUnitController::class, 'destroy'])->name('product_units.destroy');
+Route::patch('/products/{product}/units/{unit}/toggle-disabled', [ProductUnitController::class, 'toggleUnitDisabled'])->name('product_units.toggle_disabled');
 Route::redirect('/product', '/products');
 
 // Product management (simple add/search workflow)
