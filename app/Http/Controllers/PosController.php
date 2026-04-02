@@ -18,6 +18,118 @@ use App\Models\DrugGenericName;
 
 class PosController extends Controller
 {
+    private function checkBarcodeUnique(array $barcodes, $excludeProductId = null): ?array
+    {
+        $barcodeFields = ['barcode', 'barcode2', 'barcode3', 'barcode4'];
+
+        $normalizedByField = [];
+        foreach ($barcodeFields as $index => $field) {
+            $normalizedByField[$field] = trim((string) ($barcodes[$index] ?? ''));
+        }
+
+        // เช็ค duplicate ภายใน array เดียวกัน
+        $seen = [];
+        $duplicates = [];
+        foreach ($normalizedByField as $field => $value) {
+            if ($value === '') {
+                continue;
+            }
+
+            if (isset($seen[$value])) {
+                $duplicates[] = $seen[$value];
+                $duplicates[] = $field;
+                continue;
+            }
+
+            $seen[$value] = $field;
+        }
+
+        if (!empty($duplicates)) {
+            return [
+                'message' => 'มีบาร์โค้ดซ้ำกันภายในสินค้าเดียวกัน',
+                'duplicates' => array_values(array_unique($duplicates)),
+            ];
+        }
+
+        $barcodes = array_values(array_unique(array_filter(array_values($normalizedByField))));
+        if (empty($barcodes)) {
+            return null;
+        }
+
+        // เช็คใน products table
+        $query = DB::table('products');
+        if ($excludeProductId) {
+            $query->where('id', '!=', $excludeProductId);
+        }
+        $query->where(function ($q) use ($barcodes, $barcodeFields) {
+            foreach ($barcodeFields as $field) {
+                $q->orWhereIn($field, $barcodes);
+            }
+        });
+        $found = $query->first();
+        if ($found) {
+            $dupBarcode = collect($barcodeFields)
+                ->map(function ($field) use ($found) {
+                    return $found->{$field} ?? null;
+                })
+                ->first(function ($value) use ($barcodes) {
+                    return in_array($value, $barcodes, true);
+                });
+
+            return [
+                'message' => "Barcode '{$dupBarcode}' ซ้ำกับสินค้า: {$found->trade_name}",
+                'duplicates' => array_values(array_keys($normalizedByField, $dupBarcode, true)),
+            ];
+        }
+
+        // เช็คใน product_units table
+        $unitQuery = DB::table('product_units')
+            ->whereIn('barcode', $barcodes);
+        if ($excludeProductId) {
+            $unitQuery->where('product_id', '!=', $excludeProductId);
+        }
+        $foundUnit = $unitQuery->first();
+        if ($foundUnit) {
+            $dupBarcode = (string) ($foundUnit->barcode ?? '');
+            $productName = DB::table('products')
+                ->where('id', $foundUnit->product_id)
+                ->value('trade_name');
+
+            return [
+                'message' => "Barcode ซ้ำกับหน่วยสินค้าของ: {$productName}",
+                'duplicates' => $dupBarcode !== ''
+                    ? array_values(array_keys($normalizedByField, $dupBarcode, true))
+                    : [],
+            ];
+        }
+
+        return null;
+    }
+
+    private function logPriceChanges(int $productId, array $original, Product $product): void
+    {
+        $priceFields = [
+            'retail' => 'price_retail',
+            'wholesale1' => 'price_wholesale1',
+            'wholesale2' => 'price_wholesale2',
+        ];
+
+        foreach ($priceFields as $type => $field) {
+            $oldPrice = $original[$field] ?? 0;
+            $newPrice = $product->{$field} ?? 0;
+
+            if ((float) $oldPrice !== (float) $newPrice) {
+                DB::table('price_logs')->insert([
+                    'product_id' => $productId,
+                    'price_type' => $type,
+                    'old_price' => $oldPrice,
+                    'new_price' => $newPrice,
+                    'created_at' => now(),
+                ]);
+            }
+        }
+    }
+
     public function index()
     {
         $customers = Customer::where('id', '!=', 1)->get();
@@ -264,20 +376,143 @@ class PosController extends Controller
         $drugTypes   = DrugType::where('is_disabled', false)->orderBy('name_th')->get();
         $dosageForms = DosageForm::where('is_disabled', false)->orderBy('name_th')->get();
         $categories = ProductCategory::active()->get();
+        $salesHistory = DB::table('sale_items')
+            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->where('sale_items.product_id', $product->id)
+            ->orderByDesc('sales.sold_at')
+            ->limit(20)
+            ->select(
+                'sales.sold_at',
+                'sales.invoice_no',
+                'sale_items.qty',
+                'sale_items.unit_name',
+                'sale_items.unit_price',
+                'sale_items.line_total',
+                'sale_items.is_cancelled'
+            )
+            ->get();
+
+        $purchaseHistory = DB::table('product_lots')
+            ->leftJoin('suppliers', 'suppliers.id', '=', 'product_lots.supplier_id')
+            ->where('product_lots.product_id', $product->id)
+            ->orderByDesc('product_lots.created_at')
+            ->limit(20)
+            ->select(
+                'product_lots.id',
+                'product_lots.lot_number',
+                'product_lots.created_at',
+                'product_lots.qty_received',
+                'product_lots.cost_price',
+                'product_lots.note',
+                'suppliers.name as supplier_name'
+            )
+            ->get();
+
+        $adjustmentHistory = DB::table('stock_movements')
+            ->where('product_id', $product->id)
+            ->whereIn('movement_type', ['adjustment_in', 'adjustment_out'])
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get();
+
+        $insufficientHistory = DB::table('stock_movements')
+            ->where('product_id', $product->id)
+            ->where('movement_type', 'sale')
+            ->where(function ($q) {
+                $q->where('qty_before', '<=', 0)
+                    ->orWhere('qty_after', '<', 0);
+            })
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get();
+
+        $priceHistory = DB::table('price_logs')
+            ->where('product_id', $product->id)
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get();
+
+        $returnHistory = DB::table('stock_returns')
+            ->where('stock_returns.product_id', $product->id)
+            ->leftJoin('product_lots', 'product_lots.id', '=', 'stock_returns.lot_id')
+            ->orderByDesc('stock_returns.created_at')
+            ->select(
+                'stock_returns.*',
+                'product_lots.lot_number',
+                'product_lots.expiry_date'
+            )
+            ->limit(20)
+            ->get();
+
         $baseUnitName = optional($product->productUnits->firstWhere('is_base_unit', true))->unit_name
             ?? optional($product->productUnits->firstWhere('qty_per_base', '1.0000'))->unit_name
             ?? optional($product->productUnits->first())->unit_name
             ?? $product->unit_name
             ?? '';
             
-        return view('pos.edit_product', compact('product', 'drugTypes', 'dosageForms', 'categories', 'baseUnitName'));
+        return view('pos.edit_product', compact(
+            'product',
+            'drugTypes',
+            'dosageForms',
+            'categories',
+            'baseUnitName',
+            'salesHistory',
+            'purchaseHistory',
+            'adjustmentHistory',
+            'insufficientHistory',
+            'priceHistory',
+            'returnHistory'
+        ));
     }
 
     public function updateProduct(Request $request, Product $product)
     {
-        $data = $request->validate([
-            'barcode'           => 'nullable|string|max:50|unique:products,barcode,' . $product->id,
+        $result = $this->saveProductData($request, $product);
+        if (!$result['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'],
+                'errors' => $result['errors'],
+                'duplicate_fields' => $result['duplicate_fields'] ?? [],
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'บันทึกสำเร็จ',
+            'errors' => [],
+        ]);
+    }
+
+    public function autoSaveProduct(Request $request, Product $product)
+    {
+        $result = $this->saveProductData($request, $product);
+        if (!$result['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'],
+                'errors' => $result['errors'],
+                'duplicate_fields' => $result['duplicate_fields'] ?? [],
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'บันทึกสำเร็จ',
+            'errors' => [],
+        ]);
+    }
+
+    private function saveProductData(Request $request, Product $product): array
+    {
+        $product->refresh();
+        $original = $product->getOriginal();
+
+        $validator = Validator::make($request->all(), [
+            'barcode'           => 'nullable|string|max:50',
             'barcode2'          => 'nullable|string|max:50',
+            'barcode3'          => 'nullable|string|max:50',
+            'barcode4'          => 'nullable|string|max:50',
             'code'              => 'nullable|string|max:50|unique:products,code,' . $product->id,
             'trade_name'        => 'required|string|max:255',
             'name_for_print'    => 'nullable|string|max:255',
@@ -307,100 +542,7 @@ class PosController extends Controller
             'default_qty'       => 'nullable|integer|min:1',
             'indication_note'   => 'nullable|string',
             'side_effect_note'  => 'nullable|string',
-            'is_fda_report'     => 'nullable|boolean',
-            'is_fda11_report'   => 'nullable|boolean',
-            'is_fda13_report'   => 'nullable|boolean',
-            'is_sale_control'   => 'nullable|boolean',
-            'sale_control_qty'  => 'nullable|numeric|min:0',
-            'note'              => 'nullable|string',
-        ]);
-
-        $data['is_vat']          = $request->boolean('is_vat');
-        $data['is_not_discount'] = $request->boolean('is_not_discount');
-        $data['is_original_drug']= $request->boolean('is_original_drug');
-        $data['is_antibiotic']   = $request->boolean('is_antibiotic');
-        $data['is_fda_report']   = $request->boolean('is_fda_report');
-        $data['is_fda11_report'] = $request->boolean('is_fda11_report');
-        $data['is_fda13_report'] = $request->boolean('is_fda13_report');
-        $data['is_sale_control'] = $request->boolean('is_sale_control');
-        $hasWholesale1 = $request->boolean('has_wholesale1');
-        $hasWholesale2 = $request->boolean('has_wholesale2');
-        if (!$hasWholesale1) {
-            $data['price_wholesale1'] = 0;
-        }
-        if (!$hasWholesale2) {
-            $data['price_wholesale2'] = 0;
-        }
-        $data['default_qty']     = $data['default_qty'] ?? 1;
-        $baseUnitName = $data['base_unit_name'];
-        $data['unit_name'] = $baseUnitName;
-        unset($data['base_unit_name']);
-
-        $product->update($data);
-
-        $wholesaleFlags = [];
-        if (Schema::hasColumn('products', 'has_wholesale1')) {
-            $wholesaleFlags['has_wholesale1'] = $hasWholesale1;
-        }
-        if (Schema::hasColumn('products', 'has_wholesale2')) {
-            $wholesaleFlags['has_wholesale2'] = $hasWholesale2;
-        }
-        if (!empty($wholesaleFlags)) {
-            $product->forceFill($wholesaleFlags)->save();
-        }
-
-        $product->productUnits()->updateOrCreate(
-            ['is_base_unit' => true],
-            [
-                'unit_name' => $baseUnitName,
-                'qty_per_base' => 1,
-                'is_for_sale' => true,
-                'is_for_purchase' => true,
-                'is_disabled' => false,
-                'price_retail' => $product->price_retail ?? 0,
-                'price_wholesale1' => $product->price_wholesale1 ?? 0,
-                'price_wholesale2' => $product->price_wholesale2 ?? 0,
-            ]
-        );
-
-        return redirect()->route('products.edit', $product)
-            ->with('success', 'บันทึกข้อมูลสินค้าเรียบร้อยแล้ว');
-    }
-
-    public function autoSaveProduct(Request $request, Product $product)
-    {
-        $validator = Validator::make($request->all(), [
-            'barcode'           => 'nullable|string|max:50|unique:products,barcode,' . $product->id,
-            'barcode2'          => 'nullable|string|max:50',
-            'code'              => 'nullable|string|max:50|unique:products,code,' . $product->id,
-            'trade_name'        => 'nullable|string|max:255',
-            'name_for_print'    => 'nullable|string|max:255',
-            'category_id'       => 'nullable|integer|exists:product_categories,id',
-            'dosage_form_id'    => 'nullable|integer|exists:dosage_forms,id',
-            'base_unit_name'    => 'nullable|string|max:50',
-            'price_retail'      => 'nullable|numeric|min:0',
-            'price_wholesale1'  => 'nullable|numeric|min:0',
-            'price_wholesale2'  => 'nullable|numeric|min:0',
-            'has_wholesale1'    => 'nullable|boolean',
-            'has_wholesale2'    => 'nullable|boolean',
-            'is_vat'            => 'nullable|boolean',
-            'is_not_discount'   => 'nullable|boolean',
-            'reorder_point'     => 'nullable|integer|min:0',
-            'safety_stock'      => 'nullable|integer|min:0',
-            'expiry_alert_days1'=> 'nullable|integer|min:1',
-            'expiry_alert_days2'=> 'nullable|integer|min:1',
-            'expiry_alert_days3'=> 'nullable|integer|min:1',
-            'drug_type_id'      => 'nullable|integer|exists:drug_types,id',
-            'drug_generic_name_id' => 'nullable|integer|exists:drug_generic_names,id',
-            'strength'          => 'nullable|numeric|min:0',
-            'registration_no'   => 'nullable|string|max:50',
-            'tmt_id'            => 'nullable|string|max:30',
-            'is_original_drug'  => 'nullable|boolean',
-            'is_antibiotic'     => 'nullable|boolean',
-            'max_dispense_qty'  => 'nullable|numeric|min:0',
-            'default_qty'       => 'nullable|integer|min:1',
-            'indication_note'   => 'nullable|string',
-            'side_effect_note'  => 'nullable|string',
+            'search_keywords'   => 'nullable|string',
             'is_fda_report'     => 'nullable|boolean',
             'is_fda11_report'   => 'nullable|boolean',
             'is_fda13_report'   => 'nullable|boolean',
@@ -410,15 +552,34 @@ class PosController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
+            return [
                 'success' => false,
-                'errors' => $validator->errors(),
-            ], 422);
+                'message' => 'ข้อมูลไม่ถูกต้อง',
+                'errors' => $validator->errors()->toArray(),
+            ];
+        }
+
+        $barcodeError = $this->checkBarcodeUnique([
+            $request->barcode,
+            $request->barcode2,
+            $request->barcode3,
+            $request->barcode4,
+        ], $product->id);
+
+        if ($barcodeError) {
+            return [
+                'success' => false,
+                'message' => $barcodeError['message'],
+                'errors' => ['barcode' => [$barcodeError['message']]],
+                'duplicate_fields' => $barcodeError['duplicates'] ?? [],
+            ];
         }
 
         $fillableFields = [
             'barcode',
             'barcode2',
+            'barcode3',
+            'barcode4',
             'code',
             'trade_name',
             'name_for_print',
@@ -448,11 +609,11 @@ class PosController extends Controller
             'note',
         ];
 
-        $data = $request->only($fillableFields);
+        $data = collect($validator->validated())
+            ->only($fillableFields)
+            ->toArray();
 
-        if ($request->has('base_unit_name')) {
-            $data['unit_name'] = $request->input('base_unit_name');
-        }
+        $data['unit_name'] = $request->input('base_unit_name');
 
         $booleanFields = [
             'is_vat',
@@ -475,8 +636,8 @@ class PosController extends Controller
         $hasWholesale2 = $request->boolean('has_wholesale2');
         $data['price_wholesale1'] = !$hasWholesale1 ? 0 : (float) ($request->input('price_wholesale1') ?? 0);
         $data['price_wholesale2'] = !$hasWholesale2 ? 0 : (float) ($request->input('price_wholesale2') ?? 0);
-
-        unset($data['has_wholesale1'], $data['has_wholesale2']);
+        $data['default_qty'] = $data['default_qty'] ?? 1;
+        $data['is_disabled'] = $request->boolean('is_disabled');
 
         $product->fill($data);
         $product->save();
@@ -492,26 +653,213 @@ class PosController extends Controller
             $product->forceFill($wholesaleFlags)->save();
         }
 
-        if ($request->has('base_unit_name')) {
-            $baseUnitName = $request->input('base_unit_name');
-            $product->productUnits()->updateOrCreate(
-                ['is_base_unit' => true],
-                [
-                    'unit_name'       => $baseUnitName,
-                    'qty_per_base'    => 1,
-                    'is_for_sale'     => true,
-                    'is_for_purchase' => true,
-                    'is_disabled'     => false,
-                    'price_retail'    => $product->price_retail ?? 0,
-                    'price_wholesale1'=> $product->price_wholesale1 ?? 0,
-                    'price_wholesale2'=> $product->price_wholesale2 ?? 0,
-                ]
-            );
+        $baseUnitName = $request->input('base_unit_name');
+        $product->productUnits()->updateOrCreate(
+            ['is_base_unit' => true],
+            [
+                'unit_name'       => $baseUnitName,
+                'qty_per_base'    => 1,
+                'is_for_sale'     => true,
+                'is_for_purchase' => true,
+                'is_disabled'     => false,
+                'price_retail'    => $product->price_retail ?? 0,
+                'price_wholesale1'=> $product->price_wholesale1 ?? 0,
+                'price_wholesale2'=> $product->price_wholesale2 ?? 0,
+            ]
+        );
+
+        $product->refresh();
+        $this->logPriceChanges($product->id, $original, $product);
+
+        return [
+            'success' => true,
+            'message' => 'บันทึกสำเร็จ',
+            'errors' => [],
+        ];
+    }
+
+    public function stockReturn(Request $request, Product $product)
+    {
+        $validated = $request->validate([
+            'lot_id' => 'required|integer|exists:product_lots,id',
+            'qty' => 'required|integer|min:1',
+            'reason' => 'required|string|in:ลูกค้าเปลี่ยนใจ,ยาผิด,ยาเสียหาย,หมดอายุ,อื่นๆ',
+            'note' => 'nullable|string',
+        ]);
+
+        $lot = $product->lots()
+            ->where('id', $validated['lot_id'])
+            ->where('qty_on_hand', '>', 0)
+            ->first();
+
+        if (!$lot) {
+            return back()->with('error', 'ไม่พบ lot ที่เลือก หรือ lot นี้ไม่สามารถรับคืนได้');
+        }
+
+        DB::transaction(function () use ($product, $lot, $validated) {
+            $qtyChange = (int) $validated['qty'];
+            $qtyBefore = (int) $lot->qty_on_hand;
+            $lot->qty_on_hand = $qtyBefore + $qtyChange;
+            $lot->save();
+
+            $stockReturnId = DB::table('stock_returns')->insertGetId([
+                'product_id' => $product->id,
+                'lot_id' => $lot->id,
+                'qty' => $qtyChange,
+                'reason' => $validated['reason'],
+                'note' => $validated['note'] ?? null,
+                'created_at' => now(),
+            ]);
+
+            $note = trim((string) ($validated['note'] ?? ''));
+            $movementNote = 'รับคืนสินค้า: ' . $validated['reason'];
+            if ($note !== '') {
+                $movementNote .= ' - ' . $note;
+            }
+
+            DB::table('stock_movements')->insert([
+                'product_id' => $product->id,
+                'lot_id' => $lot->id,
+                'movement_type' => 'return',
+                'ref_type' => 'stock_return',
+                'ref_id' => $stockReturnId,
+                'qty_change' => $qtyChange,
+                'qty_before' => $qtyBefore,
+                'qty_after' => (int) $lot->qty_on_hand,
+                'unit_cost' => $lot->cost_price,
+                'note' => $movementNote,
+                'created_by' => optional(auth()->user())->id,
+                'created_at' => now(),
+            ]);
+        });
+
+        return redirect()->route('products.edit', $product)
+            ->with('success', 'บันทึกรับคืนสินค้าเรียบร้อยแล้ว');
+    }
+
+    public function adjustStock(Request $request, Product $product)
+    {
+        $validated = $request->validate([
+            'target_qty' => 'required|integer|min:0',
+            'note' => 'nullable|string',
+        ]);
+
+        $currentQty = (int) $product->lots()->sum('qty_on_hand');
+        $targetQty = (int) $validated['target_qty'];
+        $diff = $targetQty - $currentQty;
+
+        if ($diff === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'ยอดเท่าเดิม',
+            ], 422);
+        }
+
+        $note = trim((string) ($validated['note'] ?? '')) ?: 'ปรับยอด';
+        $reference = 'ADJ-' . now()->format('YmdHis');
+        $fullNote = $note . ' [' . $reference . ']';
+
+        if ($diff > 0) {
+            $lot = $product->lots()
+                ->whereDate('expiry_date', '>', now()->toDateString())
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->first();
+
+            if (!$lot) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'lot ล่าสุดหมดอายุแล้ว กรุณารับสินค้าเข้าใหม่แทน',
+                ], 422);
+            }
+
+            DB::transaction(function () use ($product, $lot, $diff, $fullNote) {
+                $qtyBefore = (int) $lot->qty_on_hand;
+                $lot->qty_on_hand = $qtyBefore + $diff;
+                $lot->save();
+
+                DB::table('stock_movements')->insert([
+                    'product_id' => $product->id,
+                    'lot_id' => $lot->id,
+                    'movement_type' => 'adjust_in',
+                    'ref_type' => 'adjust_stock',
+                    'ref_id' => null,
+                    'qty_change' => $diff,
+                    'qty_before' => $qtyBefore,
+                    'qty_after' => (int) $lot->qty_on_hand,
+                    'unit_cost' => $lot->cost_price,
+                    'note' => $fullNote,
+                    'created_by' => optional(auth()->user())->id,
+                    'created_at' => now(),
+                ]);
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'ปรับสต็อคเรียบร้อยแล้ว',
+                'current_qty' => $targetQty,
+                'diff' => $diff,
+            ]);
+        }
+
+        $remaining = abs($diff);
+        $lots = $product->lots()
+            ->where('qty_on_hand', '>', 0)
+            ->orderBy('expiry_date')
+            ->orderBy('id')
+            ->get();
+
+        try {
+            DB::transaction(function () use ($product, $lots, &$remaining, $fullNote) {
+                foreach ($lots as $lot) {
+                    if ($remaining <= 0) {
+                        break;
+                    }
+
+                    $qtyBefore = (int) $lot->qty_on_hand;
+                    $qtyToDeduct = min($qtyBefore, $remaining);
+
+                    if ($qtyToDeduct <= 0) {
+                        continue;
+                    }
+
+                    $lot->qty_on_hand = $qtyBefore - $qtyToDeduct;
+                    $lot->save();
+
+                    DB::table('stock_movements')->insert([
+                        'product_id' => $product->id,
+                        'lot_id' => $lot->id,
+                        'movement_type' => 'adjust_out',
+                        'ref_type' => 'adjust_stock',
+                        'ref_id' => null,
+                        'qty_change' => $qtyToDeduct,
+                        'qty_before' => $qtyBefore,
+                        'qty_after' => (int) $lot->qty_on_hand,
+                        'unit_cost' => $lot->cost_price,
+                        'note' => $fullNote,
+                        'created_by' => optional(auth()->user())->id,
+                        'created_at' => now(),
+                    ]);
+
+                    $remaining -= $qtyToDeduct;
+                }
+
+                if ($remaining > 0) {
+                    throw new \RuntimeException('สต็อคไม่พอ');
+                }
+            });
+        } catch (\RuntimeException $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], 422);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'บันทึกอัตโนมัติแล้ว',
+            'message' => 'ปรับสต็อคเรียบร้อยแล้ว',
+            'current_qty' => $targetQty,
+            'diff' => $diff,
         ]);
     }
 
@@ -528,8 +876,10 @@ class PosController extends Controller
     public function storeProduct(Request $request)
     {
         $data = $request->validate([
-            'barcode'           => 'nullable|string|max:50|unique:products,barcode',
+            'barcode'           => 'nullable|string|max:50',
             'barcode2'          => 'nullable|string|max:50',
+            'barcode3'          => 'nullable|string|max:50',
+            'barcode4'          => 'nullable|string|max:50',
             'code'              => 'nullable|string|max:50|unique:products,code',
             'trade_name'        => 'required|string|max:255',
             'name_for_print'    => 'nullable|string|max:255',
@@ -563,6 +913,17 @@ class PosController extends Controller
             'sale_control_qty'  => 'nullable|numeric|min:0',
             'note'              => 'nullable|string',
         ]);
+
+        $barcodeError = $this->checkBarcodeUnique([
+            $data['barcode'] ?? null,
+            $data['barcode2'] ?? null,
+            $data['barcode3'] ?? null,
+            $data['barcode4'] ?? null,
+        ]);
+
+        if ($barcodeError) {
+            return back()->withErrors(['barcode' => $barcodeError['message']])->withInput();
+        }
 
         $data['is_vat']          = $request->boolean('is_vat');
         $data['is_not_discount'] = $request->boolean('is_not_discount');

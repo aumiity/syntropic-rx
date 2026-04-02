@@ -68,7 +68,7 @@
         </div>
     </form>
 
-    <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden" style="font-family: 'SF Pro TH', 'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif;">
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         <table class="min-w-full text-sm">
             <thead class="bg-slate-100 text-slate-600">
                 <tr>

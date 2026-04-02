@@ -48,6 +48,7 @@
                 {{-- Apple-style toggle: is_disabled --}}
                 <div class="flex items-center justify-end mb-4">
                     <label class="inline-flex items-center gap-3 cursor-pointer select-none">
+                        <input type="hidden" name="is_disabled" value="0">
                         <input type="checkbox" name="is_disabled" value="1" class="sr-only peer"
                             {{ old('is_disabled', $product->is_disabled) ? 'checked' : '' }}>
                         {{-- Track: ฟ้า=เปิด (unchecked), เทา=ปิด (checked) --}}
@@ -125,22 +126,44 @@
                             </div>
                             <input id="base-unit-hidden" type="hidden" name="base_unit_name" value="{{ $baseUnitName }}">
                         </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-2">บาร์โค้ด</label>
+                            <div class="space-y-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs text-gray-400 w-4">1</span>
+                                    <input type="text" name="barcode" value="{{ $product->barcode }}" 
+                                        placeholder="บาร์โค้ด 1"
+                                        class="flex-1 h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs text-gray-400 w-4">2</span>
+                                    <input type="text" name="barcode2" value="{{ $product->barcode2 }}" 
+                                        placeholder="บาร์โค้ด 2"
+                                        class="flex-1 h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs text-gray-400 w-4">3</span>
+                                    <input type="text" name="barcode3" value="{{ old('barcode3', $product->barcode3) }}" 
+                                        placeholder="บาร์โค้ด 3"
+                                        class="flex-1 h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs text-gray-400 w-4">4</span>
+                                    <input type="text" name="barcode4" value="{{ old('barcode4', $product->barcode4) }}" 
+                                        placeholder="บาร์โค้ด 4"
+                                        class="flex-1 h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="space-y-5">
                         <div>
-                            <label class="block text-sm font-medium text-gray-600 mb-1">บาร์โค้ด 1</label>
-                            <input type="text" name="barcode" value="{{ old('barcode', $product->barcode) }}" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-600 mb-1">บาร์โค้ด 2</label>
-                            <input type="text" name="barcode2" value="{{ old('barcode2', $product->barcode2) }}" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
-                        </div>
-
-                        <div>
                             <label class="block text-sm font-medium text-gray-600 mb-1">ชื่อที่ตั้งเอง (คำค้น)</label>
-                            <input type="text" name="search_keywords" value="{{ old('search_keywords', $product->search_keywords) }}" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                            <input type="text" name="search_keywords" value="{{ old('search_keywords', $product->search_keywords) }}" 
+                                placeholder="เช่น พารา, para, tylenol (คั่นด้วยจุลภาค)"
+                                class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
                         </div>
 
                         <div>
@@ -167,10 +190,17 @@
                             </div>
                         </div>
 
-                        <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                        <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 flex items-center justify-between">
                             <p class="text-sm font-medium text-gray-700">
                                 จำนวนคงเหลือ: {{ $product->lots?->sum('qty_on_hand') ?? 0 }} {{ $baseUnitName }}
                             </p>
+                            <button 
+                                type="button"
+                                id="open-adjust-stock-modal-tab1"
+                                onclick="document.getElementById('open-adjust-stock-modal').click()"
+                                class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-medium">
+                                ปรับสต็อค
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -439,8 +469,59 @@
 
             <!-- Tab 5: สต๊อค -->
             <div id="tab-5" class="tab-panel hidden bg-white border border-gray-200 rounded-xl p-5">
+                @php
+                    $sortedLots = $product->lots->sortBy('expiry_date')->values();
+                    $currentStockTotal = (int) ($sortedLots->sum('qty_on_hand') ?? 0);
+                    $totalCostValue = (float) $sortedLots->sum(function ($lot) {
+                        return ((float) $lot->qty_on_hand) * ((float) $lot->cost_price);
+                    });
+                    $avgCostPerUnit = $currentStockTotal > 0 ? ($totalCostValue / $currentStockTotal) : 0;
+                    $totalRetailValue = ((float) $currentStockTotal) * ((float) ($product->price_retail ?? 0));
+                    $now = now();
+                @endphp
+
                 <div class="mb-6">
-                    <h3 class="text-sm font-semibold text-gray-600 mb-4 pb-2 border-b border-gray-100">รายละเอียดล็อต</h3>
+                    <h3 class="mb-3 text-sm font-semibold text-gray-700">สต็อคสินค้า</h3>
+                    <div class="grid grid-cols-1 gap-3 md:grid-cols-4">
+                        <div class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                            <p class="text-xs text-gray-500">จำนวน</p>
+                            <p class="mt-1 text-lg font-semibold text-gray-800">{{ number_format($currentStockTotal, 0) }} {{ $baseUnitName }}</p>
+                        </div>
+                        <div class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                            <p class="text-xs text-gray-500">มูลค่ารวม (ต้นทุน)</p>
+                            <p class="mt-1 text-lg font-semibold text-gray-800">฿{{ number_format($totalCostValue, 2) }}</p>
+                        </div>
+                        <div class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                            <p class="text-xs text-gray-500">ต้นทุน/หน่วย</p>
+                            <p class="mt-1 text-lg font-semibold text-gray-800">฿{{ number_format($avgCostPerUnit, 2) }}</p>
+                        </div>
+                        <div class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                            <p class="text-xs text-gray-500">มูลค่ารวม (ราคาขาย)</p>
+                            <p class="mt-1 text-lg font-semibold text-gray-800">฿{{ number_format($totalRetailValue, 2) }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <div class="mb-4 flex items-center justify-between gap-4 border-b border-gray-100 pb-2">
+                        <h3 class="text-sm font-semibold text-gray-700">ล็อตสินค้า</h3>
+                        <div class="flex items-center gap-2">
+                            <button
+                                type="button"
+                                id="open-stock-return-modal"
+                                class="inline-flex h-10 items-center rounded-lg bg-sky-500 px-4 text-sm font-medium text-white hover:bg-sky-600"
+                            >
+                                รับคืนสินค้า
+                            </button>
+                            <button
+                                type="button"
+                                id="open-adjust-stock-modal"
+                                class="inline-flex h-10 items-center rounded-lg bg-amber-500 px-4 text-sm font-medium text-white hover:bg-amber-600"
+                            >
+                                ปรับสต็อค
+                            </button>
+                        </div>
+                    </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm border-collapse">
                             <thead>
@@ -449,58 +530,39 @@
                                     <th class="px-3 py-2 text-left font-medium text-gray-600 text-xs">Lot Number</th>
                                     <th class="px-3 py-2 text-left font-medium text-gray-600 text-xs">วันหมดอายุ</th>
                                     <th class="px-3 py-2 text-right font-medium text-gray-600 text-xs">ราคาทุน</th>
-                                    <th class="px-3 py-2 text-right font-medium text-gray-600 text-xs">ราคาขาย</th>
-                                    <th class="px-3 py-2 text-right font-medium text-gray-600 text-xs">รับเข้า</th>
                                     <th class="px-3 py-2 text-right font-medium text-gray-600 text-xs">คงเหลือ</th>
                                     <th class="px-3 py-2 text-left font-medium text-gray-600 text-xs">สถานะ</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @php
-                                    $now = now();
-                                    $totalOnHand = 0;
-                                    $sortedLots = $product->lots->sortBy('expiry_date')->values();
-                                @endphp
                                 @forelse($sortedLots as $idx => $lot)
                                     @php
-                                        $totalOnHand += $lot->qty_on_hand;
                                         $daysToExpiry = $now->diffInDays($lot->expiry_date, false);
-                                        $rowClass = $daysToExpiry < 30 ? 'bg-red-50' : ($daysToExpiry < 90 ? 'bg-yellow-50' : '');
-                                        $statusBadge = $daysToExpiry < 0 ? 'text-red-600 font-semibold' : ($daysToExpiry < 30 ? 'text-red-600' : ($daysToExpiry < 90 ? 'text-yellow-600' : 'text-green-600'));
                                     @endphp
-                                    <tr class="border-b border-gray-100 {{ $rowClass }}">
+                                    <tr class="border-b border-gray-100">
                                         <td class="px-3 py-2 text-gray-800">{{ $idx + 1 }}</td>
                                         <td class="px-3 py-2 text-gray-700">{{ $lot->lot_number }}</td>
                                         <td class="px-3 py-2 text-gray-700">{{ $lot->expiry_date->format('d/m/Y') }}</td>
                                         <td class="px-3 py-2 text-right text-gray-700">฿{{ number_format($lot->cost_price, 2) }}</td>
-                                        <td class="px-3 py-2 text-right text-gray-700">฿{{ number_format($lot->sell_price ?? 0, 2) }}</td>
-                                        <td class="px-3 py-2 text-right text-gray-700">{{ $lot->qty_received }}</td>
                                         <td class="px-3 py-2 text-right font-medium text-gray-800">{{ $lot->qty_on_hand }}</td>
-                                        <td class="px-3 py-2 text-xs {{ $statusBadge }}">
+                                        <td class="px-3 py-2 text-xs">
                                             @if($daysToExpiry < 0)
-                                                ❌ หมดอายุแล้ว
+                                                <span class="inline-flex rounded-full bg-red-100 px-2 py-0.5 font-medium text-red-700">หมดอายุแล้ว</span>
                                             @elseif($daysToExpiry < 30)
-                                                🔴 ใกล้หมดอายุ
+                                                <span class="inline-flex rounded-full bg-red-50 px-2 py-0.5 font-medium text-red-600">ใกล้หมดอายุ</span>
                                             @elseif($daysToExpiry < 90)
-                                                🟡 เตือน
+                                                <span class="inline-flex rounded-full bg-yellow-100 px-2 py-0.5 font-medium text-yellow-700">เตือน</span>
                                             @else
-                                                ✅ ปกติ
+                                                <span class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 font-medium text-emerald-700">ปกติ</span>
                                             @endif
                                         </td>
                                     </tr>
                                 @empty
                                     <tr class="border-b border-gray-100">
-                                        <td colspan="8" class="px-3 py-4 text-center text-gray-400 text-sm">ไม่มีข้อมูลล็อต</td>
+                                        <td colspan="6" class="px-3 py-4 text-center text-gray-400 text-sm">ไม่มีข้อมูลล็อต</td>
                                     </tr>
                                 @endforelse
                             </tbody>
-                            <tfoot>
-                                <tr class="bg-gray-50 font-semibold border-t border-gray-200">
-                                    <td colspan="6" class="px-3 py-2 text-right text-gray-700">รวมทั้งหมด:</td>
-                                    <td class="px-3 py-2 text-right text-gray-800">{{ $totalOnHand }}</td>
-                                    <td class="px-3 py-2"></td>
-                                </tr>
-                            </tfoot>
                         </table>
                     </div>
                 </div>
@@ -548,14 +610,251 @@
 
             <!-- Tab 7: ประวัติ -->
             <div id="tab-7" class="tab-panel hidden bg-white border border-gray-200 rounded-xl p-5">
-                <div class="flex items-center justify-center h-40">
-                    <p class="text-center text-gray-400 italic">ฟีเจอร์ประวัติการใช้งานอยู่ระหว่างพัฒนา จะเปิดใช้งานในเวอร์ชันถัดไป</p>
+                <div class="mb-4 flex flex-wrap gap-2 border-b border-gray-100 pb-3">
+                    <button type="button" data-history-tab="history-sales" class="history-subtab-button active rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
+                        ประวัติการขาย
+                    </button>
+                    <button type="button" data-history-tab="history-purchase" class="history-subtab-button rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50">
+                        ประวัติการซื้อ
+                    </button>
+                    <button type="button" data-history-tab="history-adjustment" class="history-subtab-button rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50">
+                        ปรับสต็อค
+                    </button>
+                    <button type="button" data-history-tab="history-insufficient" class="history-subtab-button rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50">
+                        ไม่พอจ่าย
+                    </button>
+                    <button type="button" data-history-tab="history-price-change" class="history-subtab-button rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50">
+                        การเปลี่ยนราคา
+                    </button>
+                    <button type="button" data-history-tab="history-stock-return" class="history-subtab-button rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50">
+                        รับคืนสินค้า
+                    </button>
+                </div>
+
+                <div id="history-sales" class="history-subtab-panel">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm border border-gray-200 rounded-lg">
+                            <thead class="bg-gray-50 text-gray-600">
+                                <tr>
+                                    <th class="px-3 py-2 text-left font-medium">วันที่</th>
+                                    <th class="px-3 py-2 text-left font-medium">เลขที่บิล</th>
+                                    <th class="px-3 py-2 text-right font-medium">จำนวน</th>
+                                    <th class="px-3 py-2 text-left font-medium">หน่วย</th>
+                                    <th class="px-3 py-2 text-right font-medium">ราคา/หน่วย</th>
+                                    <th class="px-3 py-2 text-right font-medium">รวม</th>
+                                    <th class="px-3 py-2 text-center font-medium">ดูเพิ่มเติม</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($salesHistory as $row)
+                                    <tr class="border-t border-gray-100">
+                                        <td class="px-3 py-2 text-gray-700">{{ $row->sold_at ? \Illuminate\Support\Carbon::parse($row->sold_at)->format('d/m/Y H:i') : '-' }}</td>
+                                        <td class="px-3 py-2 text-gray-700">{{ $row->invoice_no ?: '-' }}</td>
+                                        <td class="px-3 py-2 text-right text-gray-700">{{ number_format((float) $row->qty, 2) }}</td>
+                                        <td class="px-3 py-2 text-gray-700">{{ $row->unit_name ?: '-' }}</td>
+                                        <td class="px-3 py-2 text-right text-gray-700">{{ number_format((float) $row->unit_price, 2) }}</td>
+                                        <td class="px-3 py-2 text-right text-gray-800 font-medium">{{ number_format((float) $row->line_total, 2) }}</td>
+                                        <td class="px-3 py-2 text-center">
+                                            <div class="flex flex-col items-center gap-1">
+                                                <button disabled class="px-3 py-1 rounded-lg border border-gray-200 text-xs text-gray-400 cursor-not-allowed">ดูบิล</button>
+                                                @if($row->is_cancelled)
+                                                    <span class="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">ยกเลิก</span>
+                                                @endif
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="7" class="px-3 py-8 text-center text-gray-400">ไม่มีข้อมูล</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="history-purchase" class="history-subtab-panel hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm border border-gray-200 rounded-lg">
+                            <thead class="bg-gray-50 text-gray-600">
+                                <tr>
+                                    <th class="px-3 py-2 text-left font-medium">ผู้จำหน่าย</th>
+                                    <th class="px-3 py-2 text-left font-medium">เลขที่เอกสาร</th>
+                                    <th class="px-3 py-2 text-left font-medium">วันที่รับสินค้า</th>
+                                    <th class="px-3 py-2 text-right font-medium">จำนวน</th>
+                                    <th class="px-3 py-2 text-right font-medium">ต้นทุน/หน่วย</th>
+                                    <th class="px-3 py-2 text-center font-medium"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($purchaseHistory as $row)
+                                    <tr class="border-t border-gray-100">
+                                        <td class="px-3 py-2 text-gray-700">{{ $row->supplier_name ?? '-' }}</td>
+                                        <td class="px-3 py-2 text-gray-700">{{ $row->lot_number ?: '-' }}</td>
+                                        <td class="px-3 py-2 text-gray-700">{{ $row->created_at ? \Illuminate\Support\Carbon::parse($row->created_at)->format('d/m/Y') : '-' }}</td>
+                                        <td class="px-3 py-2 text-right text-gray-700">{{ number_format((float) $row->qty_received, 2) }}</td>
+                                        <td class="px-3 py-2 text-right text-gray-800 font-medium">{{ number_format((float) $row->cost_price, 2) }} ฿</td>
+                                        <td class="px-3 py-2 text-center">
+                                            <button disabled class="px-3 py-1 rounded-lg border border-gray-200 text-xs text-gray-400 cursor-not-allowed">ดูใบรับ</button>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="px-3 py-8 text-center text-gray-400">ไม่มีข้อมูล</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="history-adjustment" class="history-subtab-panel hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm border border-gray-200 rounded-lg">
+                            <thead class="bg-gray-50 text-gray-600">
+                                <tr>
+                                    <th class="px-3 py-2 text-left font-medium">วันที่</th>
+                                    <th class="px-3 py-2 text-center font-medium">ประเภท</th>
+                                    <th class="px-3 py-2 text-right font-medium">จำนวน</th>
+                                    <th class="px-3 py-2 text-right font-medium">ก่อน</th>
+                                    <th class="px-3 py-2 text-right font-medium">หลัง</th>
+                                    <th class="px-3 py-2 text-left font-medium">หมายเหตุ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($adjustmentHistory as $row)
+                                    <tr class="border-t border-gray-100">
+                                        <td class="px-3 py-2 text-gray-700">{{ $row->created_at ? \Illuminate\Support\Carbon::parse($row->created_at)->format('d/m/Y H:i') : '-' }}</td>
+                                        <td class="px-3 py-2 text-center">
+                                            @if($row->movement_type === 'adjustment_in')
+                                                <span class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">เพิ่ม</span>
+                                            @else
+                                                <span class="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">ลด</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-3 py-2 text-right text-gray-700">{{ number_format((float) $row->qty_change, 2) }}</td>
+                                        <td class="px-3 py-2 text-right text-gray-700">{{ number_format((float) $row->qty_before, 2) }}</td>
+                                        <td class="px-3 py-2 text-right text-gray-700">{{ number_format((float) $row->qty_after, 2) }}</td>
+                                        <td class="px-3 py-2 text-gray-700">{{ $row->note ?: '-' }}</td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="px-3 py-8 text-center text-gray-400">ไม่มีข้อมูล</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="history-insufficient" class="history-subtab-panel hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm border border-gray-200 rounded-lg">
+                            <thead class="bg-gray-50 text-gray-600">
+                                <tr>
+                                    <th class="px-3 py-2 text-left font-medium">วันที่</th>
+                                    <th class="px-3 py-2 text-right font-medium">จำนวนที่ขาด</th>
+                                    <th class="px-3 py-2 text-right font-medium">ยอดก่อน</th>
+                                    <th class="px-3 py-2 text-left font-medium">หมายเหตุ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($insufficientHistory as $row)
+                                    <tr class="border-t border-gray-100">
+                                        <td class="px-3 py-2 text-gray-700">{{ $row->created_at ? \Illuminate\Support\Carbon::parse($row->created_at)->format('d/m/Y H:i') : '-' }}</td>
+                                        <td class="px-3 py-2 text-right text-red-600 font-medium">{{ number_format(abs((float) $row->qty_change), 2) }}</td>
+                                        <td class="px-3 py-2 text-right text-gray-700">{{ number_format((float) $row->qty_before, 2) }}</td>
+                                        <td class="px-3 py-2 text-gray-700">{{ $row->note ?: '-' }}</td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="4" class="px-3 py-8 text-center text-gray-400">ไม่มีข้อมูล</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="history-price-change" class="history-subtab-panel hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm border border-gray-200 rounded-lg">
+                            <thead class="bg-gray-50 text-gray-600">
+                                <tr>
+                                    <th class="px-3 py-2 text-left font-medium">วันที่</th>
+                                    <th class="px-3 py-2 text-left font-medium">ประเภทราคา</th>
+                                    <th class="px-3 py-2 text-right font-medium">ราคาเก่า</th>
+                                    <th class="px-3 py-2 text-right font-medium">ราคาใหม่</th>
+                                    <th class="px-3 py-2 text-right font-medium">ผลต่าง</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($priceHistory as $row)
+                                    @php
+                                        $delta = (float) $row->new_price - (float) $row->old_price;
+                                        $priceTypeLabel = match ($row->price_type) {
+                                            'retail' => 'ปลีก',
+                                            'wholesale1' => 'ส่ง 1',
+                                            'wholesale2' => 'ส่ง 2',
+                                            default => $row->price_type,
+                                        };
+                                    @endphp
+                                    <tr class="border-t border-gray-100">
+                                        <td class="px-3 py-2 text-gray-700">{{ $row->created_at ? \Illuminate\Support\Carbon::parse($row->created_at)->format('d/m/Y H:i') : '-' }}</td>
+                                        <td class="px-3 py-2 text-gray-700">{{ $priceTypeLabel }}</td>
+                                        <td class="px-3 py-2 text-right text-gray-700">{{ number_format((float) $row->old_price, 2) }}</td>
+                                        <td class="px-3 py-2 text-right text-gray-700">{{ number_format((float) $row->new_price, 2) }}</td>
+                                        <td class="px-3 py-2 text-right font-medium {{ $delta > 0 ? 'text-green-600' : ($delta < 0 ? 'text-red-600' : 'text-gray-700') }}">{{ $delta > 0 ? '+' : '' }}{{ number_format($delta, 2) }}</td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="5" class="px-3 py-8 text-center text-gray-400">ไม่มีข้อมูล</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="history-stock-return" class="history-subtab-panel hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm border border-gray-200 rounded-lg">
+                            <thead class="bg-gray-50 text-gray-600">
+                                <tr>
+                                    <th class="px-3 py-2 text-left font-medium">วันที่</th>
+                                    <th class="px-3 py-2 text-left font-medium">Lot</th>
+                                    <th class="px-3 py-2 text-left font-medium">วันหมดอายุ</th>
+                                    <th class="px-3 py-2 text-right font-medium">จำนวน</th>
+                                    <th class="px-3 py-2 text-left font-medium">หน่วย</th>
+                                    <th class="px-3 py-2 text-left font-medium">เหตุผล</th>
+                                    <th class="px-3 py-2 text-left font-medium">หมายเหตุ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($returnHistory as $row)
+                                    <tr class="border-t border-gray-100">
+                                        <td class="px-3 py-2 text-gray-700">{{ $row->created_at ? \Illuminate\Support\Carbon::parse($row->created_at)->format('d/m/Y H:i') : '-' }}</td>
+                                        <td class="px-3 py-2 text-gray-700">{{ $row->lot_number ?: '-' }}</td>
+                                        <td class="px-3 py-2 text-gray-700">{{ $row->expiry_date ? \Illuminate\Support\Carbon::parse($row->expiry_date)->format('d/m/Y') : '-' }}</td>
+                                        <td class="px-3 py-2 text-right text-gray-700">{{ number_format((float) ($row->qty ?? 0), 0) }}</td>
+                                        <td class="px-3 py-2 text-gray-700">{{ $baseUnitName }}</td>
+                                        <td class="px-3 py-2 text-gray-700">{{ $row->reason ?: '-' }}</td>
+                                        <td class="px-3 py-2 text-gray-700">{{ $row->note ?: '-' }}</td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="7" class="px-3 py-8 text-center text-gray-400">ไม่มีข้อมูล</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
             {{-- Submit Button Row (always visible) --}}
             <div class="flex justify-end gap-3 pb-6 pt-4">
-                <a href="{{ route('products.index') }}" class="px-6 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">ยกเลิก</a>
+                <button type="button" onclick="window.location.reload()" class="px-6 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">ยกเลิก</button>
                 <button type="submit" class="px-6 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium">อัปเดตสินค้า</button>
             </div>
 
@@ -688,6 +987,133 @@
             </form>
         </div>
     </div>
+
+    <div id="adjust-stock-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4">
+        <div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+            <div class="mb-5 flex items-start justify-between gap-4">
+                <div>
+                    <h2 class="text-base font-semibold text-gray-800">ปรับสต็อค</h2>
+                    <p class="mt-1 text-sm text-gray-500">กำหนดยอดคงเหลือใหม่ของสินค้านี้</p>
+                </div>
+                <button type="button" id="close-adjust-stock-modal" class="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100">✕</button>
+            </div>
+
+            <form id="adjust-stock-form" class="space-y-4">
+                <div class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                    <p class="text-sm text-gray-500">ยอดคงเหลือปัจจุบัน (รวมทุก lot)</p>
+                    <p class="mt-1 text-2xl font-semibold text-gray-800">
+                        <span id="adjust-stock-current-qty">{{ $currentStockTotal }}</span>
+                        <span class="text-sm font-medium text-gray-500">{{ $baseUnitName }}</span>
+                    </p>
+                </div>
+
+                <div>
+                    <label for="adjust-stock-target-qty" class="mb-1 block text-sm font-medium text-gray-700">ยอดที่ต้องการให้เป็น</label>
+                    <input
+                        type="number"
+                        id="adjust-stock-target-qty"
+                        name="target_qty"
+                        min="0"
+                        step="1"
+                        value="{{ $currentStockTotal }}"
+                        class="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-emerald-400 focus:outline-none"
+                    >
+                </div>
+
+                <div class="rounded-xl border border-dashed border-gray-200 px-4 py-3">
+                    <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Preview</p>
+                    <p id="adjust-stock-preview" class="mt-2 text-sm font-semibold text-gray-500">ยอดเท่าเดิม</p>
+                </div>
+
+                <div>
+                    <label for="adjust-stock-note" class="mb-1 block text-sm font-medium text-gray-700">หมายเหตุ</label>
+                    <textarea
+                        id="adjust-stock-note"
+                        name="note"
+                        rows="3"
+                        placeholder="ระบุเหตุผลการปรับสต็อค (ถ้ามี)"
+                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                    ></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" id="cancel-adjust-stock" class="rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50">ยกเลิก</button>
+                    <button type="submit" id="submit-adjust-stock" class="rounded-lg bg-emerald-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-600">ยืนยัน</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="stock-return-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4">
+        <div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+            <div class="mb-5 flex items-start justify-between gap-4">
+                <div>
+                    <h2 class="text-base font-semibold text-gray-800">รับคืนสินค้า</h2>
+                    <p class="mt-1 text-sm text-gray-500">บันทึกการรับคืนและเพิ่มจำนวนกลับเข้าสต๊อค</p>
+                </div>
+                <button type="button" id="close-stock-return-modal" class="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100">✕</button>
+            </div>
+
+            @php
+                $returnableLots = $product->lots->where('qty_on_hand', '>', 0)->sortBy('expiry_date')->values();
+                $returnReasons = ['ลูกค้าเปลี่ยนใจ', 'ยาผิด', 'ยาเสียหาย', 'หมดอายุ', 'อื่นๆ'];
+            @endphp
+
+            <form action="{{ route('products.stock_return', $product) }}" method="POST" class="space-y-4">
+                @csrf
+                <div>
+                    <label for="stock-return-lot" class="mb-1 block text-sm font-medium text-gray-700">Lot</label>
+                    <select id="stock-return-lot" name="lot_id" required class="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-emerald-400 focus:outline-none">
+                        <option value="">-- เลือก lot --</option>
+                        @foreach($returnableLots as $lot)
+                            <option value="{{ $lot->id }}">
+                                {{ $lot->lot_number }} | หมดอายุ {{ $lot->expiry_date ? $lot->expiry_date->format('d/m/Y') : '-' }} | คงเหลือ {{ $lot->qty_on_hand }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label for="stock-return-qty" class="mb-1 block text-sm font-medium text-gray-700">จำนวนที่รับคืน</label>
+                    <input
+                        type="number"
+                        id="stock-return-qty"
+                        name="qty"
+                        min="1"
+                        step="1"
+                        required
+                        class="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-emerald-400 focus:outline-none"
+                    >
+                </div>
+
+                <div>
+                    <label for="stock-return-reason" class="mb-1 block text-sm font-medium text-gray-700">เหตุผล</label>
+                    <select id="stock-return-reason" name="reason" required class="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-emerald-400 focus:outline-none">
+                        <option value="">-- เลือกเหตุผล --</option>
+                        @foreach($returnReasons as $reason)
+                            <option value="{{ $reason }}">{{ $reason }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label for="stock-return-note" class="mb-1 block text-sm font-medium text-gray-700">หมายเหตุ</label>
+                    <textarea
+                        id="stock-return-note"
+                        name="note"
+                        rows="3"
+                        placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)"
+                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                    ></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" id="cancel-stock-return" class="rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50">ยกเลิก</button>
+                    <button type="submit" class="rounded-lg bg-sky-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-sky-600">ยืนยันรับคืน</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <!-- Tab Switching & Profit Calculation JavaScript -->
@@ -716,6 +1142,7 @@
 
         const storeUnitUrl = "{{ route('product_units.store', $product) }}";
         const autoSaveUrl = "{{ route('products.autosave', $product) }}";
+        const adjustStockUrl = "{{ route('products.adjust_stock', $product) }}";
         const unitBaseUrl = "{{ url('/products/units') }}";
         const toggleDisabledBaseUrl = "{{ url('/products/' . $product->id . '/units') }}";
         const modalLatestCost = parseFloat(document.querySelector('[data-latest-cost]')?.getAttribute('data-latest-cost')) || 0;
@@ -726,6 +1153,21 @@
         const baseUnitHidden = document.getElementById('base-unit-hidden');
         const baseUnitDisplay = document.getElementById('base-unit-display');
         const retailUnitText = document.getElementById('retail-unit-text');
+        const adjustStockModal = document.getElementById('adjust-stock-modal');
+        const openAdjustStockModalBtn = document.getElementById('open-adjust-stock-modal');
+        const closeAdjustStockModalBtn = document.getElementById('close-adjust-stock-modal');
+        const cancelAdjustStockBtn = document.getElementById('cancel-adjust-stock');
+        const adjustStockForm = document.getElementById('adjust-stock-form');
+        const adjustStockCurrentQtyEl = document.getElementById('adjust-stock-current-qty');
+        const adjustStockTargetQtyInput = document.getElementById('adjust-stock-target-qty');
+        const adjustStockNoteInput = document.getElementById('adjust-stock-note');
+        const adjustStockPreviewEl = document.getElementById('adjust-stock-preview');
+        const submitAdjustStockBtn = document.getElementById('submit-adjust-stock');
+        const stockReturnModal = document.getElementById('stock-return-modal');
+        const openStockReturnModalBtn = document.getElementById('open-stock-return-modal');
+        const closeStockReturnModalBtn = document.getElementById('close-stock-return-modal');
+        const cancelStockReturnBtn = document.getElementById('cancel-stock-return');
+        const initialCurrentStockQty = Number(@json($currentStockTotal));
         let modalMode = 'create';
         let isDirty = false;
 
@@ -778,14 +1220,6 @@
             mainForm.submit(); // submit form ตรงๆ → refresh หน้าเหมือนกดปุ่มอัพเดต
         };
 
-        if (baseUnitModal) {
-            baseUnitModal.addEventListener('click', function(e) {
-                if (e.target === baseUnitModal) {
-                    window.closeBaseUnitModal();
-                }
-            });
-        }
-
         function notify(message, type = 'info') {
             if (typeof showToast === 'function') {
                 showToast(message, type);
@@ -797,6 +1231,110 @@
         function showAutosaveToast(message = 'บันทึกแล้ว') {
             if (typeof showToast === 'function') {
                 showToast(message, 'success');
+            }
+        }
+
+        function openAdjustStockModal() {
+            if (!adjustStockModal) return;
+            adjustStockCurrentQtyEl.textContent = String(initialCurrentStockQty);
+            adjustStockTargetQtyInput.value = String(initialCurrentStockQty);
+            adjustStockNoteInput.value = '';
+            updateAdjustStockPreview();
+            adjustStockModal.classList.remove('hidden');
+            adjustStockModal.classList.add('flex');
+            adjustStockTargetQtyInput.focus();
+            adjustStockTargetQtyInput.select();
+        }
+
+        function closeAdjustStockModal() {
+            if (!adjustStockModal) return;
+            adjustStockModal.classList.add('hidden');
+            adjustStockModal.classList.remove('flex');
+        }
+
+        function openStockReturnModal() {
+            if (!stockReturnModal) return;
+            stockReturnModal.classList.remove('hidden');
+            stockReturnModal.classList.add('flex');
+        }
+
+        function closeStockReturnModal() {
+            if (!stockReturnModal) return;
+            stockReturnModal.classList.add('hidden');
+            stockReturnModal.classList.remove('flex');
+        }
+
+        function updateAdjustStockPreview() {
+            if (!adjustStockPreviewEl || !adjustStockTargetQtyInput) return;
+
+            const targetQty = parseInt(adjustStockTargetQtyInput.value || '0', 10);
+            const safeTargetQty = Number.isNaN(targetQty) ? 0 : Math.max(0, targetQty);
+            const diff = safeTargetQty - initialCurrentStockQty;
+
+            adjustStockPreviewEl.classList.remove('text-green-600', 'text-red-600', 'text-gray-500');
+
+            if (diff > 0) {
+                adjustStockPreviewEl.classList.add('text-green-600');
+                adjustStockPreviewEl.textContent = `จะเพิ่ม +${diff}`;
+                return;
+            }
+
+            if (diff < 0) {
+                adjustStockPreviewEl.classList.add('text-red-600');
+                adjustStockPreviewEl.textContent = `จะลด ${Math.abs(diff)}`;
+                return;
+            }
+
+            adjustStockPreviewEl.classList.add('text-gray-500');
+            adjustStockPreviewEl.textContent = 'ยอดเท่าเดิม';
+        }
+
+        async function submitAdjustStock(e) {
+            e.preventDefault();
+            if (!adjustStockTargetQtyInput) return;
+
+            const targetQty = parseInt(adjustStockTargetQtyInput.value || '0', 10);
+            if (Number.isNaN(targetQty) || targetQty < 0) {
+                showToast?.('กรุณากรอกจำนวนเต็มตั้งแต่ 0 ขึ้นไป', 'error');
+                adjustStockTargetQtyInput.focus();
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('target_qty', String(targetQty));
+            formData.append('note', adjustStockNoteInput?.value || '');
+
+            submitAdjustStockBtn.disabled = true;
+
+            try {
+                const response = await fetch(adjustStockUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                    body: formData,
+                });
+
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(data.message || 'ไม่สามารถปรับสต็อคได้');
+                }
+
+                if (typeof showToast === 'function') {
+                    showToast(data.message || 'ปรับสต็อคเรียบร้อยแล้ว', 'success');
+                }
+
+                window.location.hash = 'tab-5';
+                window.location.reload();
+            } catch (error) {
+                if (typeof showToast === 'function') {
+                    showToast(error.message || 'ไม่สามารถปรับสต็อคได้', 'error');
+                } else {
+                    alert(error.message || 'ไม่สามารถปรับสต็อคได้');
+                }
+            } finally {
+                submitAdjustStockBtn.disabled = false;
             }
         }
 
@@ -1072,15 +1610,22 @@
         addUnitBtn?.addEventListener('click', () => window.openUnitModal());
         closeUnitBtn?.addEventListener('click', closeModal);
         cancelUnitBtn?.addEventListener('click', closeModal);
-        unitModal?.addEventListener('click', (e) => {
-            if (e.target === unitModal) closeModal();
-        });
+        openAdjustStockModalBtn?.addEventListener('click', openAdjustStockModal);
+        closeAdjustStockModalBtn?.addEventListener('click', closeAdjustStockModal);
+        cancelAdjustStockBtn?.addEventListener('click', closeAdjustStockModal);
+        openStockReturnModalBtn?.addEventListener('click', openStockReturnModal);
+        closeStockReturnModalBtn?.addEventListener('click', closeStockReturnModal);
+        cancelStockReturnBtn?.addEventListener('click', closeStockReturnModal);
+        adjustStockForm?.addEventListener('submit', submitAdjustStock);
+        adjustStockTargetQtyInput?.addEventListener('input', updateAdjustStockPreview);
         unitModalForm?.addEventListener('submit', submitUnitForm);
         priceRetailUnitInput?.addEventListener('input', updateUnitCompareCalculation);
         qtyPerBaseInput?.addEventListener('input', updateUnitCompareCalculation);
 
         const tabButtons = document.querySelectorAll('.tab-button');
         const tabPanels = document.querySelectorAll('.tab-panel');
+        const historySubTabButtons = document.querySelectorAll('.history-subtab-button');
+        const historySubTabPanels = document.querySelectorAll('.history-subtab-panel');
         const priceRetailInput = document.getElementById('price_retail');
         const priceWholesale1Input = document.getElementById('price_wholesale1_main');
         const priceWholesale2Input = document.getElementById('price_wholesale2_main');
@@ -1113,6 +1658,55 @@
         if (mainForm) {
             mainForm.addEventListener('input', markDirty);
             mainForm.addEventListener('change', markDirty);
+            mainForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const formData = new FormData(e.target);
+                formData.set('_method', 'PUT');
+
+                try {
+                    const response = await fetch(e.target.action, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json',
+                        },
+                        body: formData,
+                    });
+
+                    const data = await response.json().catch(() => ({}));
+                    if (!data.success && data.duplicate_fields) {
+                        // reset ทุก barcode input ก่อน
+                        ['barcode','barcode2','barcode3','barcode4'].forEach(name => {
+                            const input = document.querySelector(`input[name="${name}"]`);
+                            if (input) {
+                                input.classList.remove('border-red-400');
+                                input.classList.add('border-gray-300');
+                            }
+                        });
+                        // highlight เฉพาะที่ซ้ำ
+                        data.duplicate_fields.forEach(name => {
+                            const input = document.querySelector(`input[name="${name}"]`);
+                            if (input) {
+                                input.classList.remove('border-gray-300');
+                                input.classList.add('border-red-400');
+                            }
+                        });
+                        showToast(data.message, 'error');
+                        return;
+                    }
+
+                    if (data.success) {
+                        showToast(data.message || 'บันทึกสำเร็จ', 'success');
+                        isDirty = false;
+                        setTimeout(() => window.location.reload(), 1000);
+                    } else {
+                        showToast(data.message || 'เกิดข้อผิดพลาด', 'error');
+                    }
+                } catch (error) {
+                    showToast(error.message || 'เกิดข้อผิดพลาด', 'error');
+                }
+            });
         }
 
         // Tab switching
@@ -1130,8 +1724,45 @@
                 }
 
                 activateTab(this, targetTab);
+                window.location.hash = targetTab;
             });
         });
+
+        const initialTab = window.location.hash.replace('#', '');
+        if (initialTab) {
+            const matchedButton = document.querySelector(`.tab-button[data-tab="${initialTab}"]`);
+            if (matchedButton) {
+                activateTab(matchedButton, initialTab);
+            }
+        }
+
+        function activateHistorySubTab(button, targetTab) {
+            historySubTabButtons.forEach(btn => {
+                btn.classList.remove('active', 'border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
+                btn.classList.add('border-gray-200', 'bg-white', 'text-gray-600');
+            });
+
+            historySubTabPanels.forEach(panel => {
+                panel.classList.add('hidden');
+            });
+
+            button.classList.add('active', 'border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
+            button.classList.remove('border-gray-200', 'bg-white', 'text-gray-600');
+            document.getElementById(targetTab)?.classList.remove('hidden');
+        }
+
+        historySubTabButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const targetTab = this.getAttribute('data-history-tab');
+                if (!targetTab) return;
+                activateHistorySubTab(this, targetTab);
+            });
+        });
+
+        const defaultHistoryTab = document.querySelector('.history-subtab-button[data-history-tab="history-sales"]');
+        if (defaultHistoryTab) {
+            activateHistorySubTab(defaultHistoryTab, 'history-sales');
+        }
 
         // Sale control checkbox logic
         if (isSaleControlCheckbox && saleControlQtyInput) {
@@ -1367,6 +1998,7 @@
 
         // Initial calculation on page load
         updateProfitCalculation();
+        updateAdjustStockPreview();
     });
 </script>
 @endsection

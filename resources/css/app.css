@@ -1,64 +1,72 @@
 @import "tailwindcss";
 
 @font-face {
-    font-family: "SF Pro TH";
-    src: url("/fonts/SFProTH.woff2") format("woff2");
+    font-family: "Google Sans";
+    src: url("/public/fonts/GoogleSans-Regular.ttf");
     font-weight: 400;
-    font-display: block;
+    font-style: normal;
+    font-display: swap;
 }
 
 @font-face {
-    font-family: "SF Pro Text";
-    src: url("/fonts/sf-pro-text_light.woff2") format("woff2");
-    font-weight: 300;
-    font-display: block;
-}
-
-@font-face {
-    font-family: "SF Pro Text";
-    src: url("/fonts/sf-pro-text_regular.woff2") format("woff2");
+    font-family: "Google Sans";
+    src: url("/public/fonts/GoogleSans-Italic.ttf");
     font-weight: 400;
-    font-display: block;
+    font-style: italic;
+    font-display: swap;
 }
 
 @font-face {
-    font-family: "Thonburi";
-    src: url("/fonts/Thonburi-Light.ttf") format("truetype");
-    font-weight: 300;
-    font-display: block;
+    font-family: "Google Sans";
+    src: url("/public/fonts/GoogleSans-Medium.ttf");
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
 }
 
 @font-face {
-    font-family: "Thonburi";
-    src: url("/fonts/Thonburi-Regular.ttf") format("truetype");
-    font-weight: 400;
-    font-display: block;
+    font-family: "Google Sans";
+    src: url("/public/fonts/GoogleSans-MediumItalic.ttf");
+    font-weight: 500;
+    font-style: italic;
+    font-display: swap;
 }
 
 @font-face {
-    font-family: "Thonburi";
-    src: url("/fonts/Thonburi-Bold.ttf") format("truetype");
+    font-family: "Google Sans";
+    src: url("/public/fonts/GoogleSans-SemiBold.ttf");
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Google Sans";
+    src: url("/public/fonts/GoogleSans-SemiBoldItalic.ttf");
+    font-weight: 600;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Google Sans";
+    src: url("/public/fonts/GoogleSans-Bold.ttf");
     font-weight: 700;
-    font-display: block;
+    font-style: normal;
+    font-display: swap;
 }
 
 @font-face {
-    font-family: "SF Pro Text";
-    src: url("/fonts/sf-pro-text_semibold.woff2") format("woff2");
-    font-weight: 600;
-    font-display: block;
-}
-
-@font-face {
-    font-family: "SF Pro Display";
-    src: url("/fonts/sf-pro-display_semibold.woff2") format("woff2");
-    font-weight: 600;
-    font-display: block;
+    font-family: "Google Sans";
+    src: url("/public/fonts/GoogleSans-BoldItalic.ttf");
+    font-weight: 700;
+    font-style: italic;
+    font-display: swap;
 }
 
 @layer base {
     html {
-        font-family: "Thonburi", "SF Pro TH", "SF Pro Text", -apple-system, BlinkMacSystemFont, sans-serif;
+        font-family: "Google Sans", -apple-system, BlinkMacSystemFont, sans-serif;
         color: #047857;
         line-height: 1.6;
         -webkit-font-smoothing: antialiased;
@@ -68,14 +76,13 @@
 
     body {
         font-family: 
-            "Thonburi",
-            'SF Pro TH',
-            'SF Pro Text',
+            "Google Sans",
             -apple-system,
             BlinkMacSystemFont,
             sans-serif;
         -webkit-font-smoothing: antialiased;
         font-weight: 400;
+        letter-spacing: 0.01em;
         opacity: 0;
         animation: fadeIn 0.3s ease forwards;
     }
@@ -84,23 +91,34 @@
         to { opacity: 1; }
     }
 
-    h1, h2, h3, h4, h5, h6 {
+    h1, h2 {
         font-family:
-            "Thonburi",
-            "SF Pro TH",
-            "SF Pro Display",
-            "SF Pro Text",
+            "Google Sans",
             -apple-system,
             BlinkMacSystemFont,
             sans-serif;
-        font-weight: 600;
+        font-weight: 700;
         line-height: 1.25;
         color: #047857;
     }
 
-    p, a, li, span, input, button {
+    h3, h4, h5, h6 {
+        font-family:
+            "Google Sans",
+            -apple-system,
+            BlinkMacSystemFont,
+            sans-serif;
+        font-weight: 600;
+        line-height: 1.3;
+        color: #047857;
+    }
+
+    p, a, li, span, input, button, select, textarea {
         font-weight: 400;
-        letter-spacing: 0.02em;
+    }
+
+    strong, b, label, th {
+        font-weight: 500;
     }
 
     .text-muted {

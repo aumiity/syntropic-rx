@@ -14,6 +14,8 @@ Route::get('/products', [PosController::class, 'productIndex'])->name('products.
 Route::get('/products/search-generic-name', [PosController::class, 'searchGenericName'])->name('products.search-generic-name');
 Route::get('/products/{product}/edit', [PosController::class, 'editProduct'])->name('products.edit');
 Route::put('/products/{product}/autosave', [PosController::class, 'autoSaveProduct'])->name('products.autosave');
+Route::post('/products/{product}/adjust-stock', [PosController::class, 'adjustStock'])->name('products.adjust_stock');
+Route::post('/products/{product}/stock-return', [PosController::class, 'stockReturn'])->name('products.stock_return');
 Route::put('/products/{product}', [PosController::class, 'updateProduct'])->name('products.update');
 // Product Units management
 Route::post('/products/{product}/units', [ProductUnitController::class, 'store'])->name('product_units.store');

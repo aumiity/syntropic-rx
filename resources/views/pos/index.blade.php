@@ -2,14 +2,14 @@
 
 @section('content')
 
-<div class="flex flex-col h-screen bg-slate-50 text-slate-800 overflow-hidden px-4 py-4" style="font-family: 'SF Pro TH', 'SF Pro Text', -apple-system, BlinkMacSystemFont, sans-serif;">
+<div class="flex flex-col h-screen bg-slate-50 text-slate-800 overflow-hidden px-4 py-4">
 
     {{-- Hygeia Header (temporary mockup) --}}
     <div class="mb-4 px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-sky-600 text-white shadow-md">
         <div class="flex items-center justify-between gap-4">
             <div>
-                <h1 class="text-2xl font-extrabold">Hygeia POS</h1>
-                <p class="text-sm opacity-90">หน้าจอขายสินค้า (จำลองหน้าตาโปรแกรมเดิม)</p>
+                <h1 class="text-2xl font-extrabold">Syntropic RX</h1>
+                <p class="text-sm opacity-90">หน้าจอขายสินค้า Test Version</p>
             </div>
             <div class="text-right text-xs">
                 <div>สาขา: กรุณาเลือก</div>
