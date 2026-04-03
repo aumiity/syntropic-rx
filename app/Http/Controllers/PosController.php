@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Product;
+use App\Models\ProductLabel;
 use App\Models\ProductUnit;
 use App\Models\Customer;
 use App\Models\ProductLot;
@@ -860,6 +861,136 @@ class PosController extends Controller
             'message' => 'ปรับสต็อคเรียบร้อยแล้ว',
             'current_qty' => $targetQty,
             'diff' => $diff,
+        ]);
+    }
+
+    public function labels(Product $product)
+    {
+        $rows = DB::table('product_labels as pl')
+            ->leftJoin('label_dosages as ld', 'ld.id', '=', 'pl.dosage_id')
+            ->leftJoin('label_meal_relations as lmr', 'lmr.id', '=', 'pl.meal_relation_id')
+            ->leftJoin('label_frequencies as lf', 'lf.id', '=', 'pl.frequency_id')
+            ->leftJoin('label_times as lt', 'lt.id', '=', 'pl.label_time_id')
+            ->leftJoin('label_advices as la', 'la.id', '=', 'pl.advice_id')
+            ->leftJoin('products as p', 'p.id', '=', 'pl.product_id')
+            ->where('pl.product_id', $product->id)
+            ->orderBy('pl.sort_order')
+            ->orderBy('pl.id')
+            ->select([
+                'pl.*',
+                'ld.name_th as dosage_name',
+                'ld.name_mm as dosage_name_mm',
+                'ld.name_zh as dosage_name_zh',
+                'lmr.name_th as meal_relation_name',
+                'lmr.name_mm as meal_relation_name_mm',
+                'lmr.name_zh as meal_relation_name_zh',
+                'lf.name_th as frequency_name',
+                'lf.name_mm as frequency_name_mm',
+                'lf.name_zh as frequency_name_zh',
+                'lt.name_th as label_time_name',
+                'lt.name_mm as label_time_name_mm',
+                'lt.name_zh as label_time_name_zh',
+                'la.name_th as advice_name',
+                'la.name_mm as advice_name_mm',
+                'la.name_zh as advice_name_zh',
+                'p.barcode as product_barcode',
+            ])
+            ->get();
+
+        return response()->json($rows);
+    }
+
+    public function saveLabel(Request $request, Product $product)
+    {
+        $payload = $request->validate([
+            'label_id' => 'nullable|integer|exists:product_labels,id',
+            'label_name' => 'nullable|string|max:200',
+            'dosage_id' => 'nullable|integer|exists:label_dosages,id',
+            'frequency_id' => 'nullable|integer|exists:label_frequencies,id',
+            'meal_relation_id' => 'nullable|integer|exists:label_meal_relations,id',
+            'label_time_id' => 'nullable|integer|exists:label_times,id',
+            'advice_id' => 'nullable|integer|exists:label_advices,id',
+            'indication_th' => 'nullable|string',
+            'indication_mm' => 'nullable|string',
+            'indication_zh' => 'nullable|string',
+            'show_barcode' => 'nullable|boolean',
+            'is_default' => 'nullable|boolean',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $labelId = (int) ($payload['label_id'] ?? 0);
+        $label = null;
+
+        if ($labelId > 0) {
+            $label = ProductLabel::query()
+                ->where('product_id', $product->id)
+                ->where('id', $labelId)
+                ->first();
+
+            if (!$label) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'ไม่พบฉลากที่ต้องการแก้ไข',
+                ], 404);
+            }
+        }
+
+        $saveData = [
+            'label_name' => $payload['label_name'] ?? null,
+            'dosage_id' => $payload['dosage_id'] ?? null,
+            'frequency_id' => $payload['frequency_id'] ?? null,
+            'meal_relation_id' => $payload['meal_relation_id'] ?? null,
+            'label_time_id' => $payload['label_time_id'] ?? null,
+            'advice_id' => $payload['advice_id'] ?? null,
+            'indication_th' => $payload['indication_th'] ?? null,
+            'indication_mm' => $payload['indication_mm'] ?? null,
+            'indication_zh' => $payload['indication_zh'] ?? null,
+            'show_barcode' => $request->boolean('show_barcode'),
+            'is_default' => $request->boolean('is_default'),
+            'is_active' => $request->boolean('is_active', true),
+        ];
+
+        if ($saveData['is_default']) {
+            ProductLabel::where('product_id', $product->id)
+                ->where('id', '!=', $labelId > 0 ? $labelId : 0)
+                ->update(['is_default' => false]);
+        }
+
+        if ($label) {
+            $label->fill($saveData);
+            $label->save();
+        } else {
+            $maxSortOrder = (int) ProductLabel::where('product_id', $product->id)->max('sort_order');
+            $saveData['product_id'] = $product->id;
+            $saveData['sort_order'] = $maxSortOrder + 1;
+            $label = ProductLabel::create($saveData);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'บันทึกฉลากเรียบร้อยแล้ว',
+            'data' => $label,
+        ]);
+    }
+
+    public function deleteLabel(ProductLabel $label)
+    {
+        $label->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'ลบฉลากเรียบร้อยแล้ว',
+        ]);
+    }
+
+    public function toggleLabelActive(ProductLabel $label)
+    {
+        $label->is_active = !$label->is_active;
+        $label->save();
+
+        return response()->json([
+            'success' => true,
+            'is_active' => $label->is_active,
         ]);
     }
 

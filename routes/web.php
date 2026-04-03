@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\SettingController;
 use App\Http\Controllers\ProductUnitController;
 
 Route::get('/', [PosController::class, 'index'])->name('pos.index');
@@ -16,6 +17,10 @@ Route::get('/products/{product}/edit', [PosController::class, 'editProduct'])->n
 Route::put('/products/{product}/autosave', [PosController::class, 'autoSaveProduct'])->name('products.autosave');
 Route::post('/products/{product}/adjust-stock', [PosController::class, 'adjustStock'])->name('products.adjust_stock');
 Route::post('/products/{product}/stock-return', [PosController::class, 'stockReturn'])->name('products.stock_return');
+Route::get('/products/{product}/labels', [PosController::class, 'labels'])->name('products.labels.index');
+Route::post('/products/{product}/labels', [PosController::class, 'saveLabel'])->name('products.labels.save');
+Route::delete('/products/labels/{label}', [PosController::class, 'deleteLabel'])->name('products.labels.delete');
+Route::patch('/products/labels/{label}/toggle-active', [PosController::class, 'toggleLabelActive'])->name('products.labels.toggle_active');
 Route::put('/products/{product}', [PosController::class, 'updateProduct'])->name('products.update');
 // Product Units management
 Route::post('/products/{product}/units', [ProductUnitController::class, 'store'])->name('product_units.store');
@@ -47,6 +52,10 @@ Route::get('/suppliers/{supplier}/edit', [SupplierController::class, 'edit'])->n
 Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update');
 Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->name('suppliers.destroy');
 
+// Shop Settings Routes
+Route::get('/shop-settings', [SettingController::class, 'index'])->name('settings.shop.index');
+Route::post('/shop-settings', [SettingController::class, 'update'])->name('settings.shop.update');
+
 // Settings Routes
 Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
 
@@ -64,3 +73,6 @@ Route::delete('/settings/units/{unit}', [SettingsController::class, 'deleteUnit'
 Route::post('/settings/drug-types', [SettingsController::class, 'storeDrugType'])->name('settings.drugtypes.store');
 Route::put('/settings/drug-types/{type}', [SettingsController::class, 'updateDrugType'])->name('settings.drugtypes.update');
 Route::patch('/settings/drug-types/{type}/toggle', [SettingsController::class, 'toggleDrugType'])->name('settings.drugtypes.toggle');
+
+// Shop Info
+Route::post('/settings/shop', [SettingsController::class, 'updateShop'])->name('settings.shop.update');

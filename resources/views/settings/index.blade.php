@@ -19,9 +19,63 @@
 
     <!-- Tab Bar -->
     <div class="mb-6 flex gap-2 border-b border-gray-200">
+        <button type="button" data-tab="shop"        class="tab-btn min-h-11 px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 {{ $activeTab == 'shop'        ? 'text-emerald-600 border-emerald-600' : 'text-gray-600 border-transparent hover:text-gray-800' }}">ข้อมูลร้านค้า</button>
         <button type="button" data-tab="categories" class="tab-btn min-h-11 px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 {{ $activeTab == 'categories' ? 'text-emerald-600 border-emerald-600' : 'text-gray-600 border-transparent hover:text-gray-800' }}">ประเภทสินค้า</button>
         <button type="button" data-tab="units"       class="tab-btn min-h-11 px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 {{ $activeTab == 'units'       ? 'text-emerald-600 border-emerald-600' : 'text-gray-600 border-transparent hover:text-gray-800' }}">หน่วยนับ</button>
         <button type="button" data-tab="drugtypes"   class="tab-btn min-h-11 px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 {{ $activeTab == 'drugtypes'   ? 'text-emerald-600 border-emerald-600' : 'text-gray-600 border-transparent hover:text-gray-800' }}">ประเภทยาตามกฎหมาย</button>
+    </div>
+
+    <!-- ==================== Tab: ข้อมูลร้านค้า ==================== -->
+    <div id="tab-shop" class="tab-panel {{ $activeTab == 'shop' ? '' : 'hidden' }}">
+        <div class="bg-white border border-gray-200 rounded-xl p-5">
+            <form action="{{ route('settings.shop.update') }}" method="POST" class="space-y-4">
+                @csrf
+
+                <div>
+                    <label for="shop_name" class="block text-sm font-medium text-gray-700 mb-1">ชื่อร้าน</label>
+                    <input type="text" name="shop_name" id="shop_name" maxlength="200" value="{{ old('shop_name', $setting->shop_name) }}"
+                        placeholder="เช่น ร้านยา สัตร์โทษ" class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                </div>
+
+                <div>
+                    <label for="shop_address" class="block text-sm font-medium text-gray-700 mb-1">ที่อยู่</label>
+                    <textarea name="shop_address" id="shop_address" rows="3" maxlength="5000"
+                        placeholder="เช่น 123 ถนนดินแดง แขวงดินแดง เขตดินแดง กรุงเทพฯ"
+                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-emerald-400 resize-none">{{ old('shop_address', $setting->shop_address) }}</textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="shop_phone" class="block text-sm font-medium text-gray-700 mb-1">เบอร์โทร</label>
+                        <input type="text" name="shop_phone" id="shop_phone" maxlength="50" value="{{ old('shop_phone', $setting->shop_phone) }}"
+                            placeholder="เช่น 02-123-4567" class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                    </div>
+                    <div>
+                        <label for="shop_license_no" class="block text-sm font-medium text-gray-700 mb-1">เลขใบอนุญาต</label>
+                        <input type="text" name="shop_license_no" id="shop_license_no" maxlength="100" value="{{ old('shop_license_no', $setting->shop_license_no) }}"
+                            placeholder="เช่น แว 123456" class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="shop_line_id" class="block text-sm font-medium text-gray-700 mb-1">ID LINE</label>
+                        <input type="text" name="shop_line_id" id="shop_line_id" maxlength="100" value="{{ old('shop_line_id', $setting->shop_line_id) }}"
+                            placeholder="เช่น @syntropicrx" class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                    </div>
+                    <div>
+                        <label for="shop_tax_id" class="block text-sm font-medium text-gray-700 mb-1">เลขประจำตัวผู้เสียภาษี</label>
+                        <input type="text" name="shop_tax_id" id="shop_tax_id" maxlength="20" value="{{ old('shop_tax_id', $setting->shop_tax_id) }}"
+                            placeholder="เช่น 1234567890123" class="w-full h-11 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-3 border-t border-gray-100 mt-4">
+                    <button type="button" onclick="window.location.reload()" class="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">ยกเลิก</button>
+                    <button type="submit" class="px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium">บันทึกข้อมูลร้านค้า</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- ==================== Tab: ประเภทสินค้า ==================== -->

@@ -6,11 +6,13 @@ use Illuminate\Http\Request;
 use App\Models\ProductCategory;
 use App\Models\DrugType;
 use App\Models\ProductUnit;
+use App\Models\Setting;
 
 class SettingsController extends Controller
 {
     public function index()
     {
+        $setting    = Setting::get();
         $categories = ProductCategory::orderBy('sort_order')->get();
         $itemUnits  = ProductUnit::query()
             ->select('unit_name')
@@ -21,7 +23,7 @@ class SettingsController extends Controller
             ->get();
         $drugTypes  = DrugType::orderBy('name_th')->get();
 
-        return view('settings.index', compact('categories', 'itemUnits', 'drugTypes'));
+        return view('settings.index', compact('setting', 'categories', 'itemUnits', 'drugTypes'));
     }
 
     // --- Product Categories ---
@@ -97,5 +99,16 @@ class SettingsController extends Controller
     {
         $type->update(['is_disabled' => !$type->is_disabled]);
         return back()->with('active_tab', 'drugtypes');
+    }
+
+    // --- Shop Info ---
+    public function updateShop(Request $request)
+    {
+        $setting = Setting::get();
+        $setting->update($request->only([
+            'shop_name', 'shop_address', 'shop_phone',
+            'shop_license_no', 'shop_line_id', 'shop_tax_id'
+        ]));
+        return back()->with('success', 'บันทึกข้อมูลร้านค้าเรียบร้อยแล้ว')->with('active_tab', 'shop');
     }
 }

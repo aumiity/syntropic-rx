@@ -23,8 +23,12 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call([
+            \Database\Seeders\SettingSeeder::class,
             \Database\Seeders\LabelFrequencySeeder::class,
-            \Database\Seeders\LabelTimingSeeder::class,
+            \Database\Seeders\LabelMealRelationSeeder::class,
+            \Database\Seeders\LabelDosageSeeder::class,
+            \Database\Seeders\LabelTimeSeeder::class,
+            \Database\Seeders\LabelAdviceSeeder::class,
         ]);
     }
 }
