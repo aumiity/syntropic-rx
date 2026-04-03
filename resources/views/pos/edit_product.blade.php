@@ -29,7 +29,7 @@
             <button type="button" data-tab="tab-price" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">ราคา</button>
             <button type="button" data-tab="tab-2" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">หน่วยสินค้า</button>
             <button type="button" data-tab="tab-3" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">ยาสามัญและประเภทยา</button>
-            <button type="button" data-tab="tab-4" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">ฉลาก</button>
+            <button type="button" data-tab="tab-labels" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">ฉลาก</button>
             <button type="button" data-tab="tab-5" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">สต๊อค</button>
             <button type="button" data-tab="tab-6" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">ข้อมูลอื่นๆ</button>
             <button type="button" data-tab="tab-7" class="tab-button min-h-11 px-4 py-2.5 text-sm font-medium text-gray-600 border-b-2 border-transparent hover:text-gray-800 rounded-t-lg">ประวัติ</button>
@@ -460,10 +460,19 @@
 
             </div>
 
-            <!-- Tab 4: ฉลาก -->
-            <div id="tab-4" class="tab-panel hidden bg-white border border-gray-200 rounded-xl p-5">
-                <div class="flex items-center justify-center h-40">
-                    <p class="text-gray-400 text-center">🚧 อยู่ระหว่างพัฒนา</p>
+            <!-- Tab Labels: ฉลาก (Label Management) -->
+            <div id="tab-labels" class="tab-panel hidden bg-dracula-darker border border-gray-700 rounded-xl p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-base font-semibold text-dracula-foreground">ฉลากยา (Labels)</h3>
+                    <button type="button" id="btn-add-label" class="h-10 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium">
+                        + เพิ่มฉลาก
+                    </button>
+                </div>
+                <div id="labels-list-container">
+                    <!-- Labels table will be loaded here via AJAX -->
+                    <div class="flex items-center justify-center h-32">
+                        <span class="text-gray-400">กำลังโหลดข้อมูล...</span>
+                    </div>
                 </div>
             </div>
 
@@ -1114,6 +1123,84 @@
             </form>
         </div>
     </div>
+
+    <!-- Label Modal (Add/Edit) -->
+    <div id="label-modal" class="fixed inset-0 bg-black/70 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl p-6 w-full max-w-2xl shadow-xl border border-gray-200">
+            <div class="flex items-center justify-between mb-5">
+                <h2 id="label-modal-title" class="text-base font-semibold text-gray-800">เพิ่ม/แก้ไขฉลาก</h2>
+                <button type="button" id="label-modal-close" class="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-500 flex items-center justify-center">✕</button>
+            </div>
+
+            <form id="label-modal-form" class="space-y-4" novalidate>
+                <input type="hidden" id="label-id" name="label_id">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">ชื่อฉลาก</label>
+                        <input type="text" id="label_name" name="label_name" placeholder="{{ $product->name_for_print }}" class="w-full h-11 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 focus:outline-none focus:border-emerald-400">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">ครั้งละ</label>
+                        <input type="number" id="dose_qty" name="dose_qty" step="0.5" min="0.5" class="w-full h-11 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 focus:outline-none focus:border-emerald-400">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">ความถี่</label>
+                        <select id="frequency_id" name="frequency_id" class="w-full h-11 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 focus:outline-none focus:border-emerald-400">
+                            <option value="">-- เลือกความถี่ --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">เวลาทาน</label>
+                        <select id="timing_id" name="timing_id" class="w-full h-11 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 focus:outline-none focus:border-emerald-400">
+                            <option value="">-- เลือกเวลาทาน --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">ข้อบ่งใช้ (ไทย)</label>
+                        <textarea id="indication_th" name="indication_th" rows="2" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-emerald-400"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">ข้อบ่งใช้ (พม่า)</label>
+                        <textarea id="indication_mm" name="indication_mm" rows="2" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-emerald-400"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">ข้อบ่งใช้ (จีน)</label>
+                        <textarea id="indication_zh" name="indication_zh" rows="2" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-emerald-400"></textarea>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">หมายเหตุ (ไทย)</label>
+                        <textarea id="note_th" name="note_th" rows="2" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-emerald-400"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">หมายเหตุ (พม่า)</label>
+                        <textarea id="note_mm" name="note_mm" rows="2" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-emerald-400"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">หมายเหตุ (จีน)</label>
+                        <textarea id="note_zh" name="note_zh" rows="2" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-emerald-400"></textarea>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 mt-2">
+                    <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="is_active" name="is_active" value="1" class="sr-only peer">
+                        <span class="text-sm font-medium text-emerald-600 peer-checked:hidden">เปิดใช้งาน</span>
+                        <span class="hidden text-sm font-medium text-gray-500 peer-checked:inline">ปิดใช้งาน</span>
+                        <div class="relative w-14 h-7 rounded-full bg-emerald-500 peer-checked:bg-gray-300 transition-colors duration-300 ease-in-out after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:h-[20px] after:w-[28px] after:rounded-full after:bg-white after:shadow-sm after:translate-x-5 peer-checked:after:translate-x-0 after:transition-transform after:duration-300 after:ease-in-out"></div>
+                    </label>
+                </div>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" id="label-modal-cancel" class="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50">ยกเลิก</button>
+                    <button type="submit" id="save-label-btn" class="px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium">บันทึกฉลาก</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <!-- Tab Switching & Profit Calculation JavaScript -->
@@ -1621,6 +1708,163 @@
         unitModalForm?.addEventListener('submit', submitUnitForm);
         priceRetailUnitInput?.addEventListener('input', updateUnitCompareCalculation);
         qtyPerBaseInput?.addEventListener('input', updateUnitCompareCalculation);
+
+        // --- Label Tab ---
+        const productId = {{ $product->id }};
+        const labelApiBase = `/products/${productId}/labels`;
+        const labelFreqUrl = `/api/label-frequencies`;
+        const labelTimingUrl = `/api/label-timings`;
+
+        // btn-add-label
+        document.getElementById('btn-add-label')?.addEventListener('click', function() {
+            openLabelModal();
+        });
+
+        // modal close/cancel
+        document.getElementById('label-modal-close')?.addEventListener('click', closeLabelModal);
+        document.getElementById('label-modal-cancel')?.addEventListener('click', closeLabelModal);
+
+        // tab-labels click → loadLabels
+        document.querySelector('[data-tab="tab-labels"]')?.addEventListener('click', function() {
+            loadLabels();
+        });
+
+        // label form submit
+        document.getElementById('label-modal-form')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const labelId = formData.get('label_id');
+            fetch(labelApiBase, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                body: formData,
+            })
+            .then(res => res.json())
+            .then(() => { closeLabelModal(); loadLabels(); })
+            .catch(() => showToast('บันทึกฉลากล้มเหลว', 'error'));
+        });
+
+        function openLabelModal(label = null) {
+            const modal = document.getElementById('label-modal');
+            if (!modal) return;
+            document.getElementById('label-modal-form').reset();
+            document.getElementById('label-id').value = label ? label.id : '';
+            document.getElementById('label_name').value = label ? (label.label_name || '') : '';
+            document.getElementById('dose_qty').value = label ? (label.dose_qty || '') : '';
+            document.getElementById('frequency_id').value = label ? (label.frequency_id || '') : '';
+            document.getElementById('timing_id').value = label ? (label.timing_id || '') : '';
+            document.getElementById('indication_th').value = label ? (label.indication_th || '') : '';
+            document.getElementById('indication_mm').value = label ? (label.indication_mm || '') : '';
+            document.getElementById('indication_zh').value = label ? (label.indication_zh || '') : '';
+            document.getElementById('note_th').value = label ? (label.note_th || '') : '';
+            document.getElementById('note_mm').value = label ? (label.note_mm || '') : '';
+            document.getElementById('note_zh').value = label ? (label.note_zh || '') : '';
+            document.getElementById('is_active').checked = label ? !!label.is_active : true;
+            modal.classList.remove('hidden');
+        }
+
+        function closeLabelModal() {
+            document.getElementById('label-modal')?.classList.add('hidden');
+        }
+
+        async function loadFrequenciesAndTimings() {
+            const [freqRes, timingRes] = await Promise.all([
+                fetch(labelFreqUrl),
+                fetch(labelTimingUrl)
+            ]);
+            const frequencies = await freqRes.json();
+            const timings = await timingRes.json();
+            const freqSelect = document.getElementById('frequency_id');
+            const timingSelect = document.getElementById('timing_id');
+            if (freqSelect) {
+                freqSelect.innerHTML = '<option value="">-- เลือกความถี่ --</option>' 
+                    + frequencies.map(f => `<option value="${f.id}">${f.name_th}</option>`).join('');
+            }
+            if (timingSelect) {
+                timingSelect.innerHTML = '<option value="">-- เลือกเวลาทาน --</option>' 
+                    + timings.map(t => `<option value="${t.id}">${t.name_th}</option>`).join('');
+            }
+        }
+
+        async function loadLabels() {
+            const container = document.getElementById('labels-list-container');
+            if (!container) return;
+            container.innerHTML = '<div class="flex items-center justify-center h-32"><span class="text-gray-400">กำลังโหลด...</span></div>';
+            await loadFrequenciesAndTimings();
+            fetch(labelApiBase, { headers: { 'Accept': 'application/json' } })
+                .then(res => res.json())
+                .then(labels => renderLabelsTable(labels))
+                .catch(() => {
+                    container.innerHTML = '<div class="flex items-center justify-center h-32"><span class="text-red-400">โหลดล้มเหลว</span></div>';
+                });
+        }
+
+        function renderLabelsTable(labels) {
+            const container = document.getElementById('labels-list-container');
+            if (!container) return;
+            if (!labels.length) {
+                container.innerHTML = '<div class="flex items-center justify-center h-32"><span class="text-gray-400">ยังไม่มีฉลาก</span></div>';
+                return;
+            }
+            let html = `<table class="min-w-full text-sm border border-dracula-border rounded-lg bg-dracula-bg">
+                <thead class="bg-dracula-darker text-dracula-comment">
+                    <tr>
+                        <th class="px-3 py-2 text-left font-medium">ชื่อฉลาก</th>
+                        <th class="px-3 py-2 text-right font-medium">ครั้งละ</th>
+                        <th class="px-3 py-2 text-left font-medium">ความถี่</th>
+                        <th class="px-3 py-2 text-left font-medium">เวลาทาน</th>
+                        <th class="px-3 py-2 text-center font-medium">เปิดใช้งาน</th>
+                        <th class="px-3 py-2 text-center font-medium w-32">จัดการ</th>
+                    </tr>
+                </thead><tbody>`;
+            for (const label of labels) {
+                html += `<tr class="border-t border-dracula-border">
+                    <td class="px-3 py-2 text-dracula-foreground">${label.label_name || ''}</td>
+                    <td class="px-3 py-2 text-right text-dracula-foreground">${label.dose_qty || ''}</td>
+                    <td class="px-3 py-2 text-dracula-foreground">${label.frequency_name || ''}</td>
+                    <td class="px-3 py-2 text-dracula-foreground">${label.timing_name || ''}</td>
+                    <td class="px-3 py-2 text-center">
+                        <button class="toggle-label-active" data-id="${label.id}">
+                            <span class="inline-block w-10 h-6 rounded-full ${label.is_active ? 'bg-emerald-500' : 'bg-dracula-border'} relative transition-colors">
+                                <span class="absolute top-0 left-0 h-6 w-6 rounded-full bg-white shadow-sm transition-transform ${label.is_active ? 'translate-x-4' : ''}"></span>
+                            </span>
+                        </button>
+                    </td>
+                    <td class="px-3 py-2 text-center">
+                        <button class="edit-label-btn text-blue-400 hover:underline mr-2" data-id="${label.id}">แก้ไข</button>
+                        <button class="delete-label-btn text-red-400 hover:underline" data-id="${label.id}">ลบ</button>
+                    </td>
+                </tr>`;
+            }
+            html += '</tbody></table>';
+            container.innerHTML = html;
+
+            container.querySelectorAll('.edit-label-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const label = labels.find(l => l.id == btn.dataset.id);
+                    if (label) openLabelModal(label);
+                });
+            });
+            container.querySelectorAll('.delete-label-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (confirm('ลบฉลากนี้?')) {
+                        fetch(`/products/labels/${btn.dataset.id}`, {
+                            method: 'DELETE',
+                            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                        }).then(() => loadLabels()).catch(() => showToast('ลบล้มเหลว', 'error'));
+                    }
+                });
+            });
+            container.querySelectorAll('.toggle-label-active').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    fetch(`/products/labels/${btn.dataset.id}/toggle-active`, {
+                        method: 'PATCH',
+                        headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                    }).then(() => loadLabels()).catch(() => showToast('เปลี่ยนสถานะล้มเหลว', 'error'));
+                });
+            });
+        }
+        // --- End Label Tab ---
 
         const tabButtons = document.querySelectorAll('.tab-button');
         const tabPanels = document.querySelectorAll('.tab-panel');
