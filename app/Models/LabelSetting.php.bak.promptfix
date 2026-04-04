@@ -15,8 +15,6 @@ class LabelSetting extends Model
         'dosage_line2' => ['fontSize' => 16, 'bold' => true, 'italic' => false, 'underline' => false, 'align' => 'left', 'marginTop' => 2],
         'indication' => ['fontSize' => 10, 'bold' => false, 'italic' => false, 'underline' => false, 'align' => 'left', 'marginTop' => 4],
         'advice' => ['fontSize' => 10, 'bold' => false, 'italic' => false, 'underline' => false, 'align' => 'left', 'marginTop' => 2],
-        'divider' => ['fontSize' => 10, 'bold' => false, 'italic' => false, 'underline' => false, 'align' => 'left', 'marginTop' => 4],
-        'barcode' => ['fontSize' => 10, 'bold' => false, 'italic' => false, 'underline' => false, 'align' => 'left', 'marginTop' => 4],
     ];
 
     /**
@@ -64,13 +62,13 @@ class LabelSetting extends Model
         $setting = self::firstOrCreate(
             ['id' => 1],
             [
-                'paper_width' => 70,
-                'paper_height' => 50,
+                'paper_width' => 100,
+                'paper_height' => 75,
                 'padding_top' => 3,
                 'padding_right' => 3,
                 'padding_bottom' => 3,
                 'padding_left' => 3,
-                'font_family' => 'Google Sans',
+                'font_family' => 'Tahoma',
                 'bold_shop' => true,
                 'bold_product' => true,
                 'bold_dosage' => true,
@@ -89,10 +87,6 @@ class LabelSetting extends Model
         }
 
         $setting->row_styles = $normalized;
-        $setting->font_family = $setting->font_family === 'GoogleSans'
-            ? 'Google Sans'
-            : ($setting->font_family ?: 'Google Sans');
-
         return $setting;
     }
 }

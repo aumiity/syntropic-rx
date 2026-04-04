@@ -1,6 +1,6 @@
 <?php
 
-use Illuminate\Http\Request;
+use App\Http\Controllers\LabelSettingController;
 use Illuminate\Support\Facades\Route;
 
 // Label Frequencies
@@ -18,71 +18,5 @@ Route::get('/label-advices', fn() => \App\Models\LabelAdvice::orderBy('sort_orde
 Route::get('/settings', fn() => \App\Models\Setting::get());
 
 // Label Settings
-Route::get('/label-settings', function () {
-    return response()->json([
-        'success' => true,
-        'data' => \App\Models\LabelSetting::current()
-    ]);
-});
-
-Route::post('/label-settings', function (Request $request) {
-    $validated = $request->validate([
-        'paper_width' => 'required|integer|min:50|max:200',
-        'paper_height' => 'required|integer|min:50|max:200',
-        'padding_top' => 'required|integer|min:0|max:20',
-        'padding_right' => 'required|integer|min:0|max:20',
-        'padding_bottom' => 'required|integer|min:0|max:20',
-        'padding_left' => 'required|integer|min:0|max:20',
-        'font_family' => 'required|string|in:Tahoma,Sarabun,Arial,Courier New',
-        'bold_shop' => 'required|boolean',
-        'bold_product' => 'required|boolean',
-        'bold_dosage' => 'required|boolean',
-        'line_spacing' => 'required|numeric|min:0.8|max:2.0',
-        'section_gap' => 'required|integer|min:0|max:20',
-        'row_styles' => 'required|array',
-        'row_styles.shop_name.fontSize' => 'required|integer|min:8|max:24',
-        'row_styles.shop_name.bold' => 'required|boolean',
-        'row_styles.shop_name.italic' => 'required|boolean',
-        'row_styles.shop_name.underline' => 'required|boolean',
-        'row_styles.shop_name.align' => 'required|string|in:left,center,right',
-        'row_styles.date.fontSize' => 'required|integer|min:8|max:24',
-        'row_styles.date.bold' => 'required|boolean',
-        'row_styles.date.italic' => 'required|boolean',
-        'row_styles.date.underline' => 'required|boolean',
-        'row_styles.date.align' => 'required|string|in:left,center,right',
-        'row_styles.address.fontSize' => 'required|integer|min:8|max:24',
-        'row_styles.address.bold' => 'required|boolean',
-        'row_styles.address.italic' => 'required|boolean',
-        'row_styles.address.underline' => 'required|boolean',
-        'row_styles.address.align' => 'required|string|in:left,center,right',
-        'row_styles.product_name.fontSize' => 'required|integer|min:8|max:24',
-        'row_styles.product_name.bold' => 'required|boolean',
-        'row_styles.product_name.italic' => 'required|boolean',
-        'row_styles.product_name.underline' => 'required|boolean',
-        'row_styles.product_name.align' => 'required|string|in:left,center,right',
-        'row_styles.dosage.fontSize' => 'required|integer|min:8|max:24',
-        'row_styles.dosage.bold' => 'required|boolean',
-        'row_styles.dosage.italic' => 'required|boolean',
-        'row_styles.dosage.underline' => 'required|boolean',
-        'row_styles.dosage.align' => 'required|string|in:left,center,right',
-        'row_styles.indication.fontSize' => 'required|integer|min:8|max:24',
-        'row_styles.indication.bold' => 'required|boolean',
-        'row_styles.indication.italic' => 'required|boolean',
-        'row_styles.indication.underline' => 'required|boolean',
-        'row_styles.indication.align' => 'required|string|in:left,center,right',
-        'row_styles.advice.fontSize' => 'required|integer|min:8|max:24',
-        'row_styles.advice.bold' => 'required|boolean',
-        'row_styles.advice.italic' => 'required|boolean',
-        'row_styles.advice.underline' => 'required|boolean',
-        'row_styles.advice.align' => 'required|string|in:left,center,right',
-    ]);
-
-    $labelSetting = \App\Models\LabelSetting::current();
-    $labelSetting->update($validated);
-
-    return response()->json([
-        'success' => true,
-        'data' => $labelSetting,
-        'message' => 'บันทึกการตั้งค่าฉลากเรียบร้อยแล้ว'
-    ]);
-});
+Route::get('/label-settings', [LabelSettingController::class, 'show']);
+Route::post('/label-settings', [LabelSettingController::class, 'update']);

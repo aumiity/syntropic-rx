@@ -1,7 +1,6 @@
 @extends('layouts.app')
 
 @section('content')
-<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <div class="p-6 w-full">
 
     <div class="mb-5">
@@ -283,24 +282,22 @@ const ROW_STYLE_ORDER = [
     { key: 'address', label: 'ที่อยู่ / เบอร์โทร' },
     { key: 'divider', label: 'แถบคั่น (divider)', marginOnly: true },
     { key: 'product_name', label: 'ชื่อสินค้า' },
-    { key: 'dosage_line1', label: 'วิธีใช้ บรรทัด 1' },
-    { key: 'dosage_line2', label: 'วิธีใช้ บรรทัด 2' },
+    { key: 'dosage_line1', label: 'วิธีใช้ บรรทัด 1 — ทานครั้งละ + วันละ' },
+    { key: 'dosage_line2', label: 'วิธีใช้ บรรทัด 2 — ก่อน/หลังอาหาร + เวลา' },
     { key: 'indication', label: 'สรรพคุณ' },
     { key: 'advice', label: 'คำแนะนำ' },
-    { key: 'barcode', label: 'บาร์โค้ด (barcode)', marginOnly: true },
 ];
 
 const DEFAULT_ROW_STYLES = {
-    shop_name: { fontSize: 13, bold: true, italic: false, underline: false, align: 'left', marginTop: 0 },
+    shop_name: { fontSize: 18, bold: true, italic: false, underline: false, align: 'left', marginTop: 0 },
     date: { fontSize: 10, bold: false, italic: false, underline: false, align: 'right', marginTop: 0 },
-    address: { fontSize: 10, bold: false, italic: false, underline: false, align: 'left', marginTop: 2 },
-    product_name: { fontSize: 14, bold: true, italic: false, underline: false, align: 'left', marginTop: 6 },
-    dosage_line1: { fontSize: 16, bold: true, italic: false, underline: false, align: 'left', marginTop: 4 },
-    dosage_line2: { fontSize: 16, bold: true, italic: false, underline: false, align: 'left', marginTop: 2 },
-    indication: { fontSize: 10, bold: false, italic: false, underline: false, align: 'left', marginTop: 4 },
-    advice: { fontSize: 10, bold: false, italic: false, underline: false, align: 'left', marginTop: 2 },
+    address: { fontSize: 12, bold: false, italic: false, underline: false, align: 'left', marginTop: 2 },
     divider: { fontSize: 10, bold: false, italic: false, underline: false, align: 'left', marginTop: 4 },
-    barcode: { fontSize: 10, bold: false, italic: false, underline: false, align: 'left', marginTop: 4 },
+    product_name: { fontSize: 16, bold: true, italic: false, underline: false, align: 'left', marginTop: 6 },
+    dosage_line1: { fontSize: 14, bold: true, italic: false, underline: false, align: 'left', marginTop: 4 },
+    dosage_line2: { fontSize: 14, bold: true, italic: false, underline: false, align: 'left', marginTop: 2 },
+    indication: { fontSize: 14, bold: false, italic: false, underline: false, align: 'left', marginTop: 4 },
+    advice: { fontSize: 14, bold: false, italic: false, underline: false, align: 'left', marginTop: 2 },
 };
 
 function normalizeRowStyles(rowStyles) {
@@ -414,13 +411,10 @@ function renderLabelSettingsForm(settings) {
                     <input type="hidden" name="bold_shop" value="${settings.bold_shop ? 1 : 0}">
                     <input type="hidden" name="bold_product" value="${settings.bold_product ? 1 : 0}">
                     <input type="hidden" name="bold_dosage" value="${settings.bold_dosage ? 1 : 0}">
-                    <input type="hidden" name="line_spacing" value="${settings.line_spacing}">
-                    <input type="hidden" name="section_gap" value="${settings.section_gap}">
 
                     <!-- Group 3: Row Controls -->
                     <div class="border border-gray-200 rounded-lg p-4">
-                        <h4 class="text-xs font-semibold text-gray-700 mb-1">ตั้งค่าแต่ละแถว</h4>
-                        <p class="text-xs text-gray-500 mb-3">แต่ละบรรทัดเลื่อนขึ้น/ลงได้แบบอิสระทันทีจากตัวเลื่อน margin-top</p>
+                        <h4 class="text-xs font-semibold text-gray-700 mb-3">ตั้งค่าแต่ละแถว</h4>
                         <div class="space-y-4">
                             ${ROW_STYLE_ORDER.map((row) => {
                                 const style = rowStyles[row.key];
@@ -430,7 +424,7 @@ function renderLabelSettingsForm(settings) {
                                 <div class="border border-gray-100 rounded-lg p-3 bg-gray-50" data-row-key="${row.key}">
                                     <div class="text-sm font-medium text-gray-700 mb-2">${row.label}</div>
                                     <div>
-                                        <label class="block text-xs text-gray-600 mb-1">margin-top: <span class="text-gray-400">เลื่อนขึ้น(ค่าลบ) / ลง(ค่าบวก) แบบอิสระ</span></label>
+                                        <label class="block text-xs text-gray-600 mb-1">Margin top: <span class="text-gray-400">ปรับระยะแถบคั่นขึ้น/ลง</span></label>
                                         <div class="flex items-center gap-3">
                                             <input type="range" min="-50" max="100" value="${style.marginTop}" class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer row-margin-range" name="row_styles[${row.key}][marginTop]" data-row-key="${row.key}">
                                             <input type="number" min="-50" max="100" value="${style.marginTop}" class="w-20 h-9 rounded-lg border border-gray-300 px-2 text-sm focus:outline-none focus:border-emerald-400 row-margin-number" data-row-key="${row.key}">
@@ -474,7 +468,7 @@ function renderLabelSettingsForm(settings) {
 
                                     <!-- Row 3: Margin Top -->
                                     <div>
-                                        <label class="block text-xs text-gray-600 mb-1">Margin top: <span class="text-gray-400">เลื่อนบรรทัดขึ้น(ลบ) / ลง(บวก) แบบอิสระ</span></label>
+                                        <label class="block text-xs text-gray-600 mb-1">Margin top: <span class="text-gray-400">← เลื่อนบรรทัดขึ้น(ลบ)/ลง(บวก)</span></label>
                                         <div class="flex items-center gap-3">
                                             <input type="range" min="-50" max="100" value="${style.marginTop}" class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer row-margin-range" name="row_styles[${row.key}][marginTop]" data-row-key="${row.key}">
                                             <input type="number" min="-50" max="100" value="${style.marginTop}" class="w-20 h-9 rounded-lg border border-gray-300 px-2 text-sm focus:outline-none focus:border-emerald-400 row-margin-number" data-row-key="${row.key}">
@@ -492,7 +486,7 @@ function renderLabelSettingsForm(settings) {
                         <div class="mb-3">
                             <label class="block text-xs text-gray-600 mb-1">Font Family</label>
                             <select name="font_family" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
-                                <option value="Google Sans" ${['Google Sans', 'GoogleSans'].includes(settings.font_family) ? 'selected' : ''}>Google Sans</option>
+                                <option value="GoogleSans" ${settings.font_family === 'GoogleSans' ? 'selected' : ''}>GoogleSans</option>
                                 <option value="Tahoma" ${settings.font_family === 'Tahoma' ? 'selected' : ''}>Tahoma</option>
                                 <option value="Sarabun" ${settings.font_family === 'Sarabun' ? 'selected' : ''}>Sarabun</option>
                                 <option value="Arial" ${settings.font_family === 'Arial' ? 'selected' : ''}>Arial</option>
@@ -501,7 +495,7 @@ function renderLabelSettingsForm(settings) {
                         </div>
                     </div>
 
-                    <!-- Group 1: Paper Size -->
+                    <!-- Group 1: Paper Size & Spacing -->
                     <div class="border border-gray-200 rounded-lg p-4">
                         <h4 class="text-xs font-semibold text-gray-700 mb-3">ตั้งค่าหน้ากระดาษ (mm)</h4>
                         <div class="grid grid-cols-2 gap-4">
@@ -530,6 +524,28 @@ function renderLabelSettingsForm(settings) {
                             <div>
                                 <label class="block text-xs text-gray-600 mb-1">Padding ซ้าย</label>
                                 <input type="number" name="padding_left" value="${settings.padding_left}" min="0" max="20" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 pt-4 border-t border-gray-100">
+                            <h4 class="text-xs font-semibold text-gray-700 mb-3">ระยะห่าง</h4>
+                            <div class="mb-3">
+                                <label class="block text-xs text-gray-600 mb-1">Line spacing</label>
+                                <input type="range" name="line_spacing" value="${settings.line_spacing}" min="0.8" max="2.0" step="0.1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                <div class="flex justify-between text-xs text-gray-500">
+                                    <span>0.8</span>
+                                    <span id="line_spacing_value">${settings.line_spacing}</span>
+                                    <span>2.0</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-600 mb-1">ระยะห่างระหว่าง section (px)</label>
+                                <input type="range" name="section_gap" value="${settings.section_gap}" min="0" max="20" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                <div class="flex justify-between text-xs text-gray-500">
+                                    <span>0px</span>
+                                    <span id="section_gap_value">${settings.section_gap}px</span>
+                                    <span>20px</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -817,17 +833,14 @@ function initializeLabelSettingsForm(settings, previewLabel) {
         const displayHeightPx = heightPx * scale;
         const rowStyles = normalizeRowStyles(settings.row_styles);
         const dividerStyle = rowStyles.divider || DEFAULT_ROW_STYLES.divider;
-        const barcodeStyle = rowStyles.barcode || DEFAULT_ROW_STYLES.barcode;
 
         function buildRowStyle(s) {
             return `
-                display: block;
                 font-size: ${s.fontSize}px;
                 font-weight: ${s.bold ? 'bold' : 'normal'};
                 font-style: ${s.italic ? 'italic' : 'normal'};
                 text-decoration: ${s.underline ? 'underline' : 'none'};
                 text-align: ${s.align};
-                line-height: ${settings.line_spacing};
                 position: relative;
                 top: ${s.marginTop}px;
             `;
@@ -843,7 +856,7 @@ function initializeLabelSettingsForm(settings, previewLabel) {
 
         // Row 1: Shop name + date
         labelContent += `
-            <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:10px; margin-bottom:${settings.section_gap}px;">
                 <div style="flex:1; ${buildRowStyle(rowStyles.shop_name)}">${escapeHtml(label.shop_name || '')}</div>
                 <div style="min-width:110px; ${buildRowStyle(rowStyles.date)}">${escapeHtml(todayDate)}</div>
             </div>
@@ -851,42 +864,40 @@ function initializeLabelSettingsForm(settings, previewLabel) {
 
         // Row 2: Address + phone
         if (addressPhone) {
-            labelContent += `<div style="${buildRowStyle(rowStyles.address)}">${escapeHtml(addressPhone)}</div>`;
+            labelContent += `<div style="margin-bottom:${settings.section_gap}px; ${buildRowStyle(rowStyles.address)}">${escapeHtml(addressPhone)}</div>`;
         }
 
-        // Row 3: Divider
-        labelContent += `<div style="position:relative; top:${dividerStyle.marginTop}px; border-top:1px solid #000;"></div>`;
+        // Row 3: Single divider
+        labelContent += `<hr style="border:0; border-top:1px solid #000; margin:${settings.section_gap}px 0; position:relative; top:${dividerStyle.marginTop}px;">`;
 
-        // Row 4: Barcode
+        // Row 4: Product + barcode
         labelContent += `
-            <div style="position:relative; top:${barcodeStyle.marginTop}px; text-align:right;">
-                <div style="display:inline-block; font-size:10px; letter-spacing:0.5px;">[████ BARCODE ████]</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:${settings.section_gap}px;">
+                <div style="flex:1; ${buildRowStyle(rowStyles.product_name)}">${escapeHtml(label.product_name || '')}</div>
+                <div style="min-width:130px; text-align:right; font-size:10px; letter-spacing:0.5px;">[████ BARCODE ████]</div>
             </div>
         `;
 
-        // Row 5: Product name
-        labelContent += `<div style="${buildRowStyle(rowStyles.product_name)}">${escapeHtml(label.product_name || '')}</div>`;
-
-        // Row 6: Dosage instruction line 1
-        labelContent += `<div style="${buildRowStyle(rowStyles.dosage_line1)}">ทานครั้งละ ${escapeHtml(label.dosage || '')} วันละ ${escapeHtml(label.frequency || '')}</div>`;
+        // Row 5: Dosage instruction line 1
+        labelContent += `<div style="margin-bottom:2px; ${buildRowStyle(rowStyles.dosage_line1)}">${escapeHtml(label.dosage || '')}  ${escapeHtml(label.frequency || '')}</div>`;
 
         // Row 6: Dosage instruction line 2
-        labelContent += `<div style="${buildRowStyle(rowStyles.dosage_line2)}">${escapeHtml(label.meal_relation || '')} ${escapeHtml(label.label_time || '')}</div>`;
+        labelContent += `<div style="margin-bottom:${settings.section_gap}px; ${buildRowStyle(rowStyles.dosage_line2)}">${escapeHtml(label.meal_relation || '')}  ${escapeHtml(label.label_time || '')}</div>`;
 
-        // Row 7: Indication
+        // Row 6: Indication
         if (label.indication) {
-            labelContent += `<div style="${buildRowStyle(rowStyles.indication)}">ข้อบ่งใช้: ${escapeHtml(label.indication)}</div>`;
+            labelContent += `<div style="margin-bottom:${settings.section_gap}px; ${buildRowStyle(rowStyles.indication)}">ข้อบ่งใช้: ${escapeHtml(label.indication)}</div>`;
         }
 
-        // Row 8: Advice
+        // Row 7: Advice
         if (label.advice) {
-            labelContent += `<div style="${buildRowStyle(rowStyles.advice)}">หมายเหตุ: ${escapeHtml(label.advice)}</div>`;
+            labelContent += `<div style="margin-bottom:${settings.section_gap}px; ${buildRowStyle(rowStyles.advice)}">หมายเหตุ: ${escapeHtml(label.advice)}</div>`;
         }
 
         return `
             <div style="width: ${displayWidthPx}px; height: ${displayHeightPx}px; border: 1px solid #ccc; background: white; position: relative; margin: 0 auto; overflow: hidden;">
                 <div style="width: ${widthPx}px; height: ${heightPx}px; transform: scale(${scale}); transform-origin: top left;">
-                    <div style="position: absolute; top: ${paddingTopPx}px; right: ${paddingRightPx}px; bottom: ${paddingBottomPx}px; left: ${paddingLeftPx}px; font-family: '${settings.font_family}', 'Google Sans', Arial, sans-serif; color: #000;">
+                    <div style="position: absolute; top: ${paddingTopPx}px; right: ${paddingRightPx}px; bottom: ${paddingBottomPx}px; left: ${paddingLeftPx}px; font-family: '${settings.font_family}', Arial, sans-serif; color: #000;">
                         ${labelContent}
                     </div>
                 </div>
