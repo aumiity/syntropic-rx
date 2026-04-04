@@ -1,0 +1,135 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class LabelSetting extends Model
+{
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'paper_width',
+        'paper_height',
+        'padding_top',
+        'padding_right',
+        'padding_bottom',
+        'padding_left',
+        'font_family',
+        'bold_shop',
+        'bold_product',
+        'bold_dosage',
+        'line_spacing',
+        'section_gap',
+        'row_styles',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'bold_shop' => 'boolean',
+        'bold_product' => 'boolean',
+        'bold_dosage' => 'boolean',
+        'line_spacing' => 'float',
+        'row_styles' => 'array',
+    ];
+
+    /**
+     * Get the current label settings (always id=1).
+     * If not exists, create with default values.
+     *
+     * @return \App\Models\LabelSetting
+     */
+    public static function current()
+    {
+        return self::firstOrCreate(
+            ['id' => 1],
+            [
+                'paper_width' => 100,
+                'paper_height' => 75,
+                'padding_top' => 3,
+                'padding_right' => 3,
+                'padding_bottom' => 3,
+                'padding_left' => 3,
+                'font_family' => 'Tahoma',
+                'bold_shop' => true,
+                'bold_product' => true,
+                'bold_dosage' => true,
+                'line_spacing' => 1.4,
+                'section_gap' => 4,
+                'row_styles' => [
+                    [
+                        'name' => 'shop_name',
+                        'label' => 'ชื่อร้าน',
+                        'font_size' => 13,
+                        'bold' => true,
+                        'align' => 'left',
+                        'show' => true,
+                    ],
+                    [
+                        'name' => 'shop_address',
+                        'label' => 'ที่อยู่ร้าน',
+                        'font_size' => 10,
+                        'bold' => false,
+                        'align' => 'left',
+                        'show' => true,
+                    ],
+                    [
+                        'name' => 'shop_phone',
+                        'label' => 'เบอร์โทรร้าน',
+                        'font_size' => 10,
+                        'bold' => false,
+                        'align' => 'left',
+                        'show' => true,
+                    ],
+                    [
+                        'name' => 'date',
+                        'label' => 'วันที่',
+                        'font_size' => 10,
+                        'bold' => false,
+                        'align' => 'right',
+                        'show' => true,
+                    ],
+                    [
+                        'name' => 'product_name',
+                        'label' => 'ชื่อยา',
+                        'font_size' => 14,
+                        'bold' => true,
+                        'align' => 'center',
+                        'show' => true,
+                    ],
+                    [
+                        'name' => 'dosage',
+                        'label' => 'วิธีใช้',
+                        'font_size' => 16,
+                        'bold' => true,
+                        'align' => 'left',
+                        'show' => true,
+                    ],
+                    [
+                        'name' => 'indication',
+                        'label' => 'สรรพคุณ',
+                        'font_size' => 10,
+                        'bold' => false,
+                        'align' => 'left',
+                        'show' => true,
+                    ],
+                    [
+                        'name' => 'advice',
+                        'label' => 'คำแนะนำ',
+                        'font_size' => 10,
+                        'bold' => false,
+                        'align' => 'left',
+                        'show' => true,
+                    ],
+                ],
+            ]
+        );
+    }
+}

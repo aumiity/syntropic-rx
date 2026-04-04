@@ -1746,8 +1746,7 @@
 
         // --- Label Tab ---
         const productId = {{ $product->id }};
-        const productName = @json($product->name_for_print ?: $product->trade_name);
-        window.productName = productName; // Make it globally accessible for label preview
+        const productName = @json($product->trade_name);
         const labelApiBase = `/products/${productId}/labels`;
         const labelLookupUrls = {
             frequencies: `/api/label-frequencies`,
@@ -1964,59 +1963,45 @@
             const shopName = shopSettings?.shop_name || 'ชื่อร้าน';
             const shopAddress = shopSettings?.shop_address || '';
             const shopPhone = shopSettings?.shop_phone || '';
-            
-            // ชื่อที่แสดงบนฉลากต้องใช้ name_for_print (fallback → trade_name) ไม่ใช่ label_name
-            // ใช้จาก label object ถ้ามี, ไม่มีให้ใช้จาก global productName variable
-            const productName = [label.name_for_print, label.trade_name, window.productName]
-                .find((value) => typeof value === 'string' && value.trim() !== '') || '';
-            
+            const productName = window.productName || getLangValue(label, 'label_name', lang);
             const dosageText = getLangValue(label, 'dosage_name', lang);
             const frequencyText = getLangValue(label, 'frequency_name', lang);
             const mealRelationText = getLangValue(label, 'meal_relation_name', lang);
             const labelTimeText = getLangValue(label, 'label_time_name', lang);
-            
-            // Get indication based on language
-            const indicationText = lang === 'th' ? (label.indication_th || '') : 
-                                  lang === 'mm' ? (label.indication_mm || '') : 
-                                  (label.indication_zh || '');
-            
+            const indicationText = lang === 'th' ? (label.indication_th || '') : lang === 'mm' ? (label.indication_mm || '') : (label.indication_zh || '');
             const adviceText = getLangValue(label, 'advice_name', lang);
             const todayDate = formatThaiDate(new Date());
             
-            // Width: 380px for preview, 94mm for print (handled in printLabel)
-            const width = isPrint ? '94mm' : '380px';
+            // Determine width based on print mode
+            const width = isPrint ? '100%' : '380px';
 
             let html = `
-                <div style="width:${width}; padding:10px; background:white; color:#000;
-                            font-family:'Tahoma',Arial,sans-serif; font-size:11px;
-                            line-height:1.3; box-sizing:border-box;">
+                <div style="width:${width}; padding:10px; background:white; color:#000; font-family:'Tahoma',Arial,sans-serif; font-size:11px; line-height:1.3; box-sizing:border-box;">
                     <!-- HEADER -->
                     <div style="border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 6px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div style="font-weight: bold; font-size: 13px;">${escapeHtml(shopName)}</div>
-                            <div style="font-size: 10px;">${todayDate}</div>
+                            <div style="font-size: 11px;">${todayDate}</div>
                         </div>
                         ${shopAddress ? `<div style="font-size: 10px; margin-top: 2px;">${escapeHtml(shopAddress)}</div>` : ''}
                         ${shopPhone ? `<div style="font-size: 10px; margin-top: 1px;">โทร. ${escapeHtml(shopPhone)}</div>` : ''}
                     </div>
 
-                    <!-- PRODUCT NAME -->
+                    <!-- PRODUCT -->
                     <div style="border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 6px;">
                         <div style="font-size: 14px; font-weight: bold; text-align: center;">${escapeHtml(productName)}</div>
                     </div>
 
-                    <!-- DOSAGE INSTRUCTION (ส่วนที่เด่นที่สุด) -->
+                    <!-- DOSAGE INSTRUCTION -->
                     <div style="margin-bottom: 6px;">
-                        ${dosageText || mealRelationText ? `
                         <div style="font-size: 16px; font-weight: bold; line-height: 1.4;">
-                            ${dosageText ? escapeHtml(dosageText) : ''}${mealRelationText ? ` ${escapeHtml(mealRelationText)}` : ''}
+                            ${dosageText ? `ทานครั้งละ ${escapeHtml(dosageText)}` : ''}
+                            ${mealRelationText ? ` ${escapeHtml(mealRelationText)}` : ''}
                         </div>
-                        ` : ''}
-                        ${frequencyText || labelTimeText ? `
                         <div style="font-size: 16px; font-weight: bold; line-height: 1.4;">
-                            ${frequencyText ? `${escapeHtml(frequencyText)}` : ''}${labelTimeText ? ` | ${escapeHtml(labelTimeText)}` : ''}
+                            ${frequencyText ? `วันละ ${escapeHtml(frequencyText)}` : ''}
+                            ${labelTimeText ? ` | ${escapeHtml(labelTimeText)}` : ''}
                         </div>
-                        ` : ''}
                     </div>
 
                     <!-- INDICATION -->
@@ -2026,7 +2011,7 @@
                     ${adviceText ? `<div style="font-size: 10px; margin: 4px 0;">${escapeHtml(adviceText)}</div>` : ''}
 
                     <!-- BARCODE -->
-                    ${label.show_barcode && label.product_barcode ? `<div style="text-align: center; margin: 8px 0;"><svg id="barcode-${label.id}-${lang}" style="max-height:35px;"></svg></div>` : ''}
+                    ${label.show_barcode && label.product_barcode ? `<div style="text-align: center; margin: 8px 0;"><svg id="barcode-${label.id}-${lang}" style="max-height: 35px;"></svg></div>` : ''}
                 </div>
             `;
 
@@ -2035,9 +2020,7 @@
 
         // Function: Print label
         function printLabel(label, shopSettings, lang = 'th') {
-            const content = generateLabelPreviewHTML(label, shopSettings, lang, false)
-                .replace('width:380px', 'width:94mm'); // Replace 380px with 94mm for print
-            
+            const content = generateLabelPreviewHTML(label, shopSettings, lang, true);
             const printWindow = window.open('', '', 'width=1000,height=600');
             printWindow.document.write(`
                 <!DOCTYPE html>
@@ -2052,10 +2035,12 @@
                         body {
                             margin: 0;
                             padding: 0;
+                            width: 100mm;
+                            height: 75mm;
                             font-family: 'Tahoma', Arial, sans-serif;
                         }
                         .print-container {
-                            width: 94mm;
+                            width: 94mm;  /* 100mm - 2×3mm margin */
                             height: 69mm;
                             overflow: hidden;
                         }
