@@ -8,7 +8,7 @@
 </head>
 <body class="bg-gray-100">
 
-<div class="flex h-screen overflow-hidden">
+<div class="flex min-h-screen">
 
     {{-- Sidebar --}}
     <div class="w-20 bg-emerald-700 flex flex-col items-center py-4 gap-1 flex-shrink-0">
@@ -56,7 +56,7 @@
     </div>
 
     {{-- Content --}}
-    <div class="flex-1 flex flex-col overflow-auto">
+    <div class="flex-1 flex flex-col">
         @yield('content')
     {{-- Toast Blade blocks --}}
     @if(session('success'))

@@ -16,7 +16,7 @@
         <div class="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">{{ session('error') }}</div>
     @endif
 
-    @php $activeTab = session('active_tab', 'categories'); @endphp
+    @php $activeTab = session('active_tab', 'shop'); @endphp
 
     <!-- Tab Bar -->
     <div class="mb-6 flex gap-2 border-b border-gray-200">
@@ -86,10 +86,6 @@
                 </div>
                 <div class="flex justify-end gap-3 mt-4">
                     <button type="submit" class="px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium">บันทึก</button>
-                    <button type="button" id="btn-print-sample"
-                        class="px-4 py-2 rounded-lg border border-purple-400 text-purple-600 hover:bg-purple-50 text-sm font-medium">
-                        🖨 พิมพ์ฉลากตัวอย่าง
-                    </button>
                 </div>
             </div>
         </div>
@@ -138,6 +134,8 @@ function collectRowStylesFromFormData(formData, baseSettings) {
     return result;
 }
 
+
+// Ensure printSampleLabel is defined in global scope for event binding
 function printSampleLabel() {
     const form = document.getElementById('label-settings-form') || document.querySelector('#label-settings-container form');
     if (!form || !currentLabelSettings || !currentPreviewLabel) {
@@ -461,7 +459,7 @@ function renderLabelSettingsForm(settings) {
 
     // Move print sample button event binding here (since button is now in preview column)
     setTimeout(() => {
-        document.getElementById('btn-print-sample')?.addEventListener('click', printSampleLabel);
+    // Duplicate event binding removed
     }, 0);
 
     // Initialize event listeners

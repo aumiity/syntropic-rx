@@ -461,7 +461,7 @@
             </div>
 
             <!-- Tab Labels: ฉลาก (Label Management) -->
-            <div id="tab-labels" class="tab-panel hidden bg-white border border-gray-200 rounded-xl p-5">
+            <div id="tab-labels" class="tab-panel hidden bg-white border border-gray-200 rounded-xl p-5 pb-24">
                 <div class="mb-4 flex items-center justify-between">
                     <h3 class="text-base font-semibold ">ฉลากยา (Labels)</h3>
                     <button type="button" id="btn-add-label" class="h-10 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium">
@@ -1663,9 +1663,188 @@
             { key: 'advices', field: 'advice_id' },
         ];
 
-        // btn-add-label
-        document.getElementById('btn-add-label')?.addEventListener('click', function() {
-            openLabelModal();
+
+        // btn-add-label (append new inline form)
+        document.getElementById('btn-add-label')?.addEventListener('click', function () {
+            // Don't add duplicate "new" card
+            if (document.querySelector('.label-inline-form[data-label-id="new"]')) {
+                document.querySelector('.label-inline-form[data-label-id="new"]')
+                    .closest('.label-card')?.scrollIntoView({ behavior: 'smooth' });
+                return;
+            }
+
+            const container = document.getElementById('labels-list-container');
+            if (!container) return;
+
+            const newCard = document.createElement('div');
+            newCard.className = 'label-card bg-white border border-gray-200 rounded-xl shadow-sm p-4 mb-4 flex gap-4';
+            newCard.innerHTML = `
+                <!-- Left: Empty Preview -->
+                <div class="flex-shrink-0 w-[400px]">
+                    <div class="border-2 border-dashed border-gray-300 rounded bg-gray-50 flex items-center justify-center" style="height:150px;">
+                        <span class="text-gray-400 text-sm">preview จะแสดงหลังบันทึก</span>
+                    </div>
+                </div>
+                <!-- Right: Inline form for new label -->
+                <div class="flex-1">
+                    <form class="label-inline-form space-y-3" data-label-id="new">
+                        <input type="hidden" id="label-id-new" name="label_id" value="">
+                        <div>
+                            <label for="label_name-new" class="block text-xs font-medium text-gray-600 mb-1">ชื่อฉลาก</label>
+                            <input type="text" id="label_name-new" name="label_name" required placeholder="ชื่อเรียกฉลาก"
+                                class="w-full h-11 rounded-lg border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:border-emerald-400">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="dosage_id_search-new" class="block text-xs font-medium text-gray-600 mb-1">ปริมาณที่ใช้</label>
+                                <input type="hidden" name="dosage_id" id="dosage_id_hidden-new">
+                                <div class="relative">
+                                    <input type="text" id="dosage_id_search-new" autocomplete="off" placeholder="ค้นหาปริมาณที่ใช้"
+                                        class="w-full h-11 rounded-lg border border-gray-200 bg-white px-3 pr-10 text-sm focus:outline-none focus:border-emerald-400">
+                                    <button type="button" id="clear-dosage_id-new" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded hover:bg-gray-100 text-gray-600 hidden">×</button>
+                                    <div id="dosage_id_dropdown-new" class="hidden absolute z-30 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-auto"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="frequency_id_search-new" class="block text-xs font-medium text-gray-600 mb-1">ความถี่</label>
+                                <input type="hidden" name="frequency_id" id="frequency_id_hidden-new">
+                                <div class="relative">
+                                    <input type="text" id="frequency_id_search-new" autocomplete="off" placeholder="ค้นหาความถี่"
+                                        class="w-full h-11 rounded-lg border border-gray-200 bg-white px-3 pr-10 text-sm focus:outline-none focus:border-emerald-400">
+                                    <button type="button" id="clear-frequency_id-new" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded hover:bg-gray-100 text-gray-600 hidden">×</button>
+                                    <div id="frequency_id_dropdown-new" class="hidden absolute z-40 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-auto"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="meal_relation_id_search-new" class="block text-xs font-medium text-gray-600 mb-1">รูปแบบการทาน</label>
+                                <input type="hidden" name="meal_relation_id" id="meal_relation_id_hidden-new">
+                                <div class="relative">
+                                    <input type="text" id="meal_relation_id_search-new" autocomplete="off" placeholder="ค้นหารูปแบบการทาน"
+                                        class="w-full h-11 rounded-lg border border-gray-200 bg-white px-3 pr-10 text-sm focus:outline-none focus:border-emerald-400">
+                                    <button type="button" id="clear-meal_relation_id-new" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded hover:bg-gray-100 text-gray-600 hidden">×</button>
+                                    <div id="meal_relation_id_dropdown-new" class="hidden absolute z-40 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-auto"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="label_time_id_search-new" class="block text-xs font-medium text-gray-600 mb-1">เวลาทานยา</label>
+                                <input type="hidden" name="label_time_id" id="label_time_id_hidden-new">
+                                <div class="relative">
+                                    <input type="text" id="label_time_id_search-new" autocomplete="off" placeholder="ค้นหาเวลาทานยา"
+                                        class="w-full h-11 rounded-lg border border-gray-200 bg-white px-3 pr-10 text-sm focus:outline-none focus:border-emerald-400">
+                                    <button type="button" id="clear-label_time_id-new" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded hover:bg-gray-100 text-gray-600 hidden">×</button>
+                                    <div id="label_time_id_dropdown-new" class="hidden absolute z-40 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-auto"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label for="indication_th-new" class="block text-xs font-medium text-gray-600 mb-1">ข้อบ่งใช้ไทย</label>
+                                <textarea id="indication_th-new" name="indication_th" rows="2"
+                                    class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:border-emerald-400"></textarea>
+                            </div>
+                            <div>
+                                <label for="indication_mm-new" class="block text-xs font-medium text-gray-600 mb-1">ข้อบ่งใช้พม่า</label>
+                                <textarea id="indication_mm-new" name="indication_mm" rows="2"
+                                    class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:border-emerald-400"></textarea>
+                            </div>
+                            <div>
+                                <label for="indication_zh-new" class="block text-xs font-medium text-gray-600 mb-1">ข้อบ่งใช้จีน</label>
+                                <textarea id="indication_zh-new" name="indication_zh" rows="2"
+                                    class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:border-emerald-400"></textarea>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="advice_id_search-new" class="block text-xs font-medium text-gray-600 mb-1">คำแนะนำ</label>
+                            <input type="hidden" name="advice_id" id="advice_id_hidden-new">
+                            <div class="relative">
+                                <input type="text" id="advice_id_search-new" autocomplete="off" placeholder="ค้นหาคำแนะนำ"
+                                    class="w-full h-11 rounded-lg border border-gray-200 bg-white px-3 pr-10 text-sm focus:outline-none focus:border-emerald-400">
+                                <button type="button" id="clear-advice_id-new" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded hover:bg-gray-100 text-gray-600 hidden">×</button>
+                                <div id="advice_id_dropdown-new" class="hidden absolute z-40 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-auto"></div>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-5 mt-2">
+                            <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" id="show_barcode-new" name="show_barcode" value="1" class="sr-only peer">
+                                <span class="text-sm font-medium text-gray-600">แสดงบาร์โค้ด</span>
+                                <div class="relative w-14 h-7 rounded-full bg-gray-100 peer-checked:bg-emerald-500 transition-colors duration-300 ease-in-out after:content-[''] after:absolute after:top-1 after:left-1 after:h-5 after:w-7 after:rounded-full after:bg-white after:shadow-sm after:translate-x-0 peer-checked:after:translate-x-5 after:transition-transform after:duration-300 after:ease-in-out"></div>
+                            </label>
+                            <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" id="is_default-new" name="is_default" value="1" class="sr-only peer">
+                                <span class="text-sm font-medium text-gray-600">ตั้งเป็นฉลากเริ่มต้น</span>
+                                <div class="relative w-14 h-7 rounded-full bg-gray-100 peer-checked:bg-amber-500 transition-colors duration-300 ease-in-out after:content-[''] after:absolute after:top-1 after:left-1 after:h-5 after:w-7 after:rounded-full after:bg-white after:shadow-sm after:translate-x-0 peer-checked:after:translate-x-5 after:transition-transform after:duration-300 after:ease-in-out"></div>
+                            </label>
+                            <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" id="is_active-new" name="is_active" value="1" class="sr-only peer" checked>
+                                <span class="text-sm font-medium text-gray-600">เปิดใช้งาน</span>
+                                <div class="relative w-14 h-7 rounded-full bg-gray-100 peer-checked:bg-emerald-500 transition-colors duration-300 ease-in-out after:content-[''] after:absolute after:top-1 after:left-1 after:h-5 after:w-7 after:rounded-full after:bg-white after:shadow-sm after:translate-x-0 peer-checked:after:translate-x-5 after:transition-transform after:duration-300 after:ease-in-out"></div>
+                            </label>
+                        </div>
+                        <div class="flex gap-2 pt-3 border-t border-gray-100 mt-2">
+                            <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium">💾 บันทึก</button>
+                            <button type="button" class="cancel-new-label px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium">ยกเลิก</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+
+            container.appendChild(newCard);
+            newCard.scrollIntoView({ behavior: 'smooth' });
+
+            // Bind cancel button
+            newCard.querySelector('.cancel-new-label')?.addEventListener('click', () => newCard.remove());
+
+            // Bind autocomplete for new form
+            const newForm = newCard.querySelector('.label-inline-form');
+            if (newForm) {
+                ['dosage', 'frequency', 'meal_relation', 'label_time', 'advice'].forEach(type => {
+                    const fieldMap = {
+                        dosage: 'dosage_id',
+                        frequency: 'frequency_id',
+                        meal_relation: 'meal_relation_id',
+                        label_time: 'label_time_id',
+                        advice: 'advice_id',
+                    };
+                    const field = fieldMap[type];
+                    initializeLabelAutocomplete({
+                        searchInput: newForm.querySelector(`#${field}_search-new`),
+                        hiddenInput: newForm.querySelector(`#${field}_hidden-new`),
+                        dropdown: newForm.querySelector(`#${field}_dropdown-new`),
+                        clearBtn: newForm.querySelector(`#clear-${field}-new`),
+                        type: type,
+                    });
+                });
+            }
+
+            // Bind form submit for new label
+            newForm?.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const labelName = newForm.querySelector('#label_name-new')?.value.trim();
+                if (!labelName) {
+                    newForm.querySelector('#label_name-new')?.focus();
+                    return;
+                }
+                const formData = new FormData(newForm);
+                formData.set('show_barcode', newForm.querySelector('#show_barcode-new')?.checked ? '1' : '0');
+                formData.set('is_default', newForm.querySelector('#is_default-new')?.checked ? '1' : '0');
+                formData.set('is_active', newForm.querySelector('#is_active-new')?.checked ? '1' : '0');
+
+                try {
+                    const response = await fetch(labelApiBase, {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                        body: formData,
+                    });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) throw new Error(data.message || 'บันทึกไม่สำเร็จ');
+                    showToast(data.message || 'เพิ่มฉลากสำเร็จ', 'success');
+                    loadLabels();
+                } catch (error) {
+                    showToast(error.message, 'error');
+                }
+            });
         });
 
         // modal close/cancel
@@ -2150,6 +2329,15 @@
                                     </div>
                                 </div>
                                 <!-- Swap: Indication fields BEFORE advice field -->
+                                <div>
+                                    <label for="advice_id_search-${label.id}" class="block text-xs font-medium text-gray-600 mb-1">คำแนะนำ</label>
+                                    <input type="hidden" name="advice_id" id="advice_id_hidden-${label.id}">
+                                    <div class="relative">
+                                        <input type="text" id="advice_id_search-${label.id}" autocomplete="off" placeholder="ค้นหาคำแนะนำ" class="w-full h-11 rounded-lg border border-gray-200 bg-white px-3 pr-10 text-sm focus:outline-none focus:border-emerald-400">
+                                        <button type="button" id="clear-advice_id-${label.id}" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded hover:bg-gray-100 text-gray-600 hidden">×</button>
+                                        <div id="advice_id_dropdown-${label.id}" class="hidden absolute z-40 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-auto"></div>
+                                    </div>
+                                </div>
                                 <div class="grid grid-cols-3 gap-4">
                                     <div>
                                         <label for="indication_th-${label.id}" class="block text-xs font-medium text-gray-600 mb-1">ข้อบ่งใช้ไทย</label>
@@ -2162,15 +2350,6 @@
                                     <div>
                                         <label for="indication_zh-${label.id}" class="block text-xs font-medium text-gray-600 mb-1">ข้อบ่งใช้จีน</label>
                                         <textarea id="indication_zh-${label.id}" name="indication_zh" rows="2" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:border-emerald-400"></textarea>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label for="advice_id_search-${label.id}" class="block text-xs font-medium text-gray-600 mb-1">คำแนะนำ</label>
-                                    <input type="hidden" name="advice_id" id="advice_id_hidden-${label.id}">
-                                    <div class="relative">
-                                        <input type="text" id="advice_id_search-${label.id}" autocomplete="off" placeholder="ค้นหาคำแนะนำ" class="w-full h-11 rounded-lg border border-gray-200 bg-white px-3 pr-10 text-sm focus:outline-none focus:border-emerald-400">
-                                        <button type="button" id="clear-advice_id-${label.id}" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded hover:bg-gray-100 text-gray-600 hidden">×</button>
-                                        <div id="advice_id_dropdown-${label.id}" class="hidden absolute z-40 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-auto"></div>
                                     </div>
                                 </div>
                                 <div class="flex flex-wrap items-center gap-5 mt-2">
@@ -2354,30 +2533,78 @@
                 form.querySelector(`[name="is_active"]`).checked = !!label.is_active;
             });
 
-            // Bind submit for each inline form
+
+            // --- Silent Save Helper ---
+            async function silentSaveLabel(labelId, formEl) {
+                const formData = new FormData(formEl);
+                let url = labelApiBase;
+                let method = 'POST';
+                if (labelId !== 'new') {
+                    url = `${labelApiBase}/${labelId}`;
+                    formData.append('_method', 'PUT');
+                }
+                // Checkbox values
+                formData.set('show_barcode', formEl.querySelector('[name="show_barcode"]')?.checked ? '1' : '0');
+                formData.set('is_default', formEl.querySelector('[name="is_default"]')?.checked ? '1' : '0');
+                formData.set('is_active', formEl.querySelector('[name="is_active"]')?.checked ? '1' : '0');
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                        body: formData,
+                    });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) throw new Error(data.message || 'บันทึกไม่สำเร็จ');
+                    showToast(data.message || 'บันทึกสำเร็จ', 'success');
+                    // For new label, reload all
+                    if (labelId === 'new') {
+                        loadLabels();
+                    } else {
+                        // Update preview in-place
+                        const updatedLabel = data.label || null;
+                        if (updatedLabel) {
+                            // Update preview HTML
+                            const preview = document.querySelector(`.label-preview-${labelId}`);
+                            if (preview) {
+                                preview.innerHTML = generateLabelPreviewHTML(updatedLabel, shopSettings, 'th', false, labelSettings);
+                                // Re-render barcode if needed
+                                if (updatedLabel.show_barcode && updatedLabel.product_barcode && typeof JsBarcode !== 'undefined') {
+                                    setTimeout(() => {
+                                        try {
+                                            const barcodeId = `barcode-${labelId}-th`;
+                                            const barcodeEl = document.getElementById(barcodeId);
+                                            if (barcodeEl) {
+                                                JsBarcode(`#${barcodeId}`, updatedLabel.product_barcode, { format: 'EAN13' });
+                                            }
+                                        } catch (e) {}
+                                    }, 50);
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    showToast(error.message, 'error');
+                }
+            }
+
+            // Bind submit for each inline form (silent save)
             container.querySelectorAll('.label-inline-form').forEach(form => {
-                form.addEventListener('submit', async function(e) {
+                form.addEventListener('submit', function(e) {
                     e.preventDefault();
                     const labelId = form.dataset.labelId;
-                    const formData = new FormData(form);
-                    let url = labelApiBase;
-                    let method = 'POST';
-                    if (labelId !== 'new') {
-                        url = `${labelApiBase}/${labelId}`;
-                        formData.append('_method', 'PUT');
-                    }
-                    try {
-                        const response = await fetch(url, {
-                            method: 'POST',
-                            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-                            body: formData,
+                    silentSaveLabel(labelId, form);
+                });
+            });
+
+            // --- Bind toggle auto-save for checkboxes ---
+            container.querySelectorAll('.label-inline-form').forEach(form => {
+                const labelId = form.dataset.labelId;
+                ['show_barcode', 'is_default', 'is_active'].forEach(field => {
+                    const checkbox = form.querySelector(`[name="${field}"]`);
+                    if (checkbox) {
+                        checkbox.addEventListener('change', function() {
+                            silentSaveLabel(labelId, form);
                         });
-                        const data = await response.json().catch(() => ({}));
-                        if (!response.ok) throw new Error(data.message || 'บันทึกไม่สำเร็จ');
-                        showToast(data.message || 'บันทึกสำเร็จ', 'success');
-                        loadLabels();
-                    } catch (error) {
-                        showToast(error.message, 'error');
                     }
                 });
             });

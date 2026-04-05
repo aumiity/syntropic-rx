@@ -950,10 +950,10 @@ class PosController extends Controller
             'is_active' => $request->boolean('is_active', true),
         ];
 
-        if ($saveData['is_default']) {
-            ProductLabel::where('product_id', $product->id)
-                ->where('id', '!=', $labelId > 0 ? $labelId : 0)
-                ->update(['is_default' => false]);
+        // Unset is_default for all other labels if this one is set as default
+        if ($request->input('is_default') === '1') {
+            \App\Models\ProductLabel::where('product_id', $product->id)
+                ->update(['is_default' => 0]);
         }
 
         if ($label) {
@@ -970,6 +970,41 @@ class PosController extends Controller
             'success' => true,
             'message' => 'บันทึกฉลากเรียบร้อยแล้ว',
             'data' => $label,
+        ]);
+    }
+
+    public function updateLabel(Request $request, $productId, $labelId)
+    {
+        $label = \App\Models\ProductLabel::where('product_id', $productId)
+            ->where('id', $labelId)
+            ->firstOrFail();
+
+        // Unset is_default for all other labels if this one is set as default
+        if ($request->input('is_default') === '1') {
+            \App\Models\ProductLabel::where('product_id', $label->product_id)
+                ->where('id', '!=', $label->id)
+                ->update(['is_default' => 0]);
+        }
+
+        $label->update([
+            'label_name'      => $request->input('label_name'),
+            'dosage_id'       => $request->input('dosage_id') ?: null,
+            'frequency_id'    => $request->input('frequency_id') ?: null,
+            'meal_relation_id'=> $request->input('meal_relation_id') ?: null,
+            'label_time_id'   => $request->input('label_time_id') ?: null,
+            'advice_id'       => $request->input('advice_id') ?: null,
+            'indication_th'   => $request->input('indication_th'),
+            'indication_mm'   => $request->input('indication_mm'),
+            'indication_zh'   => $request->input('indication_zh'),
+            'show_barcode'    => $request->input('show_barcode') === '1' ? 1 : 0,
+            'is_default'      => $request->input('is_default') === '1' ? 1 : 0,
+            'is_active'       => $request->input('is_active') === '1' ? 1 : 0,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'อัปเดตฉลากเรียบร้อยแล้ว',
+            'label'   => $label->fresh(),
         ]);
     }
 

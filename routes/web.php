@@ -19,6 +19,7 @@ Route::post('/products/{product}/adjust-stock', [PosController::class, 'adjustSt
 Route::post('/products/{product}/stock-return', [PosController::class, 'stockReturn'])->name('products.stock_return');
 Route::get('/products/{product}/labels', [PosController::class, 'labels'])->name('products.labels.index');
 Route::post('/products/{product}/labels', [PosController::class, 'saveLabel'])->name('products.labels.save');
+Route::put('/products/{product}/labels/{label}', [PosController::class, 'updateLabel'])->name('products.labels.update');
 Route::delete('/products/labels/{label}', [PosController::class, 'deleteLabel'])->name('products.labels.delete');
 Route::patch('/products/labels/{label}/toggle-active', [PosController::class, 'toggleLabelActive'])->name('products.labels.toggle_active');
 Route::put('/products/{product}', [PosController::class, 'updateProduct'])->name('products.update');
