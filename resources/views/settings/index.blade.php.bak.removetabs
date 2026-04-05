@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <div class="p-6 w-full">
 
     <div class="mb-5">
@@ -202,6 +203,13 @@
                 <div class="flex items-center justify-center h-32">
                     <span class="text-gray-400">กำลังโหลดการตั้งค่าฉลากยา...</span>
                 </div>
+                <div class="flex justify-end gap-3 mt-4">
+                    <button type="submit" class="px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium">บันทึก</button>
+                    <button type="button" id="btn-print-sample"
+                        class="px-4 py-2 rounded-lg border border-purple-400 text-purple-600 hover:bg-purple-50 text-sm font-medium">
+                        🖨 พิมพ์ฉลากตัวอย่าง
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -225,6 +233,114 @@
 </div>
 
 <script>
+let currentLabelSettings = null;
+let currentPreviewLabel = null;
+
+function toBoolValue(value) {
+    return value === true || value === 1 || value === '1' || value === 'on';
+}
+
+function clampFontSizeValue(value, fallback = 12) {
+    const parsed = parseInt(value, 10);
+    if (Number.isNaN(parsed)) return fallback;
+    return Math.min(40, Math.max(6, parsed));
+}
+
+function clampMarginTopValue(value, fallback = 0) {
+    const parsed = parseInt(value, 10);
+    if (Number.isNaN(parsed)) return fallback;
+    return Math.min(100, Math.max(-50, parsed));
+}
+
+function collectRowStylesFromFormData(formData, baseSettings) {
+    const defaults = normalizeRowStyles(baseSettings?.row_styles);
+    const result = {};
+
+    ROW_STYLE_ORDER.forEach(({ key }) => {
+        const fallback = defaults[key] || DEFAULT_ROW_STYLES[key];
+        const alignRaw = formData.get(`row_styles[${key}][align]`) || fallback.align;
+        result[key] = {
+            fontSize: clampFontSizeValue(formData.get(`row_styles[${key}][fontSize]`), fallback.fontSize),
+            bold: toBoolValue(formData.get(`row_styles[${key}][bold]`) ?? (fallback.bold ? '1' : '0')),
+            italic: toBoolValue(formData.get(`row_styles[${key}][italic]`) ?? (fallback.italic ? '1' : '0')),
+            underline: toBoolValue(formData.get(`row_styles[${key}][underline]`) ?? (fallback.underline ? '1' : '0')),
+            align: ['left', 'center', 'right'].includes(alignRaw) ? alignRaw : fallback.align,
+            marginTop: clampMarginTopValue(formData.get(`row_styles[${key}][marginTop]`), fallback.marginTop),
+        };
+    });
+
+    return result;
+}
+
+function printSampleLabel() {
+    const form = document.getElementById('label-settings-form') || document.querySelector('#label-settings-container form');
+    if (!form || !currentLabelSettings || !currentPreviewLabel) {
+        showToast('ยังโหลดข้อมูลฉลากไม่ครบ กรุณาลองใหม่อีกครั้ง', 'error');
+        return;
+    }
+
+    const formData = new FormData(form);
+    const s = {
+        paper_width: parseInt(formData.get('paper_width') || currentLabelSettings.paper_width, 70),
+        paper_height: parseInt(formData.get('paper_height') || currentLabelSettings.paper_height, 50),
+        padding_top: parseInt(formData.get('padding_top') || currentLabelSettings.padding_top, 10),
+        padding_right: parseInt(formData.get('padding_right') || currentLabelSettings.padding_right, 10),
+        padding_bottom: parseInt(formData.get('padding_bottom') || currentLabelSettings.padding_bottom, 10),
+        padding_left: parseInt(formData.get('padding_left') || currentLabelSettings.padding_left, 10),
+        font_family: formData.get('font_family') || currentLabelSettings.font_family,
+        line_spacing: parseFloat(formData.get('line_spacing') || currentLabelSettings.line_spacing),
+        row_styles: collectRowStylesFromFormData(formData, currentLabelSettings),
+    };
+
+    // Build print HTML with print-specific layout (no preview frame/border/transform)
+    const labelHtml = generateLabelPreview(currentPreviewLabel, s, s.paper_width * 3.78, { forPrint: true });
+
+    const printWindow = window.open('', '', 'width=800,height=600');
+    if (!printWindow) {
+        showToast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต pop-up แล้วลองใหม่', 'error');
+        return;
+    }
+
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+            <style>
+                @page {
+                    size: ${s.paper_width}mm ${s.paper_height}mm;
+                    margin: 0;
+                }
+                html, body {
+                    width: ${s.paper_width}mm;
+                    height: ${s.paper_height}mm;
+                    margin: 0;
+                    padding: 0;
+                    overflow: hidden;
+                }
+                body {
+                    font-family: '${s.font_family}', 'Google Sans', Arial, sans-serif;
+                }
+                .print-root {
+                    width: ${s.paper_width}mm;
+                    height: ${s.paper_height}mm;
+                    overflow: hidden;
+                    page-break-after: avoid;
+                    break-after: avoid-page;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="print-root">${labelHtml}</div>
+            <script>
+                window.addEventListener('load', () => setTimeout(() => window.print(), 500));
+            <\/script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
 // Tab switching
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -275,6 +391,19 @@ const shopPreviewData = {
     shop_address: @json($setting->shop_address),
     shop_phone: @json($setting->shop_phone),
 };
+
+const ROW_STYLE_ORDER = [
+    { key: 'shop_name', label: 'ชื่อร้าน' },
+    { key: 'date', label: 'วันที่' },
+    { key: 'address', label: 'ที่อยู่ / เบอร์โทร' },
+    { key: 'divider', label: 'แถบคั่น (divider)', marginOnly: true },
+    { key: 'product_name', label: 'ชื่อสินค้า' },
+    { key: 'dosage_line1', label: 'วิธีใช้ บรรทัด 1' },
+    { key: 'dosage_line2', label: 'วิธีใช้ บรรทัด 2' },
+    { key: 'indication', label: 'สรรพคุณ' },
+    { key: 'advice', label: 'คำแนะนำ' },
+    { key: 'barcode', label: 'บาร์โค้ด (barcode)', marginOnly: true },
+];
 
 function openEditModal(type, id, code, name, sort) {
     document.getElementById('modal-title').textContent = titleMap[type];
@@ -328,6 +457,8 @@ function renderLabelSettingsForm(settings) {
     const container = document.getElementById('label-settings-container');
     if (!container) return;
 
+    const rowStyles = normalizeRowStyles(settings.row_styles);
+
     // Preview label data
     const previewLabel = {
         shop_name: shopPreviewData.shop_name || '',
@@ -342,10 +473,13 @@ function renderLabelSettingsForm(settings) {
         advice: 'รับประทานให้ครบ',
     };
 
+    currentLabelSettings = { ...settings, row_styles: rowStyles };
+    currentPreviewLabel = previewLabel;
+
     const html = `
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             <!-- Left: Preview -->
-            <div>
+            <div class="sticky top-5 self-start">
                 <h3 class="text-sm font-semibold text-gray-800 mb-4">Preview ฉลากยา</h3>
                 <div class="border-2 border-gray-300 rounded-lg p-4 bg-white">
                     <div id="label-preview" class="flex items-center justify-center min-h-[400px]">
@@ -355,16 +489,111 @@ function renderLabelSettingsForm(settings) {
                 <div class="mt-4 text-xs text-gray-500">
                     <p>ตัวอย่างฉลากยาแสดงผลตามการตั้งค่าข้างขวา (อัปเดตทันที)</p>
                 </div>
+                <div class="mt-2 flex justify-end">
+                    <button type="button" id="btn-print-sample"
+                        class="px-4 py-2 rounded-lg border border-purple-400 text-purple-600 hover:bg-purple-50 text-sm font-medium">
+                        🖨 พิมพ์ฉลากตัวอย่าง
+                    </button>
+                </div>
             </div>
 
             <!-- Right: Form -->
             <div>
                 <h3 class="text-sm font-semibold text-gray-800 mb-4">ตั้งค่า template ฉลากยา</h3>
-                
                 <form id="label-settings-form" class="space-y-6">
+                    <input type="hidden" name="bold_shop" value="${settings.bold_shop ? 1 : 0}">
+                    <input type="hidden" name="bold_product" value="${settings.bold_product ? 1 : 0}">
+                    <input type="hidden" name="bold_dosage" value="${settings.bold_dosage ? 1 : 0}">
+                    <input type="hidden" name="line_spacing" value="${settings.line_spacing}">
+                    <input type="hidden" name="section_gap" value="${settings.section_gap}">
+
+                    <!-- Group 3: Row Controls -->
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <h4 class="text-xs font-semibold text-gray-700 mb-1">ตั้งค่าแต่ละแถว</h4>
+                        <p class="text-xs text-gray-500 mb-3">แต่ละบรรทัดเลื่อนขึ้น/ลงได้แบบอิสระทันทีจากตัวเลื่อน margin-top</p>
+                        <div class="space-y-4">
+                            ${ROW_STYLE_ORDER.map((row) => {
+                                const style = rowStyles[row.key];
+
+                                if (row.marginOnly) {
+                                    return `
+                                <div class="border border-gray-100 rounded-lg p-3 bg-gray-50" data-row-key="${row.key}">
+                                    <div class="text-sm font-medium text-gray-700 mb-2">${row.label}</div>
+                                    <div>
+                                        <label class="block text-xs text-gray-600 mb-1">margin-top: <span class="text-gray-400">เลื่อนขึ้น(ค่าลบ) / ลง(ค่าบวก) แบบอิสระ</span></label>
+                                        <div class="flex items-center gap-3">
+                                            <input type="range" min="-50" max="100" value="${style.marginTop}" class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer row-margin-range" name="row_styles[${row.key}][marginTop]" data-row-key="${row.key}">
+                                            <input type="number" min="-50" max="100" value="${style.marginTop}" class="w-20 h-9 rounded-lg border border-gray-300 px-2 text-sm focus:outline-none focus:border-emerald-400 row-margin-number" data-row-key="${row.key}">
+                                            <span class="text-xs text-gray-600 whitespace-nowrap">px</span>
+                                        </div>
+                                    </div>
+                                </div>`;
+                                }
+
+                                return `
+                                <div class="border border-gray-100 rounded-lg p-3 bg-gray-50" data-row-key="${row.key}">
+                                    <div class="text-sm font-medium text-gray-700 mb-2">${row.label}</div>
+                                    
+                                    <!-- Row 1: B/I/U and Alignment -->
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <div class="flex items-center gap-1">
+                                            <input type="hidden" name="row_styles[${row.key}][bold]" value="${style.bold ? 1 : 0}" data-row-key="${row.key}" data-prop="bold">
+                                            <input type="hidden" name="row_styles[${row.key}][italic]" value="${style.italic ? 1 : 0}" data-row-key="${row.key}" data-prop="italic">
+                                            <input type="hidden" name="row_styles[${row.key}][underline]" value="${style.underline ? 1 : 0}" data-row-key="${row.key}" data-prop="underline">
+                                            <button type="button" class="row-style-btn px-2.5 py-1.5 text-xs font-semibold rounded border" data-row-key="${row.key}" data-prop="bold">B</button>
+                                            <button type="button" class="row-style-btn px-2.5 py-1.5 text-xs font-semibold rounded border" data-row-key="${row.key}" data-prop="italic">I</button>
+                                            <button type="button" class="row-style-btn px-2.5 py-1.5 text-xs font-semibold rounded border" data-row-key="${row.key}" data-prop="underline">U</button>
+                                        </div>
+                                        <div class="flex items-center gap-1">
+                                            <input type="hidden" name="row_styles[${row.key}][align]" value="${style.align}" data-row-key="${row.key}" data-prop="align">
+                                            <button type="button" class="row-align-btn px-2.5 py-1.5 text-xs rounded border" data-row-key="${row.key}" data-align="left">←</button>
+                                            <button type="button" class="row-align-btn px-2.5 py-1.5 text-xs rounded border" data-row-key="${row.key}" data-align="center">≡</button>
+                                            <button type="button" class="row-align-btn px-2.5 py-1.5 text-xs rounded border" data-row-key="${row.key}" data-align="right">→</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Row 2: Font Size -->
+                                    <div class="mb-3">
+                                        <label class="block text-xs text-gray-600 mb-1">Font size:</label>
+                                        <div class="flex items-center gap-3">
+                                            <input type="range" min="6" max="40" value="${style.fontSize}" class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer row-font-range" name="row_styles[${row.key}][fontSize]" data-row-key="${row.key}">
+                                            <input type="number" min="6" max="40" value="${style.fontSize}" class="w-20 h-9 rounded-lg border border-gray-300 px-2 text-sm focus:outline-none focus:border-emerald-400 row-font-number" data-row-key="${row.key}">
+                                            <span class="text-xs text-gray-600 whitespace-nowrap">px</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Row 3: Margin Top -->
+                                    <div>
+                                        <label class="block text-xs text-gray-600 mb-1">Margin top: <span class="text-gray-400">เลื่อนบรรทัดขึ้น(ลบ) / ลง(บวก) แบบอิสระ</span></label>
+                                        <div class="flex items-center gap-3">
+                                            <input type="range" min="-50" max="100" value="${style.marginTop}" class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer row-margin-range" name="row_styles[${row.key}][marginTop]" data-row-key="${row.key}">
+                                            <input type="number" min="-50" max="100" value="${style.marginTop}" class="w-20 h-9 rounded-lg border border-gray-300 px-2 text-sm focus:outline-none focus:border-emerald-400 row-margin-number" data-row-key="${row.key}">
+                                            <span class="text-xs text-gray-600 whitespace-nowrap">px</span>
+                                        </div>
+                                    </div>
+                                </div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Group 2: Font -->
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <h4 class="text-xs font-semibold text-gray-700 mb-3">Font</h4>
+                        <div class="mb-3">
+                            <label class="block text-xs text-gray-600 mb-1">Font Family</label>
+                            <select name="font_family" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+                                <option value="Google Sans" ${['Google Sans', 'GoogleSans'].includes(settings.font_family) ? 'selected' : ''}>Google Sans</option>
+                                <option value="Tahoma" ${settings.font_family === 'Tahoma' ? 'selected' : ''}>Tahoma</option>
+                                <option value="Sarabun" ${settings.font_family === 'Sarabun' ? 'selected' : ''}>Sarabun</option>
+                                <option value="Arial" ${settings.font_family === 'Arial' ? 'selected' : ''}>Arial</option>
+                                <option value="Courier New" ${settings.font_family === 'Courier New' ? 'selected' : ''}>Courier New</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <!-- Group 1: Paper Size -->
                     <div class="border border-gray-200 rounded-lg p-4">
-                        <h4 class="text-xs font-semibold text-gray-700 mb-3">หน้ากระดาษ (mm)</h4>
+                        <h4 class="text-xs font-semibold text-gray-700 mb-3">ตั้งค่าหน้ากระดาษ (mm)</h4>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs text-gray-600 mb-1">กว้าง</label>
@@ -395,103 +624,6 @@ function renderLabelSettingsForm(settings) {
                         </div>
                     </div>
 
-                    <!-- Group 2: Font -->
-                    <div class="border border-gray-200 rounded-lg p-4">
-                        <h4 class="text-xs font-semibold text-gray-700 mb-3">Font</h4>
-                        <div class="mb-3">
-                            <label class="block text-xs text-gray-600 mb-1">Font Family</label>
-                            <select name="font_family" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
-                                <option value="Tahoma" ${settings.font_family === 'Tahoma' ? 'selected' : ''}>Tahoma</option>
-                                <option value="Sarabun" ${settings.font_family === 'Sarabun' ? 'selected' : ''}>Sarabun</option>
-                                <option value="Arial" ${settings.font_family === 'Arial' ? 'selected' : ''}>Arial</option>
-                                <option value="Courier New" ${settings.font_family === 'Courier New' ? 'selected' : ''}>Courier New</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Group 3: Per-Row Controls -->
-                    <div class="border border-gray-200 rounded-lg p-4">
-                        <h4 class="text-xs font-semibold text-gray-700 mb-3">ตั้งค่าแต่ละแถว</h4>
-                        <div class="space-y-4">
-                            ${(settings.row_styles || []).map((row, index) => `
-                                <div class="border border-gray-100 rounded-lg p-3 bg-gray-50">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span class="text-sm font-medium text-gray-700">${row.label}</span>
-                                        <label class="flex items-center gap-2">
-                                            <input type="checkbox" name="row_styles[${index}][show]" ${row.show ? 'checked' : ''} class="w-4 h-4 rounded accent-emerald-500">
-                                            <span class="text-xs text-gray-600">แสดง</span>
-                                        </label>
-                                    </div>
-                                    <div class="grid grid-cols-3 gap-3">
-                                        <div>
-                                            <label class="block text-xs text-gray-500 mb-1">ขนาด font (px)</label>
-                                            <input type="number" name="row_styles[${index}][font_size]" value="${row.font_size}" min="8" max="24" class="w-full h-9 rounded-lg border border-gray-300 px-2 text-sm focus:outline-none focus:border-emerald-400">
-                                        </div>
-                                        <div>
-                                            <label class="block text-xs text-gray-500 mb-1">ตัวหนา</label>
-                                            <label class="flex items-center gap-2 mt-1">
-                                                <input type="checkbox" name="row_styles[${index}][bold]" ${row.bold ? 'checked' : ''} class="w-4 h-4 rounded accent-emerald-500">
-                                                <span class="text-xs text-gray-600">ตัวหนา</span>
-                                            </label>
-                                        </div>
-                                        <div>
-                                            <label class="block text-xs text-gray-500 mb-1">จัดตำแหน่ง</label>
-                                            <select name="row_styles[${index}][align]" class="w-full h-9 rounded-lg border border-gray-300 px-2 text-sm focus:outline-none focus:border-emerald-400">
-                                                <option value="left" ${row.align === 'left' ? 'selected' : ''}>ซ้าย</option>
-                                                <option value="center" ${row.align === 'center' ? 'selected' : ''}>กลาง</option>
-                                                <option value="right" ${row.align === 'right' ? 'selected' : ''}>ขวา</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <input type="hidden" name="row_styles[${index}][name]" value="${row.name}">
-                                    <input type="hidden" name="row_styles[${index}][label]" value="${row.label}">
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-
-                    <!-- Group 4: Bold -->
-                    <div class="border border-gray-200 rounded-lg p-4">
-                        <h4 class="text-xs font-semibold text-gray-700 mb-3">ตัวหนา</h4>
-                        <div class="space-y-2">
-                            <label class="flex items-center gap-2">
-                                <input type="checkbox" name="bold_shop" ${settings.bold_shop ? 'checked' : ''} class="w-4 h-4 rounded accent-emerald-500">
-                                <span class="text-sm text-gray-700">ชื่อร้าน</span>
-                            </label>
-                            <label class="flex items-center gap-2">
-                                <input type="checkbox" name="bold_product" ${settings.bold_product ? 'checked' : ''} class="w-4 h-4 rounded accent-emerald-500">
-                                <span class="text-sm text-gray-700">ชื่อยา</span>
-                            </label>
-                            <label class="flex items-center gap-2">
-                                <input type="checkbox" name="bold_dosage" ${settings.bold_dosage ? 'checked' : ''} class="w-4 h-4 rounded accent-emerald-500">
-                                <span class="text-sm text-gray-700">วิธีใช้</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Group 4: Spacing -->
-                    <div class="border border-gray-200 rounded-lg p-4">
-                        <h4 class="text-xs font-semibold text-gray-700 mb-3">ระยะห่าง</h4>
-                        <div class="mb-3">
-                            <label class="block text-xs text-gray-600 mb-1">Line spacing</label>
-                            <input type="range" name="line_spacing" value="${settings.line_spacing}" min="0.8" max="2.0" step="0.1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                            <div class="flex justify-between text-xs text-gray-500">
-                                <span>0.8</span>
-                                <span id="line_spacing_value">${settings.line_spacing}</span>
-                                <span>2.0</span>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-600 mb-1">ระยะห่างระหว่าง section (px)</label>
-                            <input type="range" name="section_gap" value="${settings.section_gap}" min="0" max="20" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                            <div class="flex justify-between text-xs text-gray-500">
-                                <span>0px</span>
-                                <span id="section_gap_value">${settings.section_gap}px</span>
-                                <span>20px</span>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Submit Button -->
                     <div class="pt-4 border-t border-gray-200">
                         <button type="submit" class="w-full h-11 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium">
@@ -506,13 +638,161 @@ function renderLabelSettingsForm(settings) {
 
     container.innerHTML = html;
 
+    // Move print sample button event binding here (since button is now in preview column)
+    setTimeout(() => {
+        document.getElementById('btn-print-sample')?.addEventListener('click', printSampleLabel);
+    }, 0);
+
     // Initialize event listeners
-    initializeLabelSettingsForm(settings, previewLabel);
+    initializeLabelSettingsForm({ ...settings, row_styles: rowStyles }, previewLabel);
 }
 
 function initializeLabelSettingsForm(settings, previewLabel) {
     const form = document.getElementById('label-settings-form');
     if (!form) return;
+
+    const toBool = (value) => value === true || value === 1 || value === '1' || value === 'on';
+
+    const clampFontSize = (value, fallback = 12) => {
+        const parsed = parseInt(value, 10);
+        if (Number.isNaN(parsed)) return fallback;
+        return Math.min(40, Math.max(6, parsed));
+    };
+
+    const clampMarginTop = (value, fallback = 0) => {
+        const parsed = parseInt(value, 10);
+        if (Number.isNaN(parsed)) return fallback;
+        return Math.min(100, Math.max(-50, parsed));
+    };
+
+    const collectRowStylesFromForm = (formData) => {
+        const defaults = normalizeRowStyles(settings.row_styles);
+        const result = {};
+
+        ROW_STYLE_ORDER.forEach(({ key }) => {
+            const fallback = defaults[key] || DEFAULT_ROW_STYLES[key];
+            const alignRaw = formData.get(`row_styles[${key}][align]`) || fallback.align;
+            result[key] = {
+                fontSize: clampFontSize(formData.get(`row_styles[${key}][fontSize]`), fallback.fontSize),
+                bold: toBool(formData.get(`row_styles[${key}][bold]`) ?? (fallback.bold ? '1' : '0')),
+                italic: toBool(formData.get(`row_styles[${key}][italic]`) ?? (fallback.italic ? '1' : '0')),
+                underline: toBool(formData.get(`row_styles[${key}][underline]`) ?? (fallback.underline ? '1' : '0')),
+                align: ['left', 'center', 'right'].includes(alignRaw) ? alignRaw : fallback.align,
+                marginTop: clampMarginTop(formData.get(`row_styles[${key}][marginTop]`), fallback.marginTop),
+            };
+        });
+
+        return result;
+    };
+
+    const applyRowButtonState = (rowKey) => {
+        ['bold', 'italic', 'underline'].forEach((prop) => {
+            const hidden = form.querySelector(`input[data-row-key="${rowKey}"][data-prop="${prop}"]`);
+            const active = toBool(hidden?.value);
+            form.querySelectorAll(`button.row-style-btn[data-row-key="${rowKey}"][data-prop="${prop}"]`).forEach((btn) => {
+                btn.classList.toggle('bg-emerald-500', active);
+                btn.classList.toggle('text-white', active);
+                btn.classList.toggle('border-emerald-500', active);
+                btn.classList.toggle('bg-white', !active);
+                btn.classList.toggle('text-gray-700', !active);
+                btn.classList.toggle('border-gray-300', !active);
+            });
+        });
+
+        const alignHidden = form.querySelector(`input[data-row-key="${rowKey}"][data-prop="align"]`);
+        const align = alignHidden?.value || 'left';
+        form.querySelectorAll(`button.row-align-btn[data-row-key="${rowKey}"]`).forEach((btn) => {
+            const active = btn.dataset.align === align;
+            btn.classList.toggle('bg-emerald-500', active);
+            btn.classList.toggle('text-white', active);
+            btn.classList.toggle('border-emerald-500', active);
+            btn.classList.toggle('bg-white', !active);
+            btn.classList.toggle('text-gray-700', !active);
+            btn.classList.toggle('border-gray-300', !active);
+        });
+    };
+
+    const bindRowControls = () => {
+        ROW_STYLE_ORDER.forEach(({ key }) => {
+            // Font size sync between range and number inputs
+            const fontSizeRange = form.querySelector(`input.row-font-range[data-row-key="${key}"]`);
+            const fontSizeNumber = form.querySelector(`input.row-font-number[data-row-key="${key}"]`);
+            
+            if (fontSizeRange && fontSizeNumber) {
+                const syncFontSize = () => {
+                    fontSizeNumber.value = fontSizeRange.value;
+                };
+                
+                fontSizeRange.addEventListener('input', () => {
+                    syncFontSize();
+                    updateLabelPreview();
+                });
+                
+                fontSizeNumber.addEventListener('input', () => {
+                    let value = parseInt(fontSizeNumber.value, 10);
+                    if (isNaN(value)) value = 6;
+                    value = Math.max(6, Math.min(40, value));
+                    fontSizeRange.value = value;
+                    fontSizeNumber.value = value;
+                    updateLabelPreview();
+                });
+                
+                syncFontSize();
+            }
+
+            // Margin top sync between range and number inputs
+            const marginRange = form.querySelector(`input.row-margin-range[data-row-key="${key}"]`);
+            const marginNumber = form.querySelector(`input.row-margin-number[data-row-key="${key}"]`);
+            
+            if (marginRange && marginNumber) {
+                const syncMargin = () => {
+                    marginNumber.value = marginRange.value;
+                };
+                
+                marginRange.addEventListener('input', () => {
+                    syncMargin();
+                    updateLabelPreview();
+                });
+                
+                marginNumber.addEventListener('input', () => {
+                    let value = parseInt(marginNumber.value, 10);
+                    if (isNaN(value)) value = 0;
+                    value = Math.max(-50, Math.min(100, value));
+                    marginRange.value = value;
+                    marginNumber.value = value;
+                    updateLabelPreview();
+                });
+                
+                syncMargin();
+            }
+
+            // Style buttons (B/I/U)
+            form.querySelectorAll(`button.row-style-btn[data-row-key="${key}"]`).forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const prop = btn.dataset.prop;
+                    if (!prop) return;
+                    const hidden = form.querySelector(`input[data-row-key="${key}"][data-prop="${prop}"]`);
+                    if (!hidden) return;
+                    hidden.value = toBool(hidden.value) ? '0' : '1';
+                    applyRowButtonState(key);
+                    updateLabelPreview();
+                });
+            });
+
+            // Alignment buttons (← ≡ →)
+            form.querySelectorAll(`button.row-align-btn[data-row-key="${key}"]`).forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const hidden = form.querySelector(`input[data-row-key="${key}"][data-prop="align"]`);
+                    if (!hidden || !btn.dataset.align) return;
+                    hidden.value = btn.dataset.align;
+                    applyRowButtonState(key);
+                    updateLabelPreview();
+                });
+            });
+
+            applyRowButtonState(key);
+        });
+    };
 
     // Update range value displays
     const updateRangeValue = (inputName, displayId) => {
@@ -532,13 +812,10 @@ function initializeLabelSettingsForm(settings, previewLabel) {
         }
     };
 
-    // Set up all range inputs
-    updateRangeValue('font_size_shop', 'font_size_shop_value');
-    updateRangeValue('font_size_product', 'font_size_product_value');
-    updateRangeValue('font_size_dosage', 'font_size_dosage_value');
-    updateRangeValue('font_size_small', 'font_size_small_value');
+    // Set up range inputs
     updateRangeValue('line_spacing', 'line_spacing_value');
     updateRangeValue('section_gap', 'section_gap_value');
+    bindRowControls();
 
     // Update preview on any form change
     form.querySelectorAll('input, select').forEach(element => {
@@ -553,43 +830,21 @@ function initializeLabelSettingsForm(settings, previewLabel) {
         e.preventDefault();
         
         const formData = new FormData(this);
-        const data = Object.fromEntries(formData.entries());
-        
-        // Convert checkbox values to boolean
-        data.bold_shop = data.bold_shop === 'on';
-        data.bold_product = data.bold_product === 'on';
-        data.bold_dosage = data.bold_dosage === 'on';
-        
-        // Convert numeric values
-        const numericFields = ['paper_width', 'paper_height', 'padding_top', 'padding_right', 
-                              'padding_bottom', 'padding_left', 'font_size_shop', 'font_size_product',
-                              'font_size_dosage', 'font_size_small', 'section_gap'];
-        numericFields.forEach(field => {
-            data[field] = parseInt(data[field], 10);
-        });
-        data.line_spacing = parseFloat(data.line_spacing);
-
-        // Process row_styles
-        const rowStyles = [];
-        let index = 0;
-        while (data[`row_styles[${index}][name]`]) {
-            rowStyles.push({
-                name: data[`row_styles[${index}][name]`],
-                label: data[`row_styles[${index}][label]`],
-                font_size: parseInt(data[`row_styles[${index}][font_size]`], 10),
-                bold: data[`row_styles[${index}][bold]`] === 'on',
-                align: data[`row_styles[${index}][align]`],
-                show: data[`row_styles[${index}][show]`] === 'on',
-            });
-            index++;
-        }
-        data.row_styles = rowStyles;
-
-        // Remove old individual font size fields since we're using row_styles now
-        delete data.font_size_shop;
-        delete data.font_size_product;
-        delete data.font_size_dosage;
-        delete data.font_size_small;
+        const data = {
+            paper_width: parseInt(formData.get('paper_width') || settings.paper_width, 10),
+            paper_height: parseInt(formData.get('paper_height') || settings.paper_height, 10),
+            padding_top: parseInt(formData.get('padding_top') || settings.padding_top, 10),
+            padding_right: parseInt(formData.get('padding_right') || settings.padding_right, 10),
+            padding_bottom: parseInt(formData.get('padding_bottom') || settings.padding_bottom, 10),
+            padding_left: parseInt(formData.get('padding_left') || settings.padding_left, 10),
+            font_family: formData.get('font_family') || settings.font_family,
+            bold_shop: toBool(formData.get('bold_shop')),
+            bold_product: toBool(formData.get('bold_product')),
+            bold_dosage: toBool(formData.get('bold_dosage')),
+            line_spacing: parseFloat(formData.get('line_spacing') || settings.line_spacing),
+            section_gap: parseInt(formData.get('section_gap') || settings.section_gap, 10),
+            row_styles: collectRowStylesFromForm(formData),
+        };
 
         try {
             const response = await fetch('/api/label-settings', {
@@ -615,24 +870,11 @@ function initializeLabelSettingsForm(settings, previewLabel) {
 
     // Initial preview render
     updateLabelPreview();
+    window.addEventListener('resize', updateLabelPreview);
+    document.getElementById('btn-print-sample')?.addEventListener('click', printSampleLabel);
 
     function updateLabelPreview() {
         const formData = new FormData(form);
-        
-        // Get row styles from form
-        const rowStyles = [];
-        let index = 0;
-        while (formData.get(`row_styles[${index}][name]`)) {
-            rowStyles.push({
-                name: formData.get(`row_styles[${index}][name]`),
-                label: formData.get(`row_styles[${index}][label]`),
-                font_size: parseInt(formData.get(`row_styles[${index}][font_size]`) || 12, 10),
-                bold: formData.get(`row_styles[${index}][bold]`) === 'on',
-                align: formData.get(`row_styles[${index}][align]`) || 'left',
-                show: formData.get(`row_styles[${index}][show]`) === 'on',
-            });
-            index++;
-        }
 
         const previewSettings = {
             paper_width: parseInt(formData.get('paper_width') || settings.paper_width, 10),
@@ -642,12 +884,12 @@ function initializeLabelSettingsForm(settings, previewLabel) {
             padding_bottom: parseInt(formData.get('padding_bottom') || settings.padding_bottom, 10),
             padding_left: parseInt(formData.get('padding_left') || settings.padding_left, 10),
             font_family: formData.get('font_family') || settings.font_family,
-            bold_shop: formData.get('bold_shop') === 'on',
-            bold_product: formData.get('bold_product') === 'on',
-            bold_dosage: formData.get('bold_dosage') === 'on',
+            bold_shop: toBool(formData.get('bold_shop')),
+            bold_product: toBool(formData.get('bold_product')),
+            bold_dosage: toBool(formData.get('bold_dosage')),
             line_spacing: parseFloat(formData.get('line_spacing') || settings.line_spacing),
             section_gap: parseInt(formData.get('section_gap') || settings.section_gap, 10),
-            row_styles: rowStyles.length > 0 ? rowStyles : settings.row_styles || [],
+            row_styles: collectRowStylesFromForm(formData),
         };
 
         const previewContainer = document.getElementById('label-preview');
@@ -657,144 +899,61 @@ function initializeLabelSettingsForm(settings, previewLabel) {
         }
     }
 
-    function generateLabelPreview(label, settings, previewMaxWidthPx = 380) {
-        // Convert mm to px for display (1mm ≈ 3.78px at 96dpi)
-        const mmToPx = 3.78;
-        const widthPx = settings.paper_width * mmToPx;
-        const heightPx = settings.paper_height * mmToPx;
-        const paddingTopPx = settings.padding_top * mmToPx;
-        const paddingRightPx = settings.padding_right * mmToPx;
-        const paddingBottomPx = settings.padding_bottom * mmToPx;
-        const paddingLeftPx = settings.padding_left * mmToPx;
-
-        // Scale to fit preview area while keeping real paper proportion.
-        const scale = Math.min(previewMaxWidthPx / widthPx, 1);
-        const displayWidthPx = widthPx * scale;
-        const displayHeightPx = heightPx * scale;
-
-        // Get row styles
-        const rowStyles = settings.row_styles || [];
-        const rowStyleMap = {};
-        rowStyles.forEach(row => {
-            rowStyleMap[row.name] = row;
-        });
-
-        // Helper function to get style for a row
-        const getRowStyle = (name) => {
-            const style = rowStyleMap[name];
-            if (!style || !style.show) return null;
-            
-            return {
-                fontSize: style.font_size,
-                bold: style.bold,
-                align: style.align,
-            };
+    function printSampleLabel() {
+        const formData = new FormData(form);
+        const s = {
+            paper_width:    parseInt(formData.get('paper_width')    || settings.paper_width,  10),
+            paper_height:   parseInt(formData.get('paper_height')   || settings.paper_height, 10),
+            padding_top:    parseInt(formData.get('padding_top')    || settings.padding_top,  10),
+            padding_right:  parseInt(formData.get('padding_right')  || settings.padding_right,10),
+            padding_bottom: parseInt(formData.get('padding_bottom') || settings.padding_bottom,10),
+            padding_left:   parseInt(formData.get('padding_left')   || settings.padding_left, 10),
+            font_family:    formData.get('font_family') || settings.font_family,
+            line_spacing:   parseFloat(formData.get('line_spacing') || settings.line_spacing),
+            section_gap:    parseInt(formData.get('section_gap')    || settings.section_gap,  10),
+            row_styles:     collectRowStylesFromForm(formData),
         };
 
-        // Build label content based on row styles
-        let labelContent = '';
-        
-        // Shop name row
-        const shopNameStyle = getRowStyle('shop_name');
-        if (shopNameStyle) {
-            const boldStyle = shopNameStyle.bold ? 'font-weight: bold;' : '';
-            const alignStyle = `text-align: ${shopNameStyle.align};`;
-            labelContent += `<div style="font-size: ${shopNameStyle.fontSize}px; ${boldStyle} ${alignStyle}">${escapeHtml(label.shop_name)}</div>`;
+        const labelHtml = generateLabelPreview(previewLabel, s, s.paper_width * 3.78, { forPrint: true });
+
+        const printWindow = window.open('', '', 'width=800,height=600');
+        if (!printWindow) {
+            alert('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต pop-up แล้วลองใหม่');
+            return;
         }
 
-        // Shop address row
-        const shopAddressStyle = getRowStyle('shop_address');
-        if (shopAddressStyle && label.shop_address) {
-            const boldStyle = shopAddressStyle.bold ? 'font-weight: bold;' : '';
-            const alignStyle = `text-align: ${shopAddressStyle.align};`;
-            labelContent += `<div style="font-size: ${shopAddressStyle.fontSize}px; ${boldStyle} ${alignStyle}; margin-top: 2px;">${escapeHtml(label.shop_address)}</div>`;
-        }
-
-        // Shop phone row
-        const shopPhoneStyle = getRowStyle('shop_phone');
-        if (shopPhoneStyle && label.shop_phone) {
-            const boldStyle = shopPhoneStyle.bold ? 'font-weight: bold;' : '';
-            const alignStyle = `text-align: ${shopPhoneStyle.align};`;
-            labelContent += `<div style="font-size: ${shopPhoneStyle.fontSize}px; ${boldStyle} ${alignStyle}; margin-top: 1px;">โทร. ${escapeHtml(label.shop_phone)}</div>`;
-        }
-
-        // Date row
-        const dateStyle = getRowStyle('date');
-        if (dateStyle) {
-            const boldStyle = dateStyle.bold ? 'font-weight: bold;' : '';
-            const alignStyle = `text-align: ${dateStyle.align};`;
-            labelContent += `<div style="font-size: ${dateStyle.fontSize}px; ${boldStyle} ${alignStyle}; margin-top: 2px;">วันที่ 01/04/2567</div>`;
-        }
-
-        // Add separator if we have header content
-        if (labelContent) {
-            labelContent = `<div style="border-bottom: 1px solid #000; padding-bottom: ${settings.section_gap}px; margin-bottom: ${settings.section_gap}px;">${labelContent}</div>`;
-        }
-
-        // Product name row
-        const productNameStyle = getRowStyle('product_name');
-        if (productNameStyle) {
-            const boldStyle = productNameStyle.bold ? 'font-weight: bold;' : '';
-            const alignStyle = `text-align: ${productNameStyle.align};`;
-            labelContent += `<div style="border-bottom: 1px solid #000; padding-bottom: ${settings.section_gap}px; margin-bottom: ${settings.section_gap}px;">
-                <div style="font-size: ${productNameStyle.fontSize}px; ${boldStyle} ${alignStyle}">${escapeHtml(label.product_name)}</div>
-            </div>`;
-        }
-
-        // Dosage row
-        const dosageStyle = getRowStyle('dosage');
-        if (dosageStyle) {
-            const boldStyle = dosageStyle.bold ? 'font-weight: bold;' : '';
-            const alignStyle = `text-align: ${dosageStyle.align};`;
-            labelContent += `<div style="margin-bottom: ${settings.section_gap}px;">
-                <div style="font-size: ${dosageStyle.fontSize}px; ${boldStyle} ${alignStyle}; line-height: ${settings.line_spacing};">
-                    ทานครั้งละ ${escapeHtml(label.dosage)} ${escapeHtml(label.meal_relation)}
-                </div>
-                <div style="font-size: ${dosageStyle.fontSize}px; ${boldStyle} ${alignStyle}; line-height: ${settings.line_spacing}; margin-top: 4px;">
-                    วันละ ${escapeHtml(label.frequency)} | ${escapeHtml(label.label_time)}
-                </div>
-            </div>`;
-        }
-
-        // Indication row
-        const indicationStyle = getRowStyle('indication');
-        if (indicationStyle && label.indication) {
-            const boldStyle = indicationStyle.bold ? 'font-weight: bold;' : '';
-            const alignStyle = `text-align: ${indicationStyle.align};`;
-            labelContent += `<div style="font-size: ${indicationStyle.fontSize}px; ${boldStyle} ${alignStyle}; margin: ${settings.section_gap}px 0;">สรรพคุณ: ${escapeHtml(label.indication)}</div>`;
-        }
-
-        // Advice row
-        const adviceStyle = getRowStyle('advice');
-        if (adviceStyle && label.advice) {
-            const boldStyle = adviceStyle.bold ? 'font-weight: bold;' : '';
-            const alignStyle = `text-align: ${adviceStyle.align};`;
-            labelContent += `<div style="font-size: ${adviceStyle.fontSize}px; ${boldStyle} ${alignStyle}; margin: ${settings.section_gap}px 0;">${escapeHtml(label.advice)}</div>`;
-        }
-
-        // Barcode placeholder
-        labelContent += `<div style="text-align: center; margin-top: ${settings.section_gap * 2}px;">
-            <div style="height: 35px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #666;">
-                [บาร์โค้ด]
-            </div>
-        </div>`;
-
-        return `
-            <div style="width: ${displayWidthPx}px; height: ${displayHeightPx}px; border: 1px solid #ccc; background: white; position: relative; margin: 0 auto; overflow: hidden;">
-                <div style="width: ${widthPx}px; height: ${heightPx}px; transform: scale(${scale}); transform-origin: top left;">
-                    <div style="position: absolute; top: ${paddingTopPx}px; right: ${paddingRightPx}px; bottom: ${paddingBottomPx}px; left: ${paddingLeftPx}px; font-family: '${settings.font_family}', Arial, sans-serif; color: #000;">
-                        ${labelContent}
-                    </div>
-                </div>
-            </div>
-        `;
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+                <style>
+                    @page {
+                        size: ${s.paper_width}mm ${s.paper_height}mm;
+                        margin: 0;
+                    }
+                    html, body {
+                        width: ${s.paper_width}mm;
+                        height: ${s.paper_height}mm;
+                        margin: 0;
+                        padding: 0;
+                        overflow: hidden;
+                        font-family: '${s.font_family}', 'Google Sans', Arial, sans-serif;
+                    }
+                </style>
+            </head>
+            <body>
+                ${labelHtml}
+                <script>
+                    window.addEventListener('load', () => setTimeout(() => window.print(), 500));
+                <\/script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
     }
 
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
 }
 
 // Toast notification helper (if not already defined)

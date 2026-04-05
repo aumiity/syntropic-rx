@@ -1746,7 +1746,8 @@
 
         // --- Label Tab ---
         const productId = {{ $product->id }};
-        const productName = @json($product->trade_name);
+        const productName = @json($product->name_for_print ?: $product->trade_name);
+        window.productName = productName; // Make it globally accessible for label preview
         const labelApiBase = `/products/${productId}/labels`;
         const labelLookupUrls = {
             frequencies: `/api/label-frequencies`,
@@ -1959,68 +1960,58 @@
         }
 
         // Helper: Generate label preview HTML
-        function generateLabelPreviewHTML(label, shopSettings, lang = 'th', isPrint = false) {
-            const shopName = shopSettings?.shop_name || 'ชื่อร้าน';
-            const shopAddress = shopSettings?.shop_address || '';
-            const shopPhone = shopSettings?.shop_phone || '';
-            const productName = window.productName || getLangValue(label, 'label_name', lang);
-            const dosageText = getLangValue(label, 'dosage_name', lang);
-            const frequencyText = getLangValue(label, 'frequency_name', lang);
-            const mealRelationText = getLangValue(label, 'meal_relation_name', lang);
-            const labelTimeText = getLangValue(label, 'label_time_name', lang);
-            const indicationText = lang === 'th' ? (label.indication_th || '') : lang === 'mm' ? (label.indication_mm || '') : (label.indication_zh || '');
-            const adviceText = getLangValue(label, 'advice_name', lang);
-            const todayDate = formatThaiDate(new Date());
-            
-            // Determine width based on print mode
-            const width = isPrint ? '100%' : '380px';
+        function generateLabelPreviewHTML(label, shopSettings, lang = 'th', isPrint = false, labelSettings = null) {
+            const getLang = (obj, field) => {
+                if (lang === 'mm') return obj[field + '_mm'] || obj[field] || '';
+                if (lang === 'zh') return obj[field + '_zh'] || obj[field] || '';
+                return obj[field] || '';
+            };
 
-            let html = `
-                <div style="width:${width}; padding:10px; background:white; color:#000; font-family:'Tahoma',Arial,sans-serif; font-size:11px; line-height:1.3; box-sizing:border-box;">
-                    <!-- HEADER -->
-                    <div style="border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 6px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div style="font-weight: bold; font-size: 13px;">${escapeHtml(shopName)}</div>
-                            <div style="font-size: 11px;">${todayDate}</div>
-                        </div>
-                        ${shopAddress ? `<div style="font-size: 10px; margin-top: 2px;">${escapeHtml(shopAddress)}</div>` : ''}
-                        ${shopPhone ? `<div style="font-size: 10px; margin-top: 1px;">โทร. ${escapeHtml(shopPhone)}</div>` : ''}
-                    </div>
+            const productName = [label.name_for_print, label.trade_name, window.productName]
+                .find(v => typeof v === 'string' && v.trim() !== '') || '';
 
-                    <!-- PRODUCT -->
-                    <div style="border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 6px;">
-                        <div style="font-size: 14px; font-weight: bold; text-align: center;">${escapeHtml(productName)}</div>
-                    </div>
+            const previewLabel = {
+                shop_name:     shopSettings?.shop_name    || '',
+                shop_address:  shopSettings?.shop_address || '',
+                shop_phone:    shopSettings?.shop_phone   || '',
+                product_name:  productName,
+                dosage:        getLang(label, 'dosage_name'),
+                frequency:     getLang(label, 'frequency_name'),
+                meal_relation: getLang(label, 'meal_relation_name'),
+                label_time:    getLang(label, 'label_time_name'),
+                indication:    lang === 'th' ? (label.indication_th || '')
+                             : lang === 'mm' ? (label.indication_mm || '')
+                             : (label.indication_zh || ''),
+                advice:        getLang(label, 'advice_name'),
+                show_barcode:  label.show_barcode && label.product_barcode,
+                barcode:       label.product_barcode || '',
+                barcode_id:    `barcode-${label.id}-${lang}`,
+            };
 
-                    <!-- DOSAGE INSTRUCTION -->
-                    <div style="margin-bottom: 6px;">
-                        <div style="font-size: 16px; font-weight: bold; line-height: 1.4;">
-                            ${dosageText ? `ทานครั้งละ ${escapeHtml(dosageText)}` : ''}
-                            ${mealRelationText ? ` ${escapeHtml(mealRelationText)}` : ''}
-                        </div>
-                        <div style="font-size: 16px; font-weight: bold; line-height: 1.4;">
-                            ${frequencyText ? `วันละ ${escapeHtml(frequencyText)}` : ''}
-                            ${labelTimeText ? ` | ${escapeHtml(labelTimeText)}` : ''}
-                        </div>
-                    </div>
+            const previewSettings = {
+                paper_width:    labelSettings?.paper_width    ?? 70,
+                paper_height:   labelSettings?.paper_height   ?? 50,
+                padding_top:    labelSettings?.padding_top    ?? 3,
+                padding_right:  labelSettings?.padding_right  ?? 3,
+                padding_bottom: labelSettings?.padding_bottom ?? 3,
+                padding_left:   labelSettings?.padding_left   ?? 3,
+                font_family:    labelSettings?.font_family    || 'Tahoma',
+                line_spacing:   labelSettings?.line_spacing   ?? 1.4,
+                row_styles:     labelSettings?.row_styles     || {},
+            };
 
-                    <!-- INDICATION -->
-                    ${indicationText ? `<div style="font-size: 10px; margin: 4px 0;">สรรพคุณ: ${escapeHtml(indicationText)}</div>` : ''}
+            const maxWidth = isPrint ? (previewSettings.paper_width * 3.78) : 380;
+            const options  = { forPrint: isPrint };
 
-                    <!-- ADVICE -->
-                    ${adviceText ? `<div style="font-size: 10px; margin: 4px 0;">${escapeHtml(adviceText)}</div>` : ''}
-
-                    <!-- BARCODE -->
-                    ${label.show_barcode && label.product_barcode ? `<div style="text-align: center; margin: 8px 0;"><svg id="barcode-${label.id}-${lang}" style="max-height: 35px;"></svg></div>` : ''}
-                </div>
-            `;
-
-            return html;
+            return generateLabelPreview(previewLabel, previewSettings, maxWidth, options);
         }
 
         // Function: Print label
-        function printLabel(label, shopSettings, lang = 'th') {
-            const content = generateLabelPreviewHTML(label, shopSettings, lang, true);
+        function printLabel(label, shopSettings, lang = 'th', labelSettings = null) {
+            const pw = labelSettings?.paper_width ?? 70;
+            const ph = labelSettings?.paper_height ?? 50;
+            const content = generateLabelPreviewHTML(label, shopSettings, lang, true, labelSettings);
+
             const printWindow = window.open('', '', 'width=1000,height=600');
             printWindow.document.write(`
                 <!DOCTYPE html>
@@ -2029,19 +2020,17 @@
                     <meta charset="UTF-8">
                     <style>
                         @page {
-                            size: 100mm 75mm;
+                            size: ${pw}mm ${ph}mm;
                             margin: 3mm;
                         }
                         body {
                             margin: 0;
                             padding: 0;
-                            width: 100mm;
-                            height: 75mm;
                             font-family: 'Tahoma', Arial, sans-serif;
                         }
                         .print-container {
-                            width: 94mm;  /* 100mm - 2×3mm margin */
-                            height: 69mm;
+                            width: ${pw}mm;
+                            height: ${ph}mm;
                             overflow: hidden;
                         }
                     </style>
@@ -2091,6 +2080,16 @@
                 console.warn('Failed to load shop settings');
             }
 
+            // Fetch label settings
+            let labelSettings = null;
+            try {
+                const lsRes = await fetch('/api/label-settings', { headers: { 'Accept': 'application/json' } });
+                labelSettings = (await lsRes.json()).data || null;
+            } catch (e) {
+                console.warn('Failed to load label settings');
+            }
+
+
             let html = '';
             for (const label of labels) {
                 const defaultBadge = label.is_default ? '<span class="inline-flex items-center rounded-full border border-amber-400/40 bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300 ml-2">⭐ เริ่มต้น</span>' : '';
@@ -2105,7 +2104,7 @@
                         <!-- Left: Label Preview ~400px -->
                         <div class="flex-shrink-0 w-[400px]">
                             <div class="border-2 border-gray-300 rounded bg-white p-3 label-preview-${label.id}" data-label-id="${label.id}">
-                                ${generateLabelPreviewHTML(label, shopSettings, 'th', false)}
+                                ${generateLabelPreviewHTML(label, shopSettings, 'th', false, labelSettings)}
                             </div>
                             <!-- Language Switcher -->
                             <div class="flex gap-2 mt-3 justify-center">
@@ -2177,7 +2176,7 @@
                     // Update preview
                     const preview = document.querySelector(`.label-preview-${labelId}`);
                     if (preview) {
-                        preview.innerHTML = generateLabelPreviewHTML(label, shopSettings, lang, false);
+                        preview.innerHTML = generateLabelPreviewHTML(label, shopSettings, lang, false, labelSettings);
                         // Re-render barcode if needed
                         if (label.show_barcode && label.product_barcode && typeof JsBarcode !== 'undefined') {
                             setTimeout(() => {
@@ -2223,7 +2222,7 @@
                 btn.addEventListener('click', function() {
                     const label = labels.find(l => l.id == btn.dataset.id);
                     const lang = btn.dataset.lang || 'th';
-                    if (label) printLabel(label, shopSettings, lang);
+                    if (label) printLabel(label, shopSettings, lang, labelSettings);
                 });
             });
 

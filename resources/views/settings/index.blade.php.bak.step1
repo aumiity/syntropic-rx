@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <div class="p-6 w-full">
 
     <div class="mb-5">
@@ -202,6 +203,13 @@
                 <div class="flex items-center justify-center h-32">
                     <span class="text-gray-400">กำลังโหลดการตั้งค่าฉลากยา...</span>
                 </div>
+                <div class="flex justify-end gap-3 mt-4">
+                    <button type="submit" class="px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium">บันทึก</button>
+                    <button type="button" id="btn-print-sample"
+                        class="px-4 py-2 rounded-lg border border-purple-400 text-purple-600 hover:bg-purple-50 text-sm font-medium">
+                        🖨 พิมพ์ฉลากตัวอย่าง
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -225,6 +233,200 @@
 </div>
 
 <script>
+let currentLabelSettings = null;
+let currentPreviewLabel = null;
+
+function toBoolValue(value) {
+    return value === true || value === 1 || value === '1' || value === 'on';
+}
+
+function clampFontSizeValue(value, fallback = 12) {
+    const parsed = parseInt(value, 10);
+    if (Number.isNaN(parsed)) return fallback;
+    return Math.min(40, Math.max(6, parsed));
+}
+
+function clampMarginTopValue(value, fallback = 0) {
+    const parsed = parseInt(value, 10);
+    if (Number.isNaN(parsed)) return fallback;
+    return Math.min(100, Math.max(-50, parsed));
+}
+
+function collectRowStylesFromFormData(formData, baseSettings) {
+    const defaults = normalizeRowStyles(baseSettings?.row_styles);
+    const result = {};
+
+    ROW_STYLE_ORDER.forEach(({ key }) => {
+        const fallback = defaults[key] || DEFAULT_ROW_STYLES[key];
+        const alignRaw = formData.get(`row_styles[${key}][align]`) || fallback.align;
+        result[key] = {
+            fontSize: clampFontSizeValue(formData.get(`row_styles[${key}][fontSize]`), fallback.fontSize),
+            bold: toBoolValue(formData.get(`row_styles[${key}][bold]`) ?? (fallback.bold ? '1' : '0')),
+            italic: toBoolValue(formData.get(`row_styles[${key}][italic]`) ?? (fallback.italic ? '1' : '0')),
+            underline: toBoolValue(formData.get(`row_styles[${key}][underline]`) ?? (fallback.underline ? '1' : '0')),
+            align: ['left', 'center', 'right'].includes(alignRaw) ? alignRaw : fallback.align,
+            marginTop: clampMarginTopValue(formData.get(`row_styles[${key}][marginTop]`), fallback.marginTop),
+        };
+    });
+
+    return result;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function generateLabelPreview(label, settings, previewMaxWidthPx = 380) {
+    const mmToPx = 3.78;
+    const widthPx = settings.paper_width * mmToPx;
+    const heightPx = settings.paper_height * mmToPx;
+    const paddingTopPx = settings.padding_top * mmToPx;
+    const paddingRightPx = settings.padding_right * mmToPx;
+    const paddingBottomPx = settings.padding_bottom * mmToPx;
+    const paddingLeftPx = settings.padding_left * mmToPx;
+
+    const scale = Math.min(previewMaxWidthPx / widthPx, 1);
+    const displayWidthPx = widthPx * scale;
+    const displayHeightPx = heightPx * scale;
+    const rowStyles = normalizeRowStyles(settings.row_styles);
+    const dividerStyle = rowStyles.divider || DEFAULT_ROW_STYLES.divider;
+    const barcodeStyle = rowStyles.barcode || DEFAULT_ROW_STYLES.barcode;
+
+    function buildRowStyle(s) {
+        return `
+            display: block;
+            font-size: ${s.fontSize}px;
+            font-weight: ${s.bold ? 'bold' : 'normal'};
+            font-style: ${s.italic ? 'italic' : 'normal'};
+            text-decoration: ${s.underline ? 'underline' : 'none'};
+            text-align: ${s.align};
+            line-height: ${settings.line_spacing};
+            position: relative;
+            top: ${s.marginTop}px;
+        `;
+    }
+
+    const now = new Date();
+    const todayDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear() + 543}`;
+    const addressPhone = label.shop_address && label.shop_phone
+        ? `${label.shop_address} (${label.shop_phone})`
+        : (label.shop_address || label.shop_phone || '');
+
+    let labelContent = '';
+
+    labelContent += `
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:10px;">
+            <div style="flex:1; position:relative; ${buildRowStyle(rowStyles.shop_name)}">${escapeHtml(label.shop_name || '')}</div>
+            <div style="min-width:110px; position:relative; ${buildRowStyle(rowStyles.date)}">${escapeHtml(todayDate)}</div>
+        </div>
+    `;
+
+    if (addressPhone) {
+        labelContent += `<div style="position:relative; ${buildRowStyle(rowStyles.address)}">${escapeHtml(addressPhone)}</div>`;
+    }
+
+    labelContent += `<div style="position:relative; top:${dividerStyle.marginTop}px; border-top:1px solid #000;"></div>`;
+
+    labelContent += `
+        <div style="position:relative; top:${barcodeStyle.marginTop}px; text-align:right;">
+            <div style="display:inline-block; font-size:10px; letter-spacing:0.5px;">[████ BARCODE ████]</div>
+        </div>
+    `;
+
+    labelContent += `<div style="position:relative; ${buildRowStyle(rowStyles.product_name)}">${escapeHtml(label.product_name || '')}</div>`;
+    labelContent += `<div style="position:relative; ${buildRowStyle(rowStyles.dosage_line1)}">ทานครั้งละ ${escapeHtml(label.dosage || '')} วันละ ${escapeHtml(label.frequency || '')}</div>`;
+    labelContent += `<div style="position:relative; ${buildRowStyle(rowStyles.dosage_line2)}">${escapeHtml(label.meal_relation || '')} ${escapeHtml(label.label_time || '')}</div>`;
+
+    if (label.indication) {
+        labelContent += `<div style="position:relative; ${buildRowStyle(rowStyles.indication)}">ข้อบ่งใช้: ${escapeHtml(label.indication)}</div>`;
+    }
+
+    if (label.advice) {
+        labelContent += `<div style="position:relative; ${buildRowStyle(rowStyles.advice)}">หมายเหตุ: ${escapeHtml(label.advice)}</div>`;
+    }
+
+    return `
+        <div style="width: ${displayWidthPx}px; height: ${displayHeightPx}px; border: 1px solid #ccc; background: white; position: relative; margin: 0 auto; overflow: hidden;">
+            <div style="width: ${widthPx}px; height: ${heightPx}px; transform: scale(${scale}); transform-origin: top left;">
+                <div style="position: absolute; top: ${paddingTopPx}px; right: ${paddingRightPx}px; bottom: ${paddingBottomPx}px; left: ${paddingLeftPx}px; font-family: '${settings.font_family}', 'Google Sans', Arial, sans-serif; color: #000;">
+                    ${labelContent}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function printSampleLabel() {
+    const form = document.getElementById('label-settings-form') || document.querySelector('#label-settings-container form');
+    if (!form || !currentLabelSettings || !currentPreviewLabel) {
+        showToast('ยังโหลดข้อมูลฉลากไม่ครบ กรุณาลองใหม่อีกครั้ง', 'error');
+        return;
+    }
+
+    const formData = new FormData(form);
+    const s = {
+        paper_width: parseInt(formData.get('paper_width') || currentLabelSettings.paper_width, 70),
+        paper_height: parseInt(formData.get('paper_height') || currentLabelSettings.paper_height, 50),
+        padding_top: parseInt(formData.get('padding_top') || currentLabelSettings.padding_top, 10),
+        padding_right: parseInt(formData.get('padding_right') || currentLabelSettings.padding_right, 10),
+        padding_bottom: parseInt(formData.get('padding_bottom') || currentLabelSettings.padding_bottom, 10),
+        padding_left: parseInt(formData.get('padding_left') || currentLabelSettings.padding_left, 10),
+        font_family: formData.get('font_family') || currentLabelSettings.font_family,
+        line_spacing: parseFloat(formData.get('line_spacing') || currentLabelSettings.line_spacing),
+        row_styles: collectRowStylesFromFormData(formData, currentLabelSettings),
+    };
+
+    // Build print HTML with print-specific layout (no preview frame/border/transform)
+    const labelHtml = generateLabelPreview(currentPreviewLabel, s, s.paper_width * 3.78, { forPrint: true });
+
+    const printWindow = window.open('', '', 'width=800,height=600');
+    if (!printWindow) {
+        showToast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์ กรุณาอนุญาต pop-up แล้วลองใหม่', 'error');
+        return;
+    }
+
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+            <style>
+                @page {
+                    size: ${s.paper_width}mm ${s.paper_height}mm;
+                    margin: 0;
+                }
+                html, body {
+                    width: ${s.paper_width}mm;
+                    height: ${s.paper_height}mm;
+                    margin: 0;
+                    padding: 0;
+                    overflow: hidden;
+                }
+                body {
+                    font-family: '${s.font_family}', 'Google Sans', Arial, sans-serif;
+                }
+                .print-root {
+                    width: ${s.paper_width}mm;
+                    height: ${s.paper_height}mm;
+                    overflow: hidden;
+                    page-break-after: avoid;
+                    break-after: avoid-page;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="print-root">${labelHtml}</div>
+            <script>
+                window.addEventListener('load', () => setTimeout(() => window.print(), 500));
+            <\/script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
 // Tab switching
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -280,22 +482,26 @@ const ROW_STYLE_ORDER = [
     { key: 'shop_name', label: 'ชื่อร้าน' },
     { key: 'date', label: 'วันที่' },
     { key: 'address', label: 'ที่อยู่ / เบอร์โทร' },
+    { key: 'divider', label: 'แถบคั่น (divider)', marginOnly: true },
     { key: 'product_name', label: 'ชื่อสินค้า' },
-    { key: 'dosage_line1', label: 'วิธีใช้ บรรทัด 1 — ทานครั้งละ + วันละ' },
-    { key: 'dosage_line2', label: 'วิธีใช้ บรรทัด 2 — ก่อน/หลังอาหาร + เวลา' },
+    { key: 'dosage_line1', label: 'วิธีใช้ บรรทัด 1' },
+    { key: 'dosage_line2', label: 'วิธีใช้ บรรทัด 2' },
     { key: 'indication', label: 'สรรพคุณ' },
     { key: 'advice', label: 'คำแนะนำ' },
+    { key: 'barcode', label: 'บาร์โค้ด (barcode)', marginOnly: true },
 ];
 
 const DEFAULT_ROW_STYLES = {
-    shop_name: { fontSize: 18, bold: true, italic: false, underline: false, align: 'left', marginTop: 0 },
+    shop_name: { fontSize: 13, bold: true, italic: false, underline: false, align: 'left', marginTop: 0 },
     date: { fontSize: 10, bold: false, italic: false, underline: false, align: 'right', marginTop: 0 },
-    address: { fontSize: 12, bold: false, italic: false, underline: false, align: 'left', marginTop: 2 },
-    product_name: { fontSize: 16, bold: true, italic: false, underline: false, align: 'left', marginTop: 6 },
-    dosage_line1: { fontSize: 14, bold: true, italic: false, underline: false, align: 'left', marginTop: 4 },
-    dosage_line2: { fontSize: 14, bold: true, italic: false, underline: false, align: 'left', marginTop: 2 },
-    indication: { fontSize: 14, bold: false, italic: false, underline: false, align: 'left', marginTop: 4 },
-    advice: { fontSize: 14, bold: false, italic: false, underline: false, align: 'left', marginTop: 2 },
+    address: { fontSize: 10, bold: false, italic: false, underline: false, align: 'left', marginTop: 2 },
+    product_name: { fontSize: 14, bold: true, italic: false, underline: false, align: 'left', marginTop: 6 },
+    dosage_line1: { fontSize: 16, bold: true, italic: false, underline: false, align: 'left', marginTop: 4 },
+    dosage_line2: { fontSize: 16, bold: true, italic: false, underline: false, align: 'left', marginTop: 2 },
+    indication: { fontSize: 10, bold: false, italic: false, underline: false, align: 'left', marginTop: 4 },
+    advice: { fontSize: 10, bold: false, italic: false, underline: false, align: 'left', marginTop: 2 },
+    divider: { fontSize: 10, bold: false, italic: false, underline: false, align: 'left', marginTop: 4 },
+    barcode: { fontSize: 10, bold: false, italic: false, underline: false, align: 'left', marginTop: 4 },
 };
 
 function normalizeRowStyles(rowStyles) {
@@ -386,10 +592,13 @@ function renderLabelSettingsForm(settings) {
         advice: 'รับประทานให้ครบ',
     };
 
+    currentLabelSettings = { ...settings, row_styles: rowStyles };
+    currentPreviewLabel = previewLabel;
+
     const html = `
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             <!-- Left: Preview -->
-            <div>
+            <div class="sticky top-5 self-start">
                 <h3 class="text-sm font-semibold text-gray-800 mb-4">Preview ฉลากยา</h3>
                 <div class="border-2 border-gray-300 rounded-lg p-4 bg-white">
                     <div id="label-preview" class="flex items-center justify-center min-h-[400px]">
@@ -399,23 +608,47 @@ function renderLabelSettingsForm(settings) {
                 <div class="mt-4 text-xs text-gray-500">
                     <p>ตัวอย่างฉลากยาแสดงผลตามการตั้งค่าข้างขวา (อัปเดตทันที)</p>
                 </div>
+                <div class="mt-2 flex justify-end">
+                    <button type="button" id="btn-print-sample"
+                        class="px-4 py-2 rounded-lg border border-purple-400 text-purple-600 hover:bg-purple-50 text-sm font-medium">
+                        🖨 พิมพ์ฉลากตัวอย่าง
+                    </button>
+                </div>
             </div>
 
             <!-- Right: Form -->
             <div>
                 <h3 class="text-sm font-semibold text-gray-800 mb-4">ตั้งค่า template ฉลากยา</h3>
-                
                 <form id="label-settings-form" class="space-y-6">
                     <input type="hidden" name="bold_shop" value="${settings.bold_shop ? 1 : 0}">
                     <input type="hidden" name="bold_product" value="${settings.bold_product ? 1 : 0}">
                     <input type="hidden" name="bold_dosage" value="${settings.bold_dosage ? 1 : 0}">
+                    <input type="hidden" name="line_spacing" value="${settings.line_spacing}">
+                    <input type="hidden" name="section_gap" value="${settings.section_gap}">
 
                     <!-- Group 3: Row Controls -->
                     <div class="border border-gray-200 rounded-lg p-4">
-                        <h4 class="text-xs font-semibold text-gray-700 mb-3">ตั้งค่าแต่ละแถว</h4>
+                        <h4 class="text-xs font-semibold text-gray-700 mb-1">ตั้งค่าแต่ละแถว</h4>
+                        <p class="text-xs text-gray-500 mb-3">แต่ละบรรทัดเลื่อนขึ้น/ลงได้แบบอิสระทันทีจากตัวเลื่อน margin-top</p>
                         <div class="space-y-4">
                             ${ROW_STYLE_ORDER.map((row) => {
                                 const style = rowStyles[row.key];
+
+                                if (row.marginOnly) {
+                                    return `
+                                <div class="border border-gray-100 rounded-lg p-3 bg-gray-50" data-row-key="${row.key}">
+                                    <div class="text-sm font-medium text-gray-700 mb-2">${row.label}</div>
+                                    <div>
+                                        <label class="block text-xs text-gray-600 mb-1">margin-top: <span class="text-gray-400">เลื่อนขึ้น(ค่าลบ) / ลง(ค่าบวก) แบบอิสระ</span></label>
+                                        <div class="flex items-center gap-3">
+                                            <input type="range" min="-50" max="100" value="${style.marginTop}" class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer row-margin-range" name="row_styles[${row.key}][marginTop]" data-row-key="${row.key}">
+                                            <input type="number" min="-50" max="100" value="${style.marginTop}" class="w-20 h-9 rounded-lg border border-gray-300 px-2 text-sm focus:outline-none focus:border-emerald-400 row-margin-number" data-row-key="${row.key}">
+                                            <span class="text-xs text-gray-600 whitespace-nowrap">px</span>
+                                        </div>
+                                    </div>
+                                </div>`;
+                                }
+
                                 return `
                                 <div class="border border-gray-100 rounded-lg p-3 bg-gray-50" data-row-key="${row.key}">
                                     <div class="text-sm font-medium text-gray-700 mb-2">${row.label}</div>
@@ -450,7 +683,7 @@ function renderLabelSettingsForm(settings) {
 
                                     <!-- Row 3: Margin Top -->
                                     <div>
-                                        <label class="block text-xs text-gray-600 mb-1">Margin top: <span class="text-gray-400">← เลื่อนบรรทัดขึ้น(ลบ)/ลง(บวก)</span></label>
+                                        <label class="block text-xs text-gray-600 mb-1">Margin top: <span class="text-gray-400">เลื่อนบรรทัดขึ้น(ลบ) / ลง(บวก) แบบอิสระ</span></label>
                                         <div class="flex items-center gap-3">
                                             <input type="range" min="-50" max="100" value="${style.marginTop}" class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer row-margin-range" name="row_styles[${row.key}][marginTop]" data-row-key="${row.key}">
                                             <input type="number" min="-50" max="100" value="${style.marginTop}" class="w-20 h-9 rounded-lg border border-gray-300 px-2 text-sm focus:outline-none focus:border-emerald-400 row-margin-number" data-row-key="${row.key}">
@@ -468,7 +701,7 @@ function renderLabelSettingsForm(settings) {
                         <div class="mb-3">
                             <label class="block text-xs text-gray-600 mb-1">Font Family</label>
                             <select name="font_family" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
-                                <option value="GoogleSans" ${settings.font_family === 'GoogleSans' ? 'selected' : ''}>GoogleSans</option>
+                                <option value="Google Sans" ${['Google Sans', 'GoogleSans'].includes(settings.font_family) ? 'selected' : ''}>Google Sans</option>
                                 <option value="Tahoma" ${settings.font_family === 'Tahoma' ? 'selected' : ''}>Tahoma</option>
                                 <option value="Sarabun" ${settings.font_family === 'Sarabun' ? 'selected' : ''}>Sarabun</option>
                                 <option value="Arial" ${settings.font_family === 'Arial' ? 'selected' : ''}>Arial</option>
@@ -477,7 +710,7 @@ function renderLabelSettingsForm(settings) {
                         </div>
                     </div>
 
-                    <!-- Group 1: Paper Size & Spacing -->
+                    <!-- Group 1: Paper Size -->
                     <div class="border border-gray-200 rounded-lg p-4">
                         <h4 class="text-xs font-semibold text-gray-700 mb-3">ตั้งค่าหน้ากระดาษ (mm)</h4>
                         <div class="grid grid-cols-2 gap-4">
@@ -508,28 +741,6 @@ function renderLabelSettingsForm(settings) {
                                 <input type="number" name="padding_left" value="${settings.padding_left}" min="0" max="20" class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
                             </div>
                         </div>
-                        
-                        <div class="mt-6 pt-4 border-t border-gray-100">
-                            <h4 class="text-xs font-semibold text-gray-700 mb-3">ระยะห่าง</h4>
-                            <div class="mb-3">
-                                <label class="block text-xs text-gray-600 mb-1">Line spacing</label>
-                                <input type="range" name="line_spacing" value="${settings.line_spacing}" min="0.8" max="2.0" step="0.1" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                                <div class="flex justify-between text-xs text-gray-500">
-                                    <span>0.8</span>
-                                    <span id="line_spacing_value">${settings.line_spacing}</span>
-                                    <span>2.0</span>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-xs text-gray-600 mb-1">ระยะห่างระหว่าง section (px)</label>
-                                <input type="range" name="section_gap" value="${settings.section_gap}" min="0" max="20" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                                <div class="flex justify-between text-xs text-gray-500">
-                                    <span>0px</span>
-                                    <span id="section_gap_value">${settings.section_gap}px</span>
-                                    <span>20px</span>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- Submit Button -->
@@ -545,6 +756,11 @@ function renderLabelSettingsForm(settings) {
     `;
 
     container.innerHTML = html;
+
+    // Move print sample button event binding here (since button is now in preview column)
+    setTimeout(() => {
+        document.getElementById('btn-print-sample')?.addEventListener('click', printSampleLabel);
+    }, 0);
 
     // Initialize event listeners
     initializeLabelSettingsForm({ ...settings, row_styles: rowStyles }, previewLabel);
@@ -801,7 +1017,8 @@ function initializeLabelSettingsForm(settings, previewLabel) {
         }
     }
 
-    function generateLabelPreview(label, settings, previewMaxWidthPx = 380) {
+    function generateLabelPreview(label, settings, previewMaxWidthPx = 380, options = {}) {
+        const forPrint = options.forPrint === true;
         const mmToPx = 3.78;
         const widthPx = settings.paper_width * mmToPx;
         const heightPx = settings.paper_height * mmToPx;
@@ -810,18 +1027,22 @@ function initializeLabelSettingsForm(settings, previewLabel) {
         const paddingBottomPx = settings.padding_bottom * mmToPx;
         const paddingLeftPx = settings.padding_left * mmToPx;
 
-        const scale = Math.min(previewMaxWidthPx / widthPx, 1);
+        const scale = forPrint ? 1 : Math.min(previewMaxWidthPx / widthPx, 1);
         const displayWidthPx = widthPx * scale;
         const displayHeightPx = heightPx * scale;
         const rowStyles = normalizeRowStyles(settings.row_styles);
+        const dividerStyle = rowStyles.divider || DEFAULT_ROW_STYLES.divider;
+        const barcodeStyle = rowStyles.barcode || DEFAULT_ROW_STYLES.barcode;
 
         function buildRowStyle(s) {
             return `
+                display: block;
                 font-size: ${s.fontSize}px;
                 font-weight: ${s.bold ? 'bold' : 'normal'};
                 font-style: ${s.italic ? 'italic' : 'normal'};
                 text-decoration: ${s.underline ? 'underline' : 'none'};
                 text-align: ${s.align};
+                line-height: ${settings.line_spacing};
                 position: relative;
                 top: ${s.marginTop}px;
             `;
@@ -837,7 +1058,7 @@ function initializeLabelSettingsForm(settings, previewLabel) {
 
         // Row 1: Shop name + date
         labelContent += `
-            <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:10px; margin-bottom:${settings.section_gap}px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:10px;">
                 <div style="flex:1; ${buildRowStyle(rowStyles.shop_name)}">${escapeHtml(label.shop_name || '')}</div>
                 <div style="min-width:110px; ${buildRowStyle(rowStyles.date)}">${escapeHtml(todayDate)}</div>
             </div>
@@ -845,40 +1066,52 @@ function initializeLabelSettingsForm(settings, previewLabel) {
 
         // Row 2: Address + phone
         if (addressPhone) {
-            labelContent += `<div style="margin-bottom:${settings.section_gap}px; ${buildRowStyle(rowStyles.address)}">${escapeHtml(addressPhone)}</div>`;
+            labelContent += `<div style="${buildRowStyle(rowStyles.address)}">${escapeHtml(addressPhone)}</div>`;
         }
 
-        // Row 3: Single divider
-        labelContent += `<hr style="border:0; border-top:1px solid #000; margin:${settings.section_gap}px 0;">`;
+        // Row 3: Divider
+        labelContent += `<div style="position:relative; top:${dividerStyle.marginTop}px; border-top:1px solid #000;"></div>`;
 
-        // Row 4: Product + barcode
+        // Row 4: Barcode
         labelContent += `
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:${settings.section_gap}px;">
-                <div style="flex:1; ${buildRowStyle(rowStyles.product_name)}">${escapeHtml(label.product_name || '')}</div>
-                <div style="min-width:130px; text-align:right; font-size:10px; letter-spacing:0.5px;">[████ BARCODE ████]</div>
+            <div style="position:relative; top:${barcodeStyle.marginTop}px; text-align:right;">
+                <div style="display:inline-block; font-size:10px; letter-spacing:0.5px;">[████ BARCODE ████]</div>
             </div>
         `;
 
-        // Row 5: Dosage instruction line 1
-        labelContent += `<div style="margin-bottom:2px; ${buildRowStyle(rowStyles.dosage_line1)}">${escapeHtml(label.dosage || '')}  ${escapeHtml(label.frequency || '')}</div>`;
+        // Row 5: Product name
+        labelContent += `<div style="${buildRowStyle(rowStyles.product_name)}">${escapeHtml(label.product_name || '')}</div>`;
+
+        // Row 6: Dosage instruction line 1
+        labelContent += `<div style="${buildRowStyle(rowStyles.dosage_line1)}">ทานครั้งละ ${escapeHtml(label.dosage || '')} วันละ ${escapeHtml(label.frequency || '')}</div>`;
 
         // Row 6: Dosage instruction line 2
-        labelContent += `<div style="margin-bottom:${settings.section_gap}px; ${buildRowStyle(rowStyles.dosage_line2)}">${escapeHtml(label.meal_relation || '')}  ${escapeHtml(label.label_time || '')}</div>`;
+        labelContent += `<div style="${buildRowStyle(rowStyles.dosage_line2)}">${escapeHtml(label.meal_relation || '')} ${escapeHtml(label.label_time || '')}</div>`;
 
-        // Row 6: Indication
+        // Row 7: Indication
         if (label.indication) {
-            labelContent += `<div style="margin-bottom:${settings.section_gap}px; ${buildRowStyle(rowStyles.indication)}">ข้อบ่งใช้: ${escapeHtml(label.indication)}</div>`;
+            labelContent += `<div style="${buildRowStyle(rowStyles.indication)}">ข้อบ่งใช้: ${escapeHtml(label.indication)}</div>`;
         }
 
-        // Row 7: Advice
+        // Row 8: Advice
         if (label.advice) {
-            labelContent += `<div style="margin-bottom:${settings.section_gap}px; ${buildRowStyle(rowStyles.advice)}">หมายเหตุ: ${escapeHtml(label.advice)}</div>`;
+            labelContent += `<div style="${buildRowStyle(rowStyles.advice)}">หมายเหตุ: ${escapeHtml(label.advice)}</div>`;
+        }
+
+        if (forPrint) {
+            return `
+                <div style="width: ${settings.paper_width}mm; height: ${settings.paper_height}mm; background: white; position: relative; overflow: hidden; box-sizing: border-box;">
+                    <div style="position: absolute; top: ${settings.padding_top}mm; right: ${settings.padding_right}mm; bottom: ${settings.padding_bottom}mm; left: ${settings.padding_left}mm; font-family: '${settings.font_family}', 'Google Sans', Arial, sans-serif; color: #000;">
+                        ${labelContent}
+                    </div>
+                </div>
+            `;
         }
 
         return `
             <div style="width: ${displayWidthPx}px; height: ${displayHeightPx}px; border: 1px solid #ccc; background: white; position: relative; margin: 0 auto; overflow: hidden;">
                 <div style="width: ${widthPx}px; height: ${heightPx}px; transform: scale(${scale}); transform-origin: top left;">
-                    <div style="position: absolute; top: ${paddingTopPx}px; right: ${paddingRightPx}px; bottom: ${paddingBottomPx}px; left: ${paddingLeftPx}px; font-family: '${settings.font_family}', Arial, sans-serif; color: #000;">
+                    <div style="position: absolute; top: ${paddingTopPx}px; right: ${paddingRightPx}px; bottom: ${paddingBottomPx}px; left: ${paddingLeftPx}px; font-family: '${settings.font_family}', 'Google Sans', Arial, sans-serif; color: #000;">
                         ${labelContent}
                     </div>
                 </div>

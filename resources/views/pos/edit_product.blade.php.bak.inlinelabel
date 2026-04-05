@@ -1125,6 +1125,114 @@
     </div>
 
     <!-- Label Modal (Add/Edit) -->
+    <div id="label-modal" class="fixed inset-0 bg-black/40 hidden z-50 items-center justify-center p-4">
+        <div class="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+            <div class="flex items-center justify-between mb-5">
+                <h2 id="label-modal-title" class="text-base font-semibold ">เพิ่ม/แก้ไขฉลาก</h2>
+                <button type="button" id="label-modal-close" class="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-600 flex items-center justify-center">✕</button>
+            </div>
+
+            <form id="label-modal-form" class="space-y-4" novalidate>
+                <input type="hidden" id="label-id" name="label_id">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">ชื่อฉลาก</label>
+                        <input type="text" id="label_name" name="label_name" required placeholder="ชื่อเรียกฉลาก" class="w-full h-11 rounded-lg border border-gray-200 bg-white px-3 text-sm  focus:outline-none focus:border-emerald-400">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">ปริมาณที่ใช้</label>
+                        <input type="hidden" name="dosage_id" id="dosage_id_hidden">
+                        <div class="relative">
+                            <input type="text" id="dosage_id_search" autocomplete="off" placeholder="ค้นหาปริมาณที่ใช้" class="w-full h-10 rounded-lg border border-gray-300 px-3 pr-10 text-sm focus:outline-none focus:border-emerald-400">
+                            <button type="button" id="clear-dosage_id" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded hover:bg-gray-100 text-gray-600 hidden">×</button>
+                            <div id="dosage_id_dropdown" class="hidden absolute z-30 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-auto"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">ความถี่</label>
+                        <input type="hidden" name="frequency_id" id="frequency_id_hidden">
+                        <div class="relative">
+                            <input type="text" id="frequency_id_search" autocomplete="off" placeholder="ค้นหาความถี่" class="w-full h-11 rounded-lg border border-gray-200 bg-white px-3 pr-10 text-sm  focus:outline-none focus:border-emerald-400">
+                            <button type="button" id="clear-frequency_id" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded hover:bg-gray-100 text-gray-600 hidden">×</button>
+                            <div id="frequency_id_dropdown" class="hidden absolute z-40 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-auto"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">รูปแบบการทาน</label>
+                        <input type="hidden" name="meal_relation_id" id="meal_relation_id_hidden">
+                        <div class="relative">
+                            <input type="text" id="meal_relation_id_search" autocomplete="off" placeholder="ค้นหารูปแบบการทาน" class="w-full h-11 rounded-lg border border-gray-200 bg-white px-3 pr-10 text-sm  focus:outline-none focus:border-emerald-400">
+                            <button type="button" id="clear-meal_relation_id" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded hover:bg-gray-100 text-gray-600 hidden">×</button>
+                            <div id="meal_relation_id_dropdown" class="hidden absolute z-40 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-auto"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">เวลาทานยา</label>
+                        <input type="hidden" name="label_time_id" id="label_time_id_hidden">
+                        <div class="relative">
+                            <input type="text" id="label_time_id_search" autocomplete="off" placeholder="ค้นหาเวลาทานยา" class="w-full h-11 rounded-lg border border-gray-200 bg-white px-3 pr-10 text-sm  focus:outline-none focus:border-emerald-400">
+                            <button type="button" id="clear-label_time_id" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded hover:bg-gray-100 text-gray-600 hidden">×</button>
+                            <div id="label_time_id_dropdown" class="hidden absolute z-40 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-auto"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">คำแนะนำ</label>
+                    <input type="hidden" name="advice_id" id="advice_id_hidden">
+                    <div class="relative">
+                        <input type="text" id="advice_id_search" autocomplete="off" placeholder="ค้นหาคำแนะนำ" class="w-full h-11 rounded-lg border border-gray-200 bg-white px-3 pr-10 text-sm  focus:outline-none focus:border-emerald-400">
+                        <button type="button" id="clear-advice_id" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded hover:bg-gray-100 text-gray-600 hidden">×</button>
+                        <div id="advice_id_dropdown" class="hidden absolute z-40 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-auto"></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">ข้อบ่งใช้ไทย</label>
+                        <textarea id="indication_th" name="indication_th" rows="2" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm  focus:outline-none focus:border-emerald-400"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">ข้อบ่งใช้พม่า</label>
+                        <textarea id="indication_mm" name="indication_mm" rows="2" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm  focus:outline-none focus:border-emerald-400"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">ข้อบ่งใช้จีน</label>
+                        <textarea id="indication_zh" name="indication_zh" rows="2" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm  focus:outline-none focus:border-emerald-400"></textarea>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-5 mt-2">
+                    <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="show_barcode" name="show_barcode" value="1" class="sr-only peer">
+                        <span class="text-sm font-medium text-gray-600">แสดงบาร์โค้ด</span>
+                        <div class="relative w-14 h-7 rounded-full bg-gray-100 peer-checked:bg-emerald-500 transition-colors duration-300 ease-in-out after:content-[''] after:absolute after:top-1 after:left-1 after:h-5 after:w-7 after:rounded-full after:bg-white after:shadow-sm after:translate-x-0 peer-checked:after:translate-x-5 after:transition-transform after:duration-300 after:ease-in-out"></div>
+                    </label>
+                    <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="is_default" name="is_default" value="1" class="sr-only peer">
+                        <span class="text-sm font-medium text-gray-600">ตั้งเป็นฉลากเริ่มต้น</span>
+                        <div class="relative w-14 h-7 rounded-full bg-gray-100 peer-checked:bg-amber-500 transition-colors duration-300 ease-in-out after:content-[''] after:absolute after:top-1 after:left-1 after:h-5 after:w-7 after:rounded-full after:bg-white after:shadow-sm after:translate-x-0 peer-checked:after:translate-x-5 after:transition-transform after:duration-300 after:ease-in-out"></div>
+                    </label>
+                    <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="is_active" name="is_active" value="1" class="sr-only peer">
+                        <span class="text-sm font-medium text-gray-600">เปิดใช้งาน</span>
+                        <div class="relative w-14 h-7 rounded-full bg-gray-100 peer-checked:bg-emerald-500 transition-colors duration-300 ease-in-out after:content-[''] after:absolute after:top-1 after:left-1 after:h-5 after:w-7 after:rounded-full after:bg-white after:shadow-sm after:translate-x-0 peer-checked:after:translate-x-5 after:transition-transform after:duration-300 after:ease-in-out"></div>
+                    </label>
+                </div>
+
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" id="label-modal-cancel" class="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-100">ยกเลิก</button>
+                    <button type="submit" id="save-label-btn" class="px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium">บันทึกฉลาก</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <!-- Tab Switching & Profit Calculation JavaScript -->
@@ -1779,112 +1887,8 @@
             });
         }
 
-        function initializeLabelAutocomplete(config = null) {
-            if (!config) {
-                labelSearchConfigs.forEach(item => setupAutocomplete(item.field, item.key));
-                return;
-            }
-
-            const { searchInput, hiddenInput, dropdown, clearBtn, type } = config;
-            if (!searchInput || !hiddenInput || !dropdown) return;
-
-            const lookupMap = {
-                dosage: 'dosages',
-                frequency: 'frequencies',
-                meal_relation: 'mealRelations',
-                label_time: 'times',
-                advice: 'advices',
-            };
-
-            const lookupKey = lookupMap[type];
-            if (!lookupKey) return;
-
-            const renderOptions = (query = '') => {
-                const q = String(query || '').trim().toLowerCase();
-                const options = (labelLookups[lookupKey] || []).filter(item => String(item.name_th || '').toLowerCase().includes(q));
-
-                if (!options.length) {
-                    dropdown.innerHTML = '<div class="px-3 py-2 text-sm text-gray-400">ไม่พบข้อมูล</div>';
-                    dropdown.classList.remove('hidden');
-                    return;
-                }
-
-                dropdown.innerHTML = options
-                    .map(item => `<button type="button" class="label-search-option w-full text-left px-3 py-2 text-sm hover:bg-gray-100" data-id="${item.id}" data-name="${escapeHtml(item.name_th || '')}">${escapeHtml(item.name_th || '')}</button>`)
-                    .join('');
-
-                dropdown.classList.remove('hidden');
-                dropdown.querySelectorAll('.label-search-option').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        hiddenInput.value = this.dataset.id || '';
-                        searchInput.value = this.dataset.name || '';
-                        clearBtn?.classList.toggle('hidden', !searchInput.value);
-                        dropdown.classList.add('hidden');
-                    });
-                });
-            };
-
-            searchInput.addEventListener('focus', () => renderOptions(searchInput.value || ''));
-            searchInput.addEventListener('input', () => {
-                hiddenInput.value = '';
-                clearBtn?.classList.toggle('hidden', (searchInput.value || '').length === 0);
-                renderOptions(searchInput.value || '');
-            });
-
-            clearBtn?.addEventListener('click', () => {
-                hiddenInput.value = '';
-                searchInput.value = '';
-                clearBtn.classList.add('hidden');
-                dropdown.classList.add('hidden');
-                searchInput.focus();
-            });
-        }
-
-        // Autocomplete initialization for all inline forms
-        function initializeAllLabelAutocompletes() {
-            document.querySelectorAll('.label-inline-form').forEach(form => {
-                const labelId = form.dataset.labelId;
-                // Dosage
-                initializeLabelAutocomplete({
-                    searchInput: form.querySelector(`#dosage_id_search-${labelId}`),
-                    hiddenInput: form.querySelector(`#dosage_id_hidden-${labelId}`),
-                    dropdown: form.querySelector(`#dosage_id_dropdown-${labelId}`),
-                    clearBtn: form.querySelector(`#clear-dosage_id-${labelId}`),
-                    type: 'dosage',
-                });
-                // Frequency
-                initializeLabelAutocomplete({
-                    searchInput: form.querySelector(`#frequency_id_search-${labelId}`),
-                    hiddenInput: form.querySelector(`#frequency_id_hidden-${labelId}`),
-                    dropdown: form.querySelector(`#frequency_id_dropdown-${labelId}`),
-                    clearBtn: form.querySelector(`#clear-frequency_id-${labelId}`),
-                    type: 'frequency',
-                });
-                // Meal Relation
-                initializeLabelAutocomplete({
-                    searchInput: form.querySelector(`#meal_relation_id_search-${labelId}`),
-                    hiddenInput: form.querySelector(`#meal_relation_id_hidden-${labelId}`),
-                    dropdown: form.querySelector(`#meal_relation_id_dropdown-${labelId}`),
-                    clearBtn: form.querySelector(`#clear-meal_relation_id-${labelId}`),
-                    type: 'meal_relation',
-                });
-                // Label Time
-                initializeLabelAutocomplete({
-                    searchInput: form.querySelector(`#label_time_id_search-${labelId}`),
-                    hiddenInput: form.querySelector(`#label_time_id_hidden-${labelId}`),
-                    dropdown: form.querySelector(`#label_time_id_dropdown-${labelId}`),
-                    clearBtn: form.querySelector(`#clear-label_time_id-${labelId}`),
-                    type: 'label_time',
-                });
-                // Advice
-                initializeLabelAutocomplete({
-                    searchInput: form.querySelector(`#advice_id_search-${labelId}`),
-                    hiddenInput: form.querySelector(`#advice_id_hidden-${labelId}`),
-                    dropdown: form.querySelector(`#advice_id_dropdown-${labelId}`),
-                    clearBtn: form.querySelector(`#clear-advice_id-${labelId}`),
-                    type: 'advice',
-                });
-            });
+        function initializeLabelAutocomplete() {
+            labelSearchConfigs.forEach(config => setupAutocomplete(config.field, config.key));
         }
 
         function openLabelModal(label = null) {
@@ -2068,7 +2072,6 @@
                 return;
             }
 
-
             // Fetch shop settings
             let shopSettings = {};
             try {
@@ -2087,186 +2090,62 @@
                 console.warn('Failed to load label settings');
             }
 
+
             let html = '';
             for (const label of labels) {
+                const defaultBadge = label.is_default ? '<span class="inline-flex items-center rounded-full border border-amber-400/40 bg-amber-500/20 px-2 py-0.5 text-xs text-amber-300 ml-2">⭐ เริ่มต้น</span>' : '';
+                const statusBadge = label.is_active
+                    ? '<span class="inline-flex items-center rounded-full border border-emerald-400/40 bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-300">🟢 เปิดใช้งาน</span>'
+                    : '<span class="inline-flex items-center rounded-full border border-gray-500/40 bg-gray-600/20 px-2 py-0.5 text-xs text-gray-400">⚫ ปิดใช้งาน</span>';
+
+                const summaryLine = `${label.dosage_name || '—'} / ${label.frequency_name || '—'} / ${label.meal_relation_name || '—'} / ${label.label_time_name || '—'}`;
+
                 html += `
                     <div class="label-card bg-white border border-gray-200 rounded-xl shadow-sm p-4 mb-4 flex gap-4">
+                        <!-- Left: Label Preview ~400px -->
                         <div class="flex-shrink-0 w-[400px]">
                             <div class="border-2 border-gray-300 rounded bg-white p-3 label-preview-${label.id}" data-label-id="${label.id}">
                                 ${generateLabelPreviewHTML(label, shopSettings, 'th', false, labelSettings)}
                             </div>
+                            <!-- Language Switcher -->
                             <div class="flex gap-2 mt-3 justify-center">
                                 <button type="button" class="label-lang-btn px-3 py-1.5 rounded text-xs font-medium border language-th-${label.id}" data-lang="th" data-label-id="${label.id}" style="background: #10b981; color: white; border-color: #10b981;">ไทย</button>
                                 <button type="button" class="label-lang-btn px-3 py-1.5 rounded text-xs font-medium border language-mm-${label.id}" data-lang="mm" data-label-id="${label.id}" style="background: white; color: #666; border-color: #ccc;">MM</button>
                                 <button type="button" class="label-lang-btn px-3 py-1.5 rounded text-xs font-medium border language-zh-${label.id}" data-lang="zh" data-label-id="${label.id}" style="background: white; color: #666; border-color: #ccc;">ZH</button>
                             </div>
                         </div>
-                        <div class="flex-1">
-                            <form class="label-inline-form space-y-3" data-label-id="${label.id}">
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div class="col-span-2">
-                                        <label for="label_name-${label.id}" class="block text-xs font-medium text-gray-600 mb-1">ชื่อฉลาก</label>
-                                        <input type="text" id="label_name-${label.id}" name="label_name" required placeholder="ชื่อเรียกฉลาก" class="w-full h-11 rounded-lg border border-gray-200 bg-white px-3 text-sm focus:outline-none focus:border-emerald-400">
-                                    </div>
+
+                        <!-- Right: Info & Actions -->
+                        <div class="flex-1 flex flex-col gap-4">
+                            <!-- Label Info -->
+                            <div>
+                                <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">${escapeHtml(label.label_name)} ${defaultBadge}</h3>
+                                <div class="mt-2 text-sm text-gray-600">${statusBadge}</div>
+                                <div class="mt-3 text-sm text-gray-700">
+                                    <p class="font-medium text-gray-600">ส่วนประกอบ:</p>
+                                    <p class="text-xs text-gray-600 mt-1">${escapeHtml(summaryLine)}</p>
                                 </div>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label for="dosage_id_search-${label.id}" class="block text-xs font-medium text-gray-600 mb-1">ปริมาณที่ใช้</label>
-                                        <input type="hidden" name="dosage_id" id="dosage_id_hidden-${label.id}">
-                                        <div class="relative">
-                                            <input type="text" id="dosage_id_search-${label.id}" autocomplete="off" placeholder="ค้นหาปริมาณที่ใช้" class="w-full h-10 rounded-lg border border-gray-300 px-3 pr-10 text-sm focus:outline-none focus:border-emerald-400">
-                                            <button type="button" id="clear-dosage_id-${label.id}" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded hover:bg-gray-100 text-gray-600 hidden">×</button>
-                                            <div id="dosage_id_dropdown-${label.id}" class="hidden absolute z-30 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-auto"></div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label for="frequency_id_search-${label.id}" class="block text-xs font-medium text-gray-600 mb-1">ความถี่ที่ใช้</label>
-                                        <input type="hidden" name="frequency_id" id="frequency_id_hidden-${label.id}">
-                                        <div class="relative">
-                                            <input type="text" id="frequency_id_search-${label.id}" autocomplete="off" placeholder="ค้นหาความถี่ที่" class="w-full h-11 rounded-lg border border-gray-200 bg-white px-3 pr-10 text-sm focus:outline-none focus:border-emerald-400">
-                                            <button type="button" id="clear-frequency_id-${label.id}" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded hover:bg-gray-100 text-gray-600 hidden">×</button>
-                                            <div id="frequency_id_dropdown-${label.id}" class="hidden absolute z-40 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-auto"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label for="meal_relation_id_search-${label.id}" class="block text-xs font-medium text-gray-600 mb-1">รูปแบบการทาน</label>
-                                        <input type="hidden" name="meal_relation_id" id="meal_relation_id_hidden-${label.id}">
-                                        <div class="relative">
-                                            <input type="text" id="meal_relation_id_search-${label.id}" autocomplete="off" placeholder="ค้นหารูปแบบการทาน" class="w-full h-11 rounded-lg border border-gray-200 bg-white px-3 pr-10 text-sm focus:outline-none focus:border-emerald-400">
-                                            <button type="button" id="clear-meal_relation_id-${label.id}" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded hover:bg-gray-100 text-gray-600 hidden">×</button>
-                                            <div id="meal_relation_id_dropdown-${label.id}" class="hidden absolute z-40 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-auto"></div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label for="label_time_id_search-${label.id}" class="block text-xs font-medium text-gray-600 mb-1">เวลาทานยา</label>
-                                        <input type="hidden" name="label_time_id" id="label_time_id_hidden-${label.id}">
-                                        <div class="relative">
-                                            <input type="text" id="label_time_id_search-${label.id}" autocomplete="off" placeholder="ค้นหาเวลาทานยา" class="w-full h-11 rounded-lg border border-gray-200 bg-white px-3 pr-10 text-sm focus:outline-none focus:border-emerald-400">
-                                            <button type="button" id="clear-label_time_id-${label.id}" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded hover:bg-gray-100 text-gray-600 hidden">×</button>
-                                            <div id="label_time_id_dropdown-${label.id}" class="hidden absolute z-40 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-auto"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- Swap: Indication fields BEFORE advice field -->
-                                <div class="grid grid-cols-3 gap-4">
-                                    <div>
-                                        <label for="indication_th-${label.id}" class="block text-xs font-medium text-gray-600 mb-1">ข้อบ่งใช้ไทย</label>
-                                        <textarea id="indication_th-${label.id}" name="indication_th" rows="2" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:border-emerald-400"></textarea>
-                                    </div>
-                                    <div>
-                                        <label for="indication_mm-${label.id}" class="block text-xs font-medium text-gray-600 mb-1">ข้อบ่งใช้พม่า</label>
-                                        <textarea id="indication_mm-${label.id}" name="indication_mm" rows="2" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:border-emerald-400"></textarea>
-                                    </div>
-                                    <div>
-                                        <label for="indication_zh-${label.id}" class="block text-xs font-medium text-gray-600 mb-1">ข้อบ่งใช้จีน</label>
-                                        <textarea id="indication_zh-${label.id}" name="indication_zh" rows="2" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:border-emerald-400"></textarea>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label for="advice_id_search-${label.id}" class="block text-xs font-medium text-gray-600 mb-1">คำแนะนำ</label>
-                                    <input type="hidden" name="advice_id" id="advice_id_hidden-${label.id}">
-                                    <div class="relative">
-                                        <input type="text" id="advice_id_search-${label.id}" autocomplete="off" placeholder="ค้นหาคำแนะนำ" class="w-full h-11 rounded-lg border border-gray-200 bg-white px-3 pr-10 text-sm focus:outline-none focus:border-emerald-400">
-                                        <button type="button" id="clear-advice_id-${label.id}" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded hover:bg-gray-100 text-gray-600 hidden">×</button>
-                                        <div id="advice_id_dropdown-${label.id}" class="hidden absolute z-40 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-auto"></div>
-                                    </div>
-                                </div>
-                                <div class="flex flex-wrap items-center gap-5 mt-2">
-                                    <label class="inline-flex items-center gap-2 cursor-pointer select-none">
-                                        <input type="checkbox" id="show_barcode-${label.id}" name="show_barcode" value="1" class="sr-only peer">
-                                        <span class="text-sm font-medium text-gray-600">แสดงบาร์โค้ด</span>
-                                        <div class="relative w-14 h-7 rounded-full bg-gray-100 peer-checked:bg-emerald-500 transition-colors duration-300 ease-in-out after:content-[''] after:absolute after:top-1 after:left-1 after:h-5 after:w-7 after:rounded-full after:bg-white after:shadow-sm after:translate-x-0 peer-checked:after:translate-x-5 after:transition-transform after:duration-300 after:ease-in-out"></div>
-                                    </label>
-                                    <label class="inline-flex items-center gap-2 cursor-pointer select-none">
-                                        <input type="checkbox" id="is_default-${label.id}" name="is_default" value="1" class="sr-only peer">
-                                        <span class="text-sm font-medium text-gray-600">ตั้งเป็นฉลากเริ่มต้น</span>
-                                        <div class="relative w-14 h-7 rounded-full bg-amber-500 peer-checked:bg-amber-500 transition-colors duration-300 ease-in-out after:content-[''] after:absolute after:top-1 after:left-1 after:h-5 after:w-7 after:rounded-full after:bg-white after:shadow-sm after:translate-x-0 peer-checked:after:translate-x-5 after:transition-transform after:duration-300 after:ease-in-out"></div>
-                                    </label>
-                                    <label class="inline-flex items-center gap-2 cursor-pointer select-none">
-                                        <input type="checkbox" id="is_active-${label.id}" name="is_active" value="1" class="sr-only peer">
-                                        <span class="text-sm font-medium text-gray-600">เปิดใช้งาน</span>
-                                        <div class="relative w-14 h-7 rounded-full bg-gray-100 peer-checked:bg-emerald-500 transition-colors duration-300 ease-in-out after:content-[''] after:absolute after:top-1 after:left-1 after:h-5 after:w-7 after:rounded-full after:bg-white after:shadow-sm after:translate-x-0 peer-checked:after:translate-x-5 after:transition-transform after:duration-300 after:ease-in-out"></div>
-                                    </label>
-                                </div>
-                                <div class="flex gap-2 pt-3 border-t border-gray-100 mt-2">
-                                    <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium">💾 บันทึก</button>
-                                    <button type="button" class="print-label-btn px-4 py-2 rounded-lg border border-purple-400 text-purple-600 hover:bg-purple-50 text-sm font-medium" data-id="${label.id}" data-lang="th">🖨 พิมพ์</button>
-                                    <button type="button" class="delete-label-btn px-4 py-2 rounded-lg border border-red-400 text-red-600 hover:bg-red-50 text-sm font-medium" data-id="${label.id}">🗑 ลบ</button>
-                                </div>
-                            </form>
+                                ${label.advice_name ? `<div class="mt-2 text-sm"><span class="font-medium text-gray-600">คำแนะนำ:</span> <span class="text-gray-700">${escapeHtml(label.advice_name)}</span></div>` : ''}
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="flex gap-2 mt-auto pt-4 border-t border-gray-100">
+                                <button type="button" class="edit-label-btn flex items-center gap-1 px-4 py-2 rounded-lg border border-blue-400 text-blue-600 hover:bg-blue-50 text-sm font-medium" data-id="${label.id}">
+                                    ✏️ แก้ไข
+                                </button>
+                                <button type="button" class="print-label-btn flex items-center gap-1 px-4 py-2 rounded-lg border border-purple-400 text-purple-600 hover:bg-purple-50 text-sm font-medium" data-id="${label.id}" data-lang="th">
+                                    🖨 พิมพ์
+                                </button>
+                                <button type="button" class="delete-label-btn flex items-center gap-1 px-4 py-2 rounded-lg border border-red-400 text-red-600 hover:bg-red-50 text-sm font-medium" data-id="${label.id}">
+                                    🗑 ลบ
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    `;
+                `;
             }
 
             container.innerHTML = html;
-
-            // Populate inline forms with existing label data
-            labels.forEach(label => {
-                const id = label.id;
-
-                // label_name
-                const nameEl = document.getElementById(`label_name-${id}`);
-                if (nameEl) nameEl.value = label.label_name || '';
-
-                // dosage_id
-                const dosageHidden = document.getElementById(`dosage_id_hidden-${id}`);
-                const dosageSearch = document.getElementById(`dosage_id_search-${id}`);
-                const dosageClear  = document.getElementById(`clear-dosage_id-${id}`);
-                if (dosageHidden) dosageHidden.value = label.dosage_id || '';
-                if (dosageSearch) dosageSearch.value = label.dosage_name || '';
-                if (dosageClear)  dosageClear.classList.toggle('hidden', !label.dosage_name);
-
-                // frequency_id
-                const freqHidden = document.getElementById(`frequency_id_hidden-${id}`);
-                const freqSearch = document.getElementById(`frequency_id_search-${id}`);
-                const freqClear  = document.getElementById(`clear-frequency_id-${id}`);
-                if (freqHidden) freqHidden.value = label.frequency_id || '';
-                if (freqSearch) freqSearch.value = label.frequency_name || '';
-                if (freqClear)  freqClear.classList.toggle('hidden', !label.frequency_name);
-
-                // meal_relation_id
-                const mealHidden = document.getElementById(`meal_relation_id_hidden-${id}`);
-                const mealSearch = document.getElementById(`meal_relation_id_search-${id}`);
-                const mealClear  = document.getElementById(`clear-meal_relation_id-${id}`);
-                if (mealHidden) mealHidden.value = label.meal_relation_id || '';
-                if (mealSearch) mealSearch.value = label.meal_relation_name || '';
-                if (mealClear)  mealClear.classList.toggle('hidden', !label.meal_relation_name);
-
-                // label_time_id
-                const timeHidden = document.getElementById(`label_time_id_hidden-${id}`);
-                const timeSearch = document.getElementById(`label_time_id_search-${id}`);
-                const timeClear  = document.getElementById(`clear-label_time_id-${id}`);
-                if (timeHidden) timeHidden.value = label.label_time_id || '';
-                if (timeSearch) timeSearch.value = label.label_time_name || '';
-                if (timeClear)  timeClear.classList.toggle('hidden', !label.label_time_name);
-
-                // advice_id
-                const adviceHidden = document.getElementById(`advice_id_hidden-${id}`);
-                const adviceSearch = document.getElementById(`advice_id_search-${id}`);
-                const adviceClear  = document.getElementById(`clear-advice_id-${id}`);
-                if (adviceHidden) adviceHidden.value = label.advice_id || '';
-                if (adviceSearch) adviceSearch.value = label.advice_name || '';
-                if (adviceClear)  adviceClear.classList.toggle('hidden', !label.advice_name);
-
-                // indications
-                const indThEl = document.getElementById(`indication_th-${id}`);
-                const indMmEl = document.getElementById(`indication_mm-${id}`);
-                const indZhEl = document.getElementById(`indication_zh-${id}`);
-                if (indThEl) indThEl.value = label.indication_th || '';
-                if (indMmEl) indMmEl.value = label.indication_mm || '';
-                if (indZhEl) indZhEl.value = label.indication_zh || '';
-
-                // checkboxes
-                const showBarcodeEl = document.getElementById(`show_barcode-${id}`);
-                const isDefaultEl   = document.getElementById(`is_default-${id}`);
-                const isActiveEl    = document.getElementById(`is_active-${id}`);
-                if (showBarcodeEl) showBarcodeEl.checked = !!label.show_barcode;
-                if (isDefaultEl)   isDefaultEl.checked   = !!label.is_default;
-                if (isActiveEl)    isActiveEl.checked     = !!label.is_active;
-            });
 
             // Render barcodes if JsBarcode is loaded
             setTimeout(() => {
@@ -2331,59 +2210,13 @@
                 });
             });
 
-            // Populate inline forms with label data
-            labels.forEach(label => {
-                const form = container.querySelector(`.label-inline-form[data-label-id="${label.id}"]`);
-                if (!form) return;
-                form.querySelector(`[name="label_name"]`).value = label.label_name || '';
-                form.querySelector(`[name="dosage_id"]`).value = label.dosage_id || '';
-                form.querySelector(`[id^="dosage_id_search-"]`).value = label.dosage_name || '';
-                form.querySelector(`[name="frequency_id"]`).value = label.frequency_id || '';
-                form.querySelector(`[id^="frequency_id_search-"]`).value = label.frequency_name || '';
-                form.querySelector(`[name="meal_relation_id"]`).value = label.meal_relation_id || '';
-                form.querySelector(`[id^="meal_relation_id_search-"]`).value = label.meal_relation_name || '';
-                form.querySelector(`[name="label_time_id"]`).value = label.label_time_id || '';
-                form.querySelector(`[id^="label_time_id_search-"]`).value = label.label_time_name || '';
-                form.querySelector(`[name="advice_id"]`).value = label.advice_id || '';
-                form.querySelector(`[id^="advice_id_search-"]`).value = label.advice_name || '';
-                form.querySelector(`[name="indication_th"]`).value = label.indication_th || '';
-                form.querySelector(`[name="indication_mm"]`).value = label.indication_mm || '';
-                form.querySelector(`[name="indication_zh"]`).value = label.indication_zh || '';
-                form.querySelector(`[name="show_barcode"]`).checked = !!label.show_barcode;
-                form.querySelector(`[name="is_default"]`).checked = !!label.is_default;
-                form.querySelector(`[name="is_active"]`).checked = !!label.is_active;
-            });
-
-            // Bind submit for each inline form
-            container.querySelectorAll('.label-inline-form').forEach(form => {
-                form.addEventListener('submit', async function(e) {
-                    e.preventDefault();
-                    const labelId = form.dataset.labelId;
-                    const formData = new FormData(form);
-                    let url = labelApiBase;
-                    let method = 'POST';
-                    if (labelId !== 'new') {
-                        url = `${labelApiBase}/${labelId}`;
-                        formData.append('_method', 'PUT');
-                    }
-                    try {
-                        const response = await fetch(url, {
-                            method: 'POST',
-                            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-                            body: formData,
-                        });
-                        const data = await response.json().catch(() => ({}));
-                        if (!response.ok) throw new Error(data.message || 'บันทึกไม่สำเร็จ');
-                        showToast(data.message || 'บันทึกสำเร็จ', 'success');
-                        loadLabels();
-                    } catch (error) {
-                        showToast(error.message, 'error');
-                    }
+            // Edit button
+            container.querySelectorAll('.edit-label-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const label = labels.find(l => l.id == btn.dataset.id);
+                    if (label) openLabelModal(label);
                 });
             });
-
-            // Initialize autocomplete for all forms
-            initializeAllLabelAutocompletes();
 
             // Print button
             container.querySelectorAll('.print-label-btn').forEach(btn => {
