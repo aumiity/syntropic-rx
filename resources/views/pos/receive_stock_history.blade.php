@@ -54,7 +54,21 @@
         @php
             $totalQty = $movements->sum('qty_change');
             $totalValue = $movements->sum(fn($m) => $m->qty_change * $m->unit_cost);
+            $selectedInvoice = request('invoice_no');
         @endphp
+
+        @if($selectedInvoice || request('received_at'))
+            <div class="mb-4 flex flex-col gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <strong>กำลังแสดงรายละเอียดบิล:</strong>
+                    {{ $selectedInvoice ?: 'รายการรับสินค้าตามเวลาที่เลือก' }}
+                </div>
+                <a href="{{ route('pos.stock.receive.history') }}" class="inline-flex rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs text-blue-700 hover:bg-blue-100">
+                    ดูทั้งหมด
+                </a>
+            </div>
+        @endif
+
         <div class="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
             <div class="flex gap-6 text-sm">
                 <div><strong>จำนวนรวม:</strong> {{ number_format($totalQty) }}</div>
@@ -68,6 +82,7 @@
                 <thead class="bg-slate-100 text-slate-700 text-sm">
                     <tr>
                         <th class="px-3 py-2">วันที่</th>
+                        <th class="px-3 py-2">เลขที่เอกสาร</th>
                         <th class="px-3 py-2">สินค้า</th>
                         <th class="px-3 py-2">Lot</th>
                         <th class="px-3 py-2">ผู้จำหน่าย</th>
@@ -82,6 +97,7 @@
                     @foreach($movements as $movement)
                         <tr class="border-t border-slate-200">
                             <td class="px-3 py-2 text-sm">{{ \Carbon\Carbon::parse($movement->created_at)->format('d/m/Y H:i') }}</td>
+                            <td class="px-3 py-2 text-sm font-medium">{{ $movement->invoice_no ?: '-' }}</td>
                             <td class="px-3 py-2 text-sm">
                                 {{ $movement->trade_name }}<br>
                                 <small class="text-slate-500">{{ $movement->barcode ?? $movement->code }}</small>

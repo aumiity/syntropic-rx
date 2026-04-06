@@ -1,270 +1,202 @@
-# Feature: หน้า บุคคล (People) — ลูกค้า + ผู้จำหน่าย + พนักงาน
+# Fix: Purchase Page (receive_stock.blade.php) — ปรับตามข้อกำหนดใหม่
 
 ## Model
 🟡 GPT-4.1
 
-## Overview
-สร้างหน้า `/people` ที่รวม 3 sub-sections ไว้ใน layout เดียว โดยใช้ tab switching (ไม่ต้องเปลี่ยน URL):
-- **ลูกค้า** (Customers)
-- **ผู้จำหน่าย** (Suppliers) — ย้ายมาจาก `/suppliers` เดิม
-- **พนักงาน** (Staff/Users)
+## File to Edit
+`resources/views/pos/receive_stock.blade.php`
+
+## Backup First
+`receive_stock.blade.php.bk_20260406b`
 
 ---
 
-## Files to Create / Edit
+## รายการแก้ไข
 
-### Backup before editing:
-- `routes/web.php`
-- `resources/views/suppliers/index.blade.php` (ถ้ามีอยู่)
-
----
-
-## 1. Migration — `people` table (ถ้ายังไม่มี customers table)
-
-ตรวจสอบว่ามี `customers` table ใน DB แล้วหรือยัง (Model `Customer` มีอยู่แล้วที่ `app/Models/Customer.php`) ถ้ายังไม่มี migration ให้สร้าง:
-
+### 1. ลบ link "ดูหน้าประวัติเต็ม" และ route ที่เกี่ยวข้อง
+ใน tab-history ลบปุ่มนี้ทิ้ง:
 ```
-php artisan make:migration create_customers_table
+<a href="{{ route('pos.stock.receive.history') }}" ...>ดูหน้าประวัติเต็ม</a>
 ```
+และลบปุ่ม "ดูรายละเอียด" ในแต่ละแถวของตาราง (column จัดการ) ทิ้งด้วย รวมถึงลบ column จัดการออกจากตารางประวัติด้วย
 
-Fields สำหรับ `customers`:
-```php
-$table->id();
-$table->string('code', 20)->nullable()->unique();
-$table->string('full_name', 200);
-$table->string('id_card', 20)->nullable();
-$table->string('hn', 20)->nullable();
-$table->date('dob')->nullable();
-$table->string('phone', 30)->nullable();
-$table->text('address')->nullable();
-$table->text('food_allergy')->nullable();
-$table->text('other_allergy')->nullable();
-$table->text('chronic_diseases')->nullable();
-$table->boolean('is_alert')->default(false);
-$table->text('alert_note')->nullable();
-$table->text('warning_note')->nullable();
-$table->boolean('is_hidden')->default(false);
-$table->timestamps();
+### 2. ลบปุ่ม header ที่ไม่จำเป็น
+ในส่วน header ของหน้า ลบปุ่มเหล่านี้ออก:
+- "กลับ POS"
+- "ผู้จำหน่าย"
+- "รายการสินค้า"
+
+ลบ `<div class="flex flex-wrap items-center gap-2">` ทั้ง block ออก
+
+### 3. ผู้จำหน่าย — เปลี่ยนจาก select เป็น autocomplete
+
+แทนที่ `<select name="supplier_id">` ด้วย autocomplete แบบเดียวกับ label dosage ในหน้า edit_product:
+
+```html
+<div class="relative">
+    <input type="hidden" name="supplier_id" id="supplier_id_hidden" value="{{ old('supplier_id') }}">
+    <input type="text" id="supplier_search" autocomplete="off"
+        placeholder="พิมพ์ค้นหาผู้จำหน่าย..."
+        class="h-11 w-full rounded-lg border border-gray-300 px-3 pr-10 text-sm focus:border-emerald-400 focus:outline-none">
+    <button type="button" id="clear_supplier" class="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded hover:bg-gray-100 text-gray-600 hidden">×</button>
+    <div id="supplier_dropdown" class="hidden absolute z-30 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-56 overflow-auto"></div>
+</div>
 ```
 
----
+ใน JS — เพิ่ม supplier autocomplete:
+- ข้อมูลมาจาก `const supplierList = @json($suppliers->map(fn($s) => ['id' => $s->id, 'name' => $s->name])->values());`
+- filter แบบ client-side (ไม่ต้อง fetch API)
+- เมื่อพิมพ์ขึ้น dropdown แสดงชื่อผู้จำหน่ายที่ตรง
+- เมื่อเลือกแล้ว set `supplier_id_hidden.value` และ `supplier_search.value`
+- ปุ่ม clear ล้างค่าทั้งสอง
+- ปิด dropdown เมื่อคลิกที่อื่น (blur timeout 150ms)
 
-## 2. Controller — `PeopleController.php`
+### 4. วันที่สั่งซื้อ — เปลี่ยนจาก datetime-local เป็น date
 
-Create: `app/Http/Controllers/PeopleController.php`
+```html
+<input id="receive_date" type="date" name="receive_date"
+    value="{{ old('receive_date', now()->format('Y-m-d')) }}"
+    class="h-11 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-emerald-400 focus:outline-none">
+```
 
-```php
-<?php
+อัปเดต JS ที่คำนวณ due_date shortcut ให้ใช้ date แทน datetime:
+```javascript
+const baseDate = receiveDateInput?.value ? new Date(receiveDateInput.value) : new Date();
+```
+ยังใช้ได้เหมือนเดิม ไม่ต้องเปลี่ยน
 
-namespace App\Http\Controllers;
+### 5. การชำระเงินเงินสด — auto check "ชำระเงินแล้ว"
 
-use App\Models\Customer;
-use App\Models\Supplier;
-use App\Models\User;
-use Illuminate\Http\Request;
-
-class PeopleController extends Controller
-{
-    public function index(Request $request)
-    {
-        $tab = $request->get('tab', 'customers');
-
-        $customers = Customer::orderBy('full_name')->paginate(20, ['*'], 'cpage');
-        $suppliers = Supplier::orderBy('name')->paginate(20, ['*'], 'spage');
-        $staff     = User::orderBy('name')->paginate(20, ['*'], 'upage');
-
-        return view('people.index', compact('tab', 'customers', 'suppliers', 'staff'));
+ใน JS function `togglePaymentFields()` เพิ่ม logic:
+```javascript
+function togglePaymentFields() {
+    const isCredit = paymentType?.value === 'credit';
+    dueDateWrapper?.classList.toggle('hidden', !isCredit);
+    if (!isCredit && dueDateInput) {
+        dueDateInput.value = '';
     }
-
-    // --- Customer CRUD ---
-    public function storeCustomer(Request $request)
-    {
-        $data = $request->validate([
-            'code'             => 'nullable|string|max:20|unique:customers,code',
-            'full_name'        => 'required|string|max:200',
-            'id_card'          => 'nullable|string|max:20',
-            'hn'               => 'nullable|string|max:20',
-            'dob'              => 'nullable|date',
-            'phone'            => 'nullable|string|max:30',
-            'address'          => 'nullable|string',
-            'food_allergy'     => 'nullable|string',
-            'other_allergy'    => 'nullable|string',
-            'chronic_diseases' => 'nullable|string',
-            'is_alert'         => 'boolean',
-            'alert_note'       => 'nullable|string',
-            'warning_note'     => 'nullable|string',
-        ]);
-        $data['is_alert'] = $request->boolean('is_alert');
-        Customer::create($data);
-        return redirect()->route('people.index', ['tab' => 'customers'])->with('success', 'เพิ่มลูกค้าเรียบร้อยแล้ว');
-    }
-
-    public function updateCustomer(Request $request, Customer $customer)
-    {
-        $data = $request->validate([
-            'code'             => 'nullable|string|max:20|unique:customers,code,' . $customer->id,
-            'full_name'        => 'required|string|max:200',
-            'id_card'          => 'nullable|string|max:20',
-            'hn'               => 'nullable|string|max:20',
-            'dob'              => 'nullable|date',
-            'phone'            => 'nullable|string|max:30',
-            'address'          => 'nullable|string',
-            'food_allergy'     => 'nullable|string',
-            'other_allergy'    => 'nullable|string',
-            'chronic_diseases' => 'nullable|string',
-            'is_alert'         => 'boolean',
-            'alert_note'       => 'nullable|string',
-            'warning_note'     => 'nullable|string',
-        ]);
-        $data['is_alert'] = $request->boolean('is_alert');
-        $customer->update($data);
-        return redirect()->route('people.index', ['tab' => 'customers'])->with('success', 'อัพเดตลูกค้าเรียบร้อยแล้ว');
-    }
-
-    public function destroyCustomer(Customer $customer)
-    {
-        $customer->delete();
-        return redirect()->route('people.index', ['tab' => 'customers'])->with('success', 'ลบลูกค้าเรียบร้อยแล้ว');
-    }
-
-    // --- Supplier CRUD (moved from SupplierController) ---
-    public function storeSupplier(Request $request)
-    {
-        $data = $request->validate([
-            'code'         => 'nullable|string|max:20|unique:suppliers,code',
-            'name'         => 'required|string|max:200',
-            'tax_id'       => 'nullable|string|max:20',
-            'phone'        => 'nullable|string|max:30',
-            'address'      => 'nullable|string',
-            'contact_name' => 'nullable|string|max:100',
-        ]);
-        $data['is_disabled'] = false;
-        Supplier::create($data);
-        return redirect()->route('people.index', ['tab' => 'suppliers'])->with('success', 'เพิ่มผู้จำหน่ายเรียบร้อยแล้ว');
-    }
-
-    public function updateSupplier(Request $request, Supplier $supplier)
-    {
-        $data = $request->validate([
-            'code'         => 'nullable|string|max:20|unique:suppliers,code,' . $supplier->id,
-            'name'         => 'required|string|max:200',
-            'tax_id'       => 'nullable|string|max:20',
-            'phone'        => 'nullable|string|max:30',
-            'address'      => 'nullable|string',
-            'contact_name' => 'nullable|string|max:100',
-            'is_disabled'  => 'boolean',
-        ]);
-        $data['is_disabled'] = $request->boolean('is_disabled');
-        $supplier->update($data);
-        return redirect()->route('people.index', ['tab' => 'suppliers'])->with('success', 'อัพเดตผู้จำหน่ายเรียบร้อยแล้ว');
-    }
-
-    public function destroySupplier(Supplier $supplier)
-    {
-        $supplier->delete();
-        return redirect()->route('people.index', ['tab' => 'suppliers'])->with('success', 'ลบผู้จำหน่ายเรียบร้อยแล้ว');
-    }
-
-    // --- Staff CRUD ---
-    public function storeStaff(Request $request)
-    {
-        $data = $request->validate([
-            'name'     => 'required|string|max:200',
-            'email'    => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8',
-        ]);
-        $data['password'] = bcrypt($data['password']);
-        User::create($data);
-        return redirect()->route('people.index', ['tab' => 'staff'])->with('success', 'เพิ่มพนักงานเรียบร้อยแล้ว');
-    }
-
-    public function updateStaff(Request $request, User $user)
-    {
-        $data = $request->validate([
-            'name'     => 'required|string|max:200',
-            'email'    => 'required|email|unique:users,email,' . $user->id,
-            'password' => 'nullable|string|min:8',
-        ]);
-        if (empty($data['password'])) {
-            unset($data['password']);
-        } else {
-            $data['password'] = bcrypt($data['password']);
-        }
-        $user->update($data);
-        return redirect()->route('people.index', ['tab' => 'staff'])->with('success', 'อัพเดตพนักงานเรียบร้อยแล้ว');
-    }
-
-    public function destroyStaff(User $user)
-    {
-        $user->delete();
-        return redirect()->route('people.index', ['tab' => 'staff'])->with('success', 'ลบพนักงานเรียบร้อยแล้ว');
+    // Auto-check is_paid when cash
+    if (isPaidCheckbox) {
+        isPaidCheckbox.checked = !isCredit;
+        togglePaidDateField();
     }
 }
 ```
 
----
+### 6. ตัดคอลัมน์ "ราคาขาย" ออกจากตาราง
 
-## 3. Routes — เพิ่มใน `routes/web.php`
+ลบทั้งหมดที่เกี่ยวกับ sell_price ออก:
+- `<th>ราคาขาย</th>` ใน thead
+- `<td>...<input name="sell_price[]" class="sell-price-input">...</td>` ใน tbody
+- `sell_price[]` input ใน `createRowHtml()`
+- `row.querySelector('.sell-price-input')` ใน `applyProductSelection()`
+- `name="sell_price[]"` ทุกที่
 
-```php
-use App\Http\Controllers\PeopleController;
+### 7. ราคารวม — กรอกได้และคำนวณย้อนกลับเป็นราคาทุน/หน่วย
 
-// People (ลูกค้า + ผู้จำหน่าย + พนักงาน)
-Route::get('/people', [PeopleController::class, 'index'])->name('people.index');
-
-Route::post('/people/customers', [PeopleController::class, 'storeCustomer'])->name('people.customers.store');
-Route::put('/people/customers/{customer}', [PeopleController::class, 'updateCustomer'])->name('people.customers.update');
-Route::delete('/people/customers/{customer}', [PeopleController::class, 'destroyCustomer'])->name('people.customers.destroy');
-
-Route::post('/people/suppliers', [PeopleController::class, 'storeSupplier'])->name('people.suppliers.store');
-Route::put('/people/suppliers/{supplier}', [PeopleController::class, 'updateSupplier'])->name('people.suppliers.update');
-Route::delete('/people/suppliers/{supplier}', [PeopleController::class, 'destroySupplier'])->name('people.suppliers.destroy');
-
-Route::post('/people/staff', [PeopleController::class, 'storeStaff'])->name('people.staff.store');
-Route::put('/people/staff/{user}', [PeopleController::class, 'updateStaff'])->name('people.staff.update');
-Route::delete('/people/staff/{user}', [PeopleController::class, 'destroyStaff'])->name('people.staff.destroy');
+เปลี่ยน `line-total-input` จาก readonly เป็น editable:
+```html
+<input type="number" name="line_total[]" step="0.01" min="0"
+    class="line-total-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-emerald-700 focus:border-emerald-400 focus:outline-none">
 ```
 
----
+ใน JS — เพิ่ม event listener สำหรับ line-total-input:
+```javascript
+if (event.target.classList.contains('line-total-input')) {
+    // คำนวณย้อนกลับ: cost = (lineTotal + discount) / qty
+    const lineTotal = parseNumber(event.target.value);
+    const qty = parseNumber(row.querySelector('.qty-input')?.value) || 1;
+    const discount = parseNumber(row.querySelector('.discount-input')?.value);
+    const costPerUnit = (lineTotal + discount) / qty;
+    const costInput = row.querySelector('.cost-input');
+    if (costInput) costInput.value = costPerUnit.toFixed(2);
+    updateGrandTotal();
+    return;
+}
+```
 
-## 4. View — `resources/views/people/index.blade.php`
+และใน `updateRowTotal()` — ต้องไม่ overwrite line-total ถ้า user กำลัง edit มัน:
+แก้ให้ update line-total เฉพาะเมื่อ trigger มาจาก qty/cost/discount:
+```javascript
+function updateRowTotal(row, skipTotalUpdate = false) {
+    if (skipTotalUpdate) return;
+    const qty = parseNumber(row.querySelector('.qty-input')?.value);
+    const cost = parseNumber(row.querySelector('.cost-input')?.value);
+    const discount = parseNumber(row.querySelector('.discount-input')?.value);
+    const lineTotal = Math.max((qty * cost) - discount, 0);
+    const lineTotalInput = row.querySelector('.line-total-input');
+    if (lineTotalInput) lineTotalInput.value = lineTotal.toFixed(2);
+    updateGrandTotal();
+}
+```
 
-สร้างไฟล์ใหม่ใช้ layout เดียวกับหน้าอื่นๆ (`@extends('layouts.app')`)
+### 8. วันที่ผลิต และ วันหมดอายุ — กรอก ddmmyy แปลงอัตโนมัติ
 
-โครงสร้าง:
-- Header: "บุคคล" + ปุ่ม "+ เพิ่ม" (แสดง modal ตาม tab ที่ active)
-- Tab bar: ลูกค้า | ผู้จำหน่าย | พนักงาน (switch ด้วย `?tab=` หรือ JS)
-- แต่ละ tab มีตารางแสดงรายการ + ปุ่มแก้ไข/ลบ
-- Modal สำหรับ เพิ่ม/แก้ไข แต่ละประเภท
+เปลี่ยน input type จาก `date` เป็น `text` สำหรับทั้ง manufactured_date และ expiry_date:
 
-### Tab: ลูกค้า — columns:
-`รหัส | ชื่อ-นามสกุล | เบอร์โทร | HN | วันเกิด | แจ้งเตือน | จัดการ`
+```html
+<input type="text" name="expiry_date[]"
+    placeholder="ddmmyy เช่น 311226"
+    class="expiry-date-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none">
+<input type="text" name="manufactured_date[]"
+    placeholder="ddmmyy เช่น 010124"
+    class="manufactured-date-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none">
+```
 
-### Tab: ผู้จำหน่าย — columns:
-`รหัส | ชื่อ | ผู้ติดต่อ | เบอร์โทร | สถานะ | จัดการ`
+ใน JS — เพิ่ม function และ event listener:
+```javascript
+function parseDDMMYY(value) {
+    // รับ ddmmyy (6 digits) แปลงเป็น dd/mm/20yy แล้ว set เป็น yyyy-mm-dd สำหรับ backend
+    const clean = value.replace(/\D/g, '');
+    if (clean.length !== 6) return null;
+    const dd = clean.slice(0, 2);
+    const mm = clean.slice(2, 4);
+    const yy = clean.slice(4, 6);
+    const yyyy = '20' + yy;
+    // validate
+    const date = new Date(`${yyyy}-${mm}-${dd}`);
+    if (isNaN(date.getTime())) return null;
+    return { display: `${dd}/${mm}/${yyyy}`, iso: `${yyyy}-${mm}-${dd}` };
+}
+```
 
-### Tab: พนักงาน — columns:
-`ชื่อ | Email | จัดการ`
+เพิ่ม event listener ใน body input handler:
+```javascript
+if (event.target.classList.contains('expiry-date-input') || event.target.classList.contains('manufactured-date-input')) {
+    const input = event.target;
+    const clean = input.value.replace(/\D/g, '');
+    if (clean.length === 6) {
+        const parsed = parseDDMMYY(clean);
+        if (parsed) {
+            input.value = parsed.display; // แสดง dd/mm/yyyy
+            input.dataset.isoValue = parsed.iso; // เก็บ iso ไว้สำหรับ submit
+            input.classList.remove('border-red-400');
+            input.classList.add('border-emerald-400');
+        } else {
+            input.classList.add('border-red-400');
+        }
+    }
+}
+```
 
-### Style guidelines:
-- ใช้ Tailwind CSS เหมือนหน้าอื่นๆ ในโปรเจค (rounded-xl, border-gray-200, emerald buttons)
-- ปุ่ม เพิ่ม: `bg-emerald-500`
-- ปุ่ม แก้ไข: border icon
-- ปุ่ม ลบ: `border-red-200 text-red-600`
-- Modal: `fixed inset-0 bg-black/40 z-50`
+ก่อน submit form — แปลง display value กลับเป็น iso:
+```javascript
+document.getElementById('stock-receive-form')?.addEventListener('submit', function() {
+    document.querySelectorAll('.expiry-date-input, .manufactured-date-input').forEach(input => {
+        if (input.dataset.isoValue) {
+            input.value = input.dataset.isoValue;
+        }
+    });
+});
+```
 
----
-
-## 5. อัพเดต Sidebar
-
-ตรวจหาไฟล์ sidebar/nav ใน `resources/views/layouts/` แล้วเพิ่ม link ไปยัง `/people` (ชื่อ "บุคคล") แทนที่หรือเพิ่มจาก link ผู้จำหน่ายเดิม
+อัปเดต `createRowHtml()` ให้ใช้ input text แทน input date ด้วย
 
 ---
 
 ## Notes
-- ไม่ต้องลบ `/suppliers` routes เดิม เผื่อมี link เก่าอยู่
-- `User` model มี fillable `name`, `email`, `password` อยู่แล้ว
-- `Customer` model มี fillable ครบแล้วใน `app/Models/Customer.php`
-- `Supplier` model มี fillable ครบแล้วใน `app/Models/Supplier.php`
-- After creating files, verify UTF-8 without BOM
-- ตรวจสอบว่า `customers` table มีอยู่ใน DB แล้ว ถ้ายังไม่มีให้รัน migration ก่อน
+- ไม่ต้องรัน `npm run build`
+- บันทึก UTF-8 ไม่มี BOM
+- ทดสอบ: กรอก 311226 → enter → แสดง 31/12/2026
+- ทดสอบ: เลือก เงินสด → checkbox ชำระแล้ว auto check
+- ทดสอบ: กรอกราคารวม → cost/unit คำนวณย้อนกลับ

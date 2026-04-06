@@ -33,11 +33,37 @@ class PeopleController extends Controller
             $tab = 'customers';
         }
 
-        $customers = Customer::orderBy('full_name')->paginate(20, ['*'], 'cpage');
-        $suppliers = Supplier::orderBy('name')->paginate(20, ['*'], 'spage');
-        $staff = User::orderBy('name')->paginate(20, ['*'], 'upage');
+        $q = $request->get('q', '');
 
-        return view('people.index', compact('tab', 'customers', 'suppliers', 'staff'));
+        $customers = Customer::when($q, fn($query) =>
+            $query->where('full_name', 'like', "%{$q}%")->orWhere('phone', 'like', "%{$q}%")
+        )->orderBy('code')->paginate(20, ['*'], 'cpage')->withQueryString();
+
+        $suppliers = Supplier::when($q, fn($query) =>
+            $query->where('name', 'like', "%{$q}%")->orWhere('phone', 'like', "%{$q}%")
+        )->orderBy('code')->paginate(20, ['*'], 'spage')->withQueryString();
+
+        $staff = User::when($q, fn($query) =>
+            $query->where('name', 'like', "%{$q}%")->orWhere('email', 'like', "%{$q}%")
+        )->orderBy('id')->paginate(20, ['*'], 'upage')->withQueryString();
+
+        $nextCustomerCode = $this->nextCode('customer');
+        $nextSupplierCode = $this->nextCode('supplier');
+
+        return view('people.index', compact('tab', 'customers', 'suppliers', 'staff', 'q', 'nextCustomerCode', 'nextSupplierCode'));
+    }
+
+    /**
+     * Get next running code for customer or supplier
+     */
+    private function nextCode(string $model): string
+    {
+        $table = $model === 'customer' ? 'customers' : 'suppliers';
+        $prefix = $model === 'customer' ? 'C' : 'S';
+        $last = \DB::table($table)->whereNotNull('code')->orderByDesc('code')->value('code');
+        if (!$last) return $prefix . '0001';
+        $num = (int) preg_replace('/\D/', '', $last);
+        return $prefix . str_pad($num + 1, 4, '0', STR_PAD_LEFT);
     }
 
     public function storeCustomer(Request $request)

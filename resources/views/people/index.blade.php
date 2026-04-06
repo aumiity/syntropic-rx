@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="min-h-screen bg-slate-50 p-4">
-    <div class="max-w-7xl mx-auto bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <div class="max-w-full mx-auto bg-white rounded-xl border border-gray-200 shadow-sm p-5">
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-5">
             <h1 class="text-2xl font-bold text-slate-900">บุคคล</h1>
             <button type="button"
@@ -38,6 +38,15 @@
             </nav>
         </div>
 
+        <form method="GET" action="{{ route('people.index') }}" class="mb-4 flex gap-2">
+            <input type="hidden" name="tab" value="{{ $tab }}">
+            <input type="text" name="q" value="{{ request('q') }}" placeholder="ค้นหาชื่อหรือเบอร์โทร..."
+                class="flex-1 h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">
+            <button type="submit" class="px-4 h-10 rounded-lg bg-emerald-500 text-white text-sm">ค้นหา</button>
+            @if(request('q'))
+                <a href="{{ route('people.index', ['tab' => $tab]) }}" class="px-4 h-10 rounded-lg border border-gray-200 text-sm text-gray-600 flex items-center">ล้าง</a>
+            @endif
+        </form>
         <div class="overflow-x-auto rounded-xl border border-gray-200">
             @if($tab === 'customers')
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
@@ -229,7 +238,7 @@
         <form method="POST" action="{{ route('people.customers.store') }}" class="space-y-3">
             @csrf
             <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <input type="text" value="ระบบสร้างอัตโนมัติ (C000001)" disabled class="rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-gray-500">
+                <input type="text" name="code" value="{{ $nextCustomerCode }}" readonly class="rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-gray-500">
                 <input type="text" name="full_name" placeholder="ชื่อ-นามสกุล" class="rounded-lg border border-gray-300 px-3 py-2" required>
                 <input type="text" name="id_card" placeholder="เลขบัตรประชาชน" class="rounded-lg border border-gray-300 px-3 py-2">
                 <input type="text" name="hn" placeholder="HN" class="rounded-lg border border-gray-300 px-3 py-2">
@@ -300,7 +309,7 @@
         <form method="POST" action="{{ route('people.suppliers.store') }}" class="space-y-3">
             @csrf
             <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <input type="text" value="ระบบสร้างอัตโนมัติ (S000001)" disabled class="rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-gray-500">
+                <input type="text" name="code" value="{{ $nextSupplierCode }}" readonly class="rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-gray-500">
                 <input type="text" name="name" placeholder="ชื่อ" class="rounded-lg border border-gray-300 px-3 py-2" required>
                 <input type="text" name="tax_id" placeholder="เลขผู้เสียภาษี" class="rounded-lg border border-gray-300 px-3 py-2">
                 <input type="text" name="phone" placeholder="เบอร์โทร" class="rounded-lg border border-gray-300 px-3 py-2">

@@ -139,52 +139,18 @@ class PosController extends Controller
 
     public function receiveStockForm()
     {
-        $products = Product::with('unit')
-            ->where('is_disabled', false)
-            ->orderBy('trade_name')
-            ->get();
-
+        $products = Product::where('is_disabled', false)->orderBy('trade_name')->get();
         $suppliers = Supplier::where('is_disabled', false)->orderBy('name')->get();
 
-        $today = now()->format('Ymd');
-        $count = Schema::hasColumn('product_lots', 'invoice_no')
-            ? DB::table('product_lots')
-                ->where('invoice_no', 'like', "PO-{$today}-%")
-                ->count()
-            : 0;
-
-        $nextPoNumber = 'PO-' . $today . '-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
-
-        $receiveHistory = Schema::hasColumn('product_lots', 'invoice_no')
-            ? DB::table('product_lots')
-                ->join('products', 'product_lots.product_id', '=', 'products.id')
-                ->leftJoin('suppliers', 'product_lots.supplier_id', '=', 'suppliers.id')
-                ->select(
-                    'product_lots.invoice_no',
-                    'product_lots.created_at',
-                    DB::raw('suppliers.name as supplier_name'),
-                    DB::raw('COUNT(product_lots.id) as item_count'),
-                    DB::raw('SUM(product_lots.cost_price * product_lots.qty_received) as total_value')
-                )
-                ->groupBy('product_lots.invoice_no', 'product_lots.created_at', 'suppliers.name')
-                ->orderByDesc('product_lots.created_at')
-                ->paginate(20)
-            : ProductLot::query()->whereRaw('1 = 0')->paginate(20);
-
-        return view('pos.receive_stock', compact('products', 'suppliers', 'receiveHistory', 'nextPoNumber'));
+        return view('pos.receive_stock', compact('products', 'suppliers'));
     }
 
     public function receiveStock(Request $request)
     {
         $data = $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
+            'supplier_id' => 'nullable|exists:suppliers,id',
             'receive_date' => 'required|date',
-            'invoice_no' => 'required|string|max:100',
-            'supplier_invoice_no' => 'nullable|string|max:100',
-            'payment_type' => 'required|in:cash,credit',
-            'due_date' => 'nullable|date|required_if:payment_type,credit',
-            'is_paid' => 'nullable|boolean',
-            'paid_date' => 'nullable|date',
+            'invoice_no' => 'nullable|string|max:100',
 
             'product_id' => 'required|array|min:1',
             'product_id.*' => 'required|exists:products,id',
@@ -200,52 +166,21 @@ class PosController extends Controller
             'sell_price.*' => 'required|numeric|min:0',
             'qty_received' => 'required|array|min:1',
             'qty_received.*' => 'required|integer|min:1',
-            'discount' => 'nullable|array',
-            'discount.*' => 'nullable|numeric|min:0',
             'note' => 'nullable|array',
             'note.*' => 'nullable|string|max:255',
-        ], [
-            'due_date.required_if' => 'กรุณาระบุวันครบกำหนดชำระเมื่อเลือกการชำระเงินแบบเครดิต',
         ]);
 
         $rows = count($data['product_id']);
-        $receiveAt = \Carbon\Carbon::parse($data['receive_date']);
-        $paymentType = $data['payment_type'] ?? 'cash';
-        $dueDate = $paymentType === 'credit' ? ($data['due_date'] ?? null) : null;
-        $isPaid = $request->boolean('is_paid');
-        $paidDate = $isPaid ? ($data['paid_date'] ?? $receiveAt->toDateString()) : null;
 
-        $hasInvoiceNo = Schema::hasColumn('product_lots', 'invoice_no');
-        $hasSupplierInvoiceNo = Schema::hasColumn('product_lots', 'supplier_invoice_no');
-        $hasPaymentType = Schema::hasColumn('product_lots', 'payment_type');
-        $hasDueDate = Schema::hasColumn('product_lots', 'due_date');
-        $hasIsPaid = Schema::hasColumn('product_lots', 'is_paid');
-        $hasPaidDate = Schema::hasColumn('product_lots', 'paid_date');
-
-        DB::transaction(function () use (
-            $data,
-            $rows,
-            $receiveAt,
-            $paymentType,
-            $dueDate,
-            $isPaid,
-            $paidDate,
-            $hasInvoiceNo,
-            $hasSupplierInvoiceNo,
-            $hasPaymentType,
-            $hasDueDate,
-            $hasIsPaid,
-            $hasPaidDate
-        ) {
+        DB::transaction(function () use ($data, $rows) {
             for ($i = 0; $i < $rows; $i++) {
                 $productId = $data['product_id'][$i];
                 $lotNumber = $data['lot_number'][$i];
                 $manufacturedDate = $data['manufactured_date'][$i] ?? null;
                 $expiryDate = $data['expiry_date'][$i];
-                $costPrice = (float) $data['cost_price'][$i];
-                $sellPrice = (float) $data['sell_price'][$i];
-                $qtyReceived = (int) $data['qty_received'][$i];
-                $discount = (float) ($data['discount'][$i] ?? 0);
+                $costPrice = $data['cost_price'][$i];
+                $sellPrice = $data['sell_price'][$i];
+                $qtyReceived = $data['qty_received'][$i];
                 $itemNote = $data['note'][$i] ?? null;
 
                 if (!$productId || !$lotNumber || !$expiryDate || !$qtyReceived) {
@@ -257,31 +192,9 @@ class PosController extends Controller
                     'lot_number' => $lotNumber,
                 ]);
 
-                $prevOnHand = (int) ($lot->exists ? $lot->qty_on_hand : 0);
+                $prevOnHand = $lot->exists ? $lot->qty_on_hand : 0;
 
-                if (!$lot->exists) {
-                    $lot->created_at = $receiveAt->copy();
-                }
-
-                $lot->supplier_id = $data['supplier_id'];
-                if ($hasInvoiceNo) {
-                    $lot->invoice_no = $data['invoice_no'];
-                }
-                if ($hasSupplierInvoiceNo) {
-                    $lot->supplier_invoice_no = $data['supplier_invoice_no'] ?? null;
-                }
-                if ($hasPaymentType) {
-                    $lot->payment_type = $paymentType;
-                }
-                if ($hasDueDate) {
-                    $lot->due_date = $dueDate;
-                }
-                if ($hasIsPaid) {
-                    $lot->is_paid = $isPaid;
-                }
-                if ($hasPaidDate) {
-                    $lot->paid_date = $paidDate;
-                }
+                $lot->supplier_id = $data['supplier_id'] ?? null;
                 $lot->manufactured_date = $manufacturedDate;
                 $lot->expiry_date = $expiryDate;
                 $lot->cost_price = $costPrice;
@@ -290,21 +203,7 @@ class PosController extends Controller
                 $lot->qty_on_hand = ($lot->qty_on_hand ?: 0) + $qtyReceived;
                 $lot->note = $itemNote;
                 $lot->is_closed = false;
-                $lot->updated_at = $receiveAt->copy();
                 $lot->save();
-
-                Product::whereKey($productId)->update([
-                    'price_retail' => $sellPrice,
-                    'updated_at' => now(),
-                ]);
-
-                $movementNote = collect([
-                    'รับยาเข้าสต๊อค',
-                    'เลขที่เอกสาร: ' . $data['invoice_no'],
-                    !empty($data['supplier_invoice_no']) ? 'บิลผู้จำหน่าย: ' . $data['supplier_invoice_no'] : null,
-                    $discount > 0 ? 'ส่วนลด: ' . number_format($discount, 2) : null,
-                    $itemNote ? 'หมายเหตุ: ' . $itemNote : null,
-                ])->filter()->implode(' | ');
 
                 DB::table('stock_movements')->insert([
                     'product_id' => $lot->product_id,
@@ -316,14 +215,14 @@ class PosController extends Controller
                     'qty_before' => $prevOnHand,
                     'qty_after' => $lot->qty_on_hand,
                     'unit_cost' => $costPrice,
-                    'note' => $movementNote,
+                    'note' => 'รับยาเข้าสต๊อค (เลขที่เอกสาร: ' . ($data['invoice_no'] ?? '-') . ')',
                     'created_by' => optional(auth()->user())->id,
-                    'created_at' => $receiveAt->copy(),
+                    'created_at' => now(),
                 ]);
             }
         });
 
-        return redirect()->route('pos.stock.receive')->with('success', 'บันทึกการรับสินค้าเรียบร้อยแล้ว');
+        return redirect()->route('pos.stock.receive')->with('success', 'บันทึกการรับยาเข้าสต๊อคเรียบร้อยแล้ว');
     }
 
     public function receiveStockHistory(Request $request)
@@ -343,8 +242,6 @@ class PosController extends Controller
                 'products.trade_name',
                 'products.barcode',
                 'products.code',
-                'product_lots.invoice_no',
-                'product_lots.supplier_invoice_no',
                 'product_lots.lot_number',
                 'product_lots.expiry_date',
                 'suppliers.name as supplier_name',
@@ -352,12 +249,6 @@ class PosController extends Controller
             ]);
 
         // Filters
-        if ($request->filled('invoice_no')) {
-            $query->where('product_lots.invoice_no', $request->invoice_no);
-        } elseif ($request->filled('received_at')) {
-            $query->where('stock_movements.created_at', $request->received_at);
-        }
-
         if ($request->filled('date_from')) {
             $query->whereDate('stock_movements.created_at', '>=', $request->date_from);
         }
