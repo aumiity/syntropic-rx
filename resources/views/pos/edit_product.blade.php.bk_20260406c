@@ -2028,13 +2028,6 @@
                 dropdown.classList.add('hidden');
                 searchInput.focus();
             });
-
-            searchInput.addEventListener('blur', () => {
-                // Small delay so click on dropdown option fires before blur closes it
-                setTimeout(() => {
-                    dropdown.classList.add('hidden');
-                }, 150);
-            });
         }
 
         // Autocomplete initialization for all inline forms
@@ -2578,7 +2571,32 @@
                     const data = await response.json().catch(() => ({}));
                     if (!response.ok) throw new Error(data.message || 'บันทึกไม่สำเร็จ');
                     showToast(data.message || 'บันทึกสำเร็จ', 'success');
-                    setTimeout(() => window.location.reload(), 800);
+                    // For new label, reload all
+                    if (labelId === 'new') {
+                        loadLabels();
+                    } else {
+                        // Update preview in-place
+                        const updatedLabel = data.label || null;
+                        if (updatedLabel) {
+                            // Update preview HTML
+                            const preview = document.querySelector(`.label-preview-${labelId}`);
+                            if (preview) {
+                                preview.innerHTML = generateLabelPreviewHTML(updatedLabel, shopSettings, 'th', false, labelSettings);
+                                // Re-render barcode if needed
+                                if (updatedLabel.show_barcode && updatedLabel.product_barcode && typeof JsBarcode !== 'undefined') {
+                                    setTimeout(() => {
+                                        try {
+                                            const barcodeId = `barcode-${labelId}-th`;
+                                            const barcodeEl = document.getElementById(barcodeId);
+                                            if (barcodeEl) {
+                                                JsBarcode(`#${barcodeId}`, updatedLabel.product_barcode, { format: 'EAN13' });
+                                            }
+                                        } catch (e) {}
+                                    }, 50);
+                                }
+                            }
+                        }
+                    }
                 } catch (error) {
                     showToast(error.message, 'error');
                 }
@@ -2637,28 +2655,19 @@
             const target = e.target;
             if (!(target instanceof Element)) return;
 
-            // Close ALL visible label autocomplete dropdowns
-            // unless the click was inside that dropdown or its paired search input / clear button
-            document.querySelectorAll(
-                '[id^="dosage_id_dropdown-"], [id^="frequency_id_dropdown-"], ' +
-                '[id^="meal_relation_id_dropdown-"], [id^="label_time_id_dropdown-"], ' +
-                '[id^="advice_id_dropdown-"]'
-            ).forEach(dropdown => {
-                if (dropdown.classList.contains('hidden')) return;
-                // Extract the label suffix (e.g. "4", "5", "new")
-                const match = dropdown.id.match(/-(\w+)$/);
-                const suffix = match ? match[1] : null;
-                if (!suffix) { dropdown.classList.add('hidden'); return; }
-
-                const inDropdown = target.closest(`#${dropdown.id}`);
-                const inSearch   = suffix ? target.closest(`[id$="_search-${suffix}"]`) : false;
-                const inClear    = suffix ? target.closest(`[id$="-${suffix}"]`) : false;
-                if (!inDropdown && !inSearch && !inClear) {
+            // Close all label autocomplete dropdowns when clicking outside
+            document.querySelectorAll('[id^="dosage_id_dropdown-"], [id^="frequency_id_dropdown-"], [id^="meal_relation_id_dropdown-"], [id^="label_time_id_dropdown-"], [id^="advice_id_dropdown-"]').forEach(dropdown => {
+                const dropdownId = dropdown.id;
+                const suffix = dropdownId.replace(/^[^-]+-[^-]+-[^-]+-/, '').replace(/^[^-]+-[^-]+-/, '').replace(/^[^-]+-/, '');
+                if (
+                    !target.closest(`#${dropdownId}`) &&
+                    !target.closest(`[id$="_search-${suffix}"]`) &&
+                    !target.closest(`[id$="_clear-${suffix}"]`)
+                ) {
                     dropdown.classList.add('hidden');
                 }
             });
 
-            // Also close the old-style modal autocomplete dropdowns (no suffix)
             labelSearchConfigs.forEach(config => {
                 const field = config.field;
                 if (target.closest(`#${field}_search`) || target.closest(`#${field}_dropdown`) || target.closest(`#clear-${field}`)) {

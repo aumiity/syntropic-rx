@@ -2,7 +2,6 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PosController;
-use App\Http\Controllers\PeopleController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\ProductUnitController;
@@ -53,21 +52,6 @@ Route::post('/suppliers', [SupplierController::class, 'store'])->name('suppliers
 Route::get('/suppliers/{supplier}/edit', [SupplierController::class, 'edit'])->name('suppliers.edit');
 Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update');
 Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->name('suppliers.destroy');
-
-// People (ลูกค้า + ผู้จำหน่าย + พนักงาน)
-Route::get('/people', [PeopleController::class, 'index'])->name('people.index');
-
-Route::post('/people/customers', [PeopleController::class, 'storeCustomer'])->name('people.customers.store');
-Route::put('/people/customers/{customer}', [PeopleController::class, 'updateCustomer'])->name('people.customers.update');
-Route::delete('/people/customers/{customer}', [PeopleController::class, 'destroyCustomer'])->name('people.customers.destroy');
-
-Route::post('/people/suppliers', [PeopleController::class, 'storeSupplier'])->name('people.suppliers.store');
-Route::put('/people/suppliers/{supplier}', [PeopleController::class, 'updateSupplier'])->name('people.suppliers.update');
-Route::delete('/people/suppliers/{supplier}', [PeopleController::class, 'destroySupplier'])->name('people.suppliers.destroy');
-
-Route::post('/people/staff', [PeopleController::class, 'storeStaff'])->name('people.staff.store');
-Route::put('/people/staff/{user}', [PeopleController::class, 'updateStaff'])->name('people.staff.update');
-Route::delete('/people/staff/{user}', [PeopleController::class, 'destroyStaff'])->name('people.staff.destroy');
 
 // Shop Settings Routes
 Route::get('/shop-settings', [SettingController::class, 'index'])->name('settings.shop.index');

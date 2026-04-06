@@ -1,153 +1,270 @@
-# Prompt — Silent save: keep save button, auto-save toggles, update preview in-place
-> Date: 2026-04-05
+# Feature: หน้า บุคคล (People) — ลูกค้า + ผู้จำหน่าย + พนักงาน
+
+## Model
+🟡 GPT-4.1
+
+## Overview
+สร้างหน้า `/people` ที่รวม 3 sub-sections ไว้ใน layout เดียว โดยใช้ tab switching (ไม่ต้องเปลี่ยน URL):
+- **ลูกค้า** (Customers)
+- **ผู้จำหน่าย** (Suppliers) — ย้ายมาจาก `/suppliers` เดิม
+- **พนักงาน** (Staff/Users)
 
 ---
 
-## ⚠️ IMPORTANT
-Read the actual file from disk before making any changes. Do NOT use memory or conversation history.
+## Files to Create / Edit
 
-File to edit:
-- `resources/views/pos/edit_product.blade.php`
-
-Backup before editing:
-- Save a copy as `resources/views/pos/edit_product.blade.php.bak.silentsave`
+### Backup before editing:
+- `routes/web.php`
+- `resources/views/suppliers/index.blade.php` (ถ้ามีอยู่)
 
 ---
 
-## Goal
+## 1. Migration — `people` table (ถ้ายังไม่มี customers table)
 
-1. Keep 💾 บันทึก button — when clicked, save silently (no page reload), then update preview in-place
-2. Toggle fields (is_default, is_active, show_barcode) — save immediately and silently on change
-3. Never call `loadLabels()` after save (except for new labels) — no full page reload
+ตรวจสอบว่ามี `customers` table ใน DB แล้วหรือยัง (Model `Customer` มีอยู่แล้วที่ `app/Models/Customer.php`) ถ้ายังไม่มี migration ให้สร้าง:
+
+```
+php artisan make:migration create_customers_table
+```
+
+Fields สำหรับ `customers`:
+```php
+$table->id();
+$table->string('code', 20)->nullable()->unique();
+$table->string('full_name', 200);
+$table->string('id_card', 20)->nullable();
+$table->string('hn', 20)->nullable();
+$table->date('dob')->nullable();
+$table->string('phone', 30)->nullable();
+$table->text('address')->nullable();
+$table->text('food_allergy')->nullable();
+$table->text('other_allergy')->nullable();
+$table->text('chronic_diseases')->nullable();
+$table->boolean('is_alert')->default(false);
+$table->text('alert_note')->nullable();
+$table->text('warning_note')->nullable();
+$table->boolean('is_hidden')->default(false);
+$table->timestamps();
+```
 
 ---
 
-## Step 1 — Add `silentSaveLabel(labelId, formEl)` helper function
+## 2. Controller — `PeopleController.php`
 
-Add this function inside the DOMContentLoaded block, near `renderLabelsTable`:
+Create: `app/Http/Controllers/PeopleController.php`
 
-```js
-async function silentSaveLabel(labelId, formEl) {
-    const formData = new FormData(formEl);
-    formData.set('show_barcode', formEl.querySelector(`#show_barcode-${labelId}`)?.checked ? '1' : '0');
-    formData.set('is_default',   formEl.querySelector(`#is_default-${labelId}`)?.checked   ? '1' : '0');
-    formData.set('is_active',    formEl.querySelector(`#is_active-${labelId}`)?.checked    ? '1' : '0');
+```php
+<?php
 
-    const isNew = labelId === 'new';
-    const url   = isNew ? labelApiBase : `${labelApiBase}/${labelId}`;
-    if (!isNew) formData.append('_method', 'PUT');
+namespace App\Http\Controllers;
 
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-            body: formData,
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.message || 'บันทึกไม่สำเร็จ');
+use App\Models\Customer;
+use App\Models\Supplier;
+use App\Models\User;
+use Illuminate\Http\Request;
 
-        showToast('บันทึกแล้ว', 'success');
+class PeopleController extends Controller
+{
+    public function index(Request $request)
+    {
+        $tab = $request->get('tab', 'customers');
 
-        // Update preview in-place
-        const updatedLabel = data.label || {};
-        const currentLang = document.querySelector(`.label-lang-btn[data-label-id="${labelId}"][style*="10b981"]`)?.dataset.lang || 'th';
-        const previewDiv = document.querySelector(`.label-preview-${labelId}`);
-        if (previewDiv && updatedLabel) {
-            previewDiv.innerHTML = generateLabelPreviewHTML(updatedLabel, shopSettings, currentLang, false, labelSettings);
+        $customers = Customer::orderBy('full_name')->paginate(20, ['*'], 'cpage');
+        $suppliers = Supplier::orderBy('name')->paginate(20, ['*'], 'spage');
+        $staff     = User::orderBy('name')->paginate(20, ['*'], 'upage');
+
+        return view('people.index', compact('tab', 'customers', 'suppliers', 'staff'));
+    }
+
+    // --- Customer CRUD ---
+    public function storeCustomer(Request $request)
+    {
+        $data = $request->validate([
+            'code'             => 'nullable|string|max:20|unique:customers,code',
+            'full_name'        => 'required|string|max:200',
+            'id_card'          => 'nullable|string|max:20',
+            'hn'               => 'nullable|string|max:20',
+            'dob'              => 'nullable|date',
+            'phone'            => 'nullable|string|max:30',
+            'address'          => 'nullable|string',
+            'food_allergy'     => 'nullable|string',
+            'other_allergy'    => 'nullable|string',
+            'chronic_diseases' => 'nullable|string',
+            'is_alert'         => 'boolean',
+            'alert_note'       => 'nullable|string',
+            'warning_note'     => 'nullable|string',
+        ]);
+        $data['is_alert'] = $request->boolean('is_alert');
+        Customer::create($data);
+        return redirect()->route('people.index', ['tab' => 'customers'])->with('success', 'เพิ่มลูกค้าเรียบร้อยแล้ว');
+    }
+
+    public function updateCustomer(Request $request, Customer $customer)
+    {
+        $data = $request->validate([
+            'code'             => 'nullable|string|max:20|unique:customers,code,' . $customer->id,
+            'full_name'        => 'required|string|max:200',
+            'id_card'          => 'nullable|string|max:20',
+            'hn'               => 'nullable|string|max:20',
+            'dob'              => 'nullable|date',
+            'phone'            => 'nullable|string|max:30',
+            'address'          => 'nullable|string',
+            'food_allergy'     => 'nullable|string',
+            'other_allergy'    => 'nullable|string',
+            'chronic_diseases' => 'nullable|string',
+            'is_alert'         => 'boolean',
+            'alert_note'       => 'nullable|string',
+            'warning_note'     => 'nullable|string',
+        ]);
+        $data['is_alert'] = $request->boolean('is_alert');
+        $customer->update($data);
+        return redirect()->route('people.index', ['tab' => 'customers'])->with('success', 'อัพเดตลูกค้าเรียบร้อยแล้ว');
+    }
+
+    public function destroyCustomer(Customer $customer)
+    {
+        $customer->delete();
+        return redirect()->route('people.index', ['tab' => 'customers'])->with('success', 'ลบลูกค้าเรียบร้อยแล้ว');
+    }
+
+    // --- Supplier CRUD (moved from SupplierController) ---
+    public function storeSupplier(Request $request)
+    {
+        $data = $request->validate([
+            'code'         => 'nullable|string|max:20|unique:suppliers,code',
+            'name'         => 'required|string|max:200',
+            'tax_id'       => 'nullable|string|max:20',
+            'phone'        => 'nullable|string|max:30',
+            'address'      => 'nullable|string',
+            'contact_name' => 'nullable|string|max:100',
+        ]);
+        $data['is_disabled'] = false;
+        Supplier::create($data);
+        return redirect()->route('people.index', ['tab' => 'suppliers'])->with('success', 'เพิ่มผู้จำหน่ายเรียบร้อยแล้ว');
+    }
+
+    public function updateSupplier(Request $request, Supplier $supplier)
+    {
+        $data = $request->validate([
+            'code'         => 'nullable|string|max:20|unique:suppliers,code,' . $supplier->id,
+            'name'         => 'required|string|max:200',
+            'tax_id'       => 'nullable|string|max:20',
+            'phone'        => 'nullable|string|max:30',
+            'address'      => 'nullable|string',
+            'contact_name' => 'nullable|string|max:100',
+            'is_disabled'  => 'boolean',
+        ]);
+        $data['is_disabled'] = $request->boolean('is_disabled');
+        $supplier->update($data);
+        return redirect()->route('people.index', ['tab' => 'suppliers'])->with('success', 'อัพเดตผู้จำหน่ายเรียบร้อยแล้ว');
+    }
+
+    public function destroySupplier(Supplier $supplier)
+    {
+        $supplier->delete();
+        return redirect()->route('people.index', ['tab' => 'suppliers'])->with('success', 'ลบผู้จำหน่ายเรียบร้อยแล้ว');
+    }
+
+    // --- Staff CRUD ---
+    public function storeStaff(Request $request)
+    {
+        $data = $request->validate([
+            'name'     => 'required|string|max:200',
+            'email'    => 'required|email|unique:users,email',
+            'password' => 'required|string|min:8',
+        ]);
+        $data['password'] = bcrypt($data['password']);
+        User::create($data);
+        return redirect()->route('people.index', ['tab' => 'staff'])->with('success', 'เพิ่มพนักงานเรียบร้อยแล้ว');
+    }
+
+    public function updateStaff(Request $request, User $user)
+    {
+        $data = $request->validate([
+            'name'     => 'required|string|max:200',
+            'email'    => 'required|email|unique:users,email,' . $user->id,
+            'password' => 'nullable|string|min:8',
+        ]);
+        if (empty($data['password'])) {
+            unset($data['password']);
+        } else {
+            $data['password'] = bcrypt($data['password']);
         }
+        $user->update($data);
+        return redirect()->route('people.index', ['tab' => 'staff'])->with('success', 'อัพเดตพนักงานเรียบร้อยแล้ว');
+    }
 
-        // If is_default was set, uncheck all other is_default toggles in UI
-        if (formEl.querySelector(`#is_default-${labelId}`)?.checked) {
-            document.querySelectorAll('.label-inline-form').forEach(otherForm => {
-                const otherId = otherForm.dataset.labelId;
-                if (otherId !== String(labelId)) {
-                    const otherDefault = otherForm.querySelector(`#is_default-${otherId}`);
-                    if (otherDefault) otherDefault.checked = false;
-                }
-            });
-        }
-
-        // If new label, reload to get real ID
-        if (isNew) loadLabels();
-
-    } catch (error) {
-        showToast(error.message, 'error');
+    public function destroyStaff(User $user)
+    {
+        $user->delete();
+        return redirect()->route('people.index', ['tab' => 'staff'])->with('success', 'ลบพนักงานเรียบร้อยแล้ว');
     }
 }
 ```
 
 ---
 
-## Step 2 — Change submit handler to use silentSaveLabel
+## 3. Routes — เพิ่มใน `routes/web.php`
 
-Find the section in `renderLabelsTable` where `.label-inline-form` submit events are bound:
+```php
+use App\Http\Controllers\PeopleController;
 
-```js
-container.querySelectorAll('.label-inline-form').forEach(form => {
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const labelId = form.dataset.labelId;
-        const formData = new FormData(form);
-        let url = labelApiBase;
-        let method = 'POST';
-        if (labelId !== 'new') {
-            url = `${labelApiBase}/${labelId}`;
-            formData.append('_method', 'PUT');
-        }
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-                body: formData,
-            });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.message || 'บันทึกไม่สำเร็จ');
-            showToast(data.message || 'บันทึกสำเร็จ', 'success');
-            loadLabels();
-        } catch (error) {
-            showToast(error.message, 'error');
-        }
-    });
-});
-```
+// People (ลูกค้า + ผู้จำหน่าย + พนักงาน)
+Route::get('/people', [PeopleController::class, 'index'])->name('people.index');
 
-Replace with:
+Route::post('/people/customers', [PeopleController::class, 'storeCustomer'])->name('people.customers.store');
+Route::put('/people/customers/{customer}', [PeopleController::class, 'updateCustomer'])->name('people.customers.update');
+Route::delete('/people/customers/{customer}', [PeopleController::class, 'destroyCustomer'])->name('people.customers.destroy');
 
-```js
-container.querySelectorAll('.label-inline-form').forEach(form => {
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const labelId = form.dataset.labelId;
-        await silentSaveLabel(labelId, form);
-    });
-});
+Route::post('/people/suppliers', [PeopleController::class, 'storeSupplier'])->name('people.suppliers.store');
+Route::put('/people/suppliers/{supplier}', [PeopleController::class, 'updateSupplier'])->name('people.suppliers.update');
+Route::delete('/people/suppliers/{supplier}', [PeopleController::class, 'destroySupplier'])->name('people.suppliers.destroy');
+
+Route::post('/people/staff', [PeopleController::class, 'storeStaff'])->name('people.staff.store');
+Route::put('/people/staff/{user}', [PeopleController::class, 'updateStaff'])->name('people.staff.update');
+Route::delete('/people/staff/{user}', [PeopleController::class, 'destroyStaff'])->name('people.staff.destroy');
 ```
 
 ---
 
-## Step 3 — Bind toggle auto-save after populate loop
+## 4. View — `resources/views/people/index.blade.php`
 
-Find the section after the populate loop (labels.forEach that sets .value and .checked).
-Add this block immediately after it:
+สร้างไฟล์ใหม่ใช้ layout เดียวกับหน้าอื่นๆ (`@extends('layouts.app')`)
 
-```js
-// Auto-save on toggle change
-labels.forEach(label => {
-    const id = label.id;
-    const form = document.querySelector(`.label-inline-form[data-label-id="${id}"]`);
-    if (!form) return;
+โครงสร้าง:
+- Header: "บุคคล" + ปุ่ม "+ เพิ่ม" (แสดง modal ตาม tab ที่ active)
+- Tab bar: ลูกค้า | ผู้จำหน่าย | พนักงาน (switch ด้วย `?tab=` หรือ JS)
+- แต่ละ tab มีตารางแสดงรายการ + ปุ่มแก้ไข/ลบ
+- Modal สำหรับ เพิ่ม/แก้ไข แต่ละประเภท
 
-    ['show_barcode', 'is_default', 'is_active'].forEach(fieldName => {
-        const el = document.getElementById(`${fieldName}-${id}`);
-        el?.addEventListener('change', () => silentSaveLabel(id, form));
-    });
-});
-```
+### Tab: ลูกค้า — columns:
+`รหัส | ชื่อ-นามสกุล | เบอร์โทร | HN | วันเกิด | แจ้งเตือน | จัดการ`
+
+### Tab: ผู้จำหน่าย — columns:
+`รหัส | ชื่อ | ผู้ติดต่อ | เบอร์โทร | สถานะ | จัดการ`
+
+### Tab: พนักงาน — columns:
+`ชื่อ | Email | จัดการ`
+
+### Style guidelines:
+- ใช้ Tailwind CSS เหมือนหน้าอื่นๆ ในโปรเจค (rounded-xl, border-gray-200, emerald buttons)
+- ปุ่ม เพิ่ม: `bg-emerald-500`
+- ปุ่ม แก้ไข: border icon
+- ปุ่ม ลบ: `border-red-200 text-red-600`
+- Modal: `fixed inset-0 bg-black/40 z-50`
 
 ---
 
-## Rules
-- Do NOT remove 💾 บันทึก button — keep it in the form
-- Do NOT call `loadLabels()` after save (except for new labels)
-- Do NOT change `generateLabelPreviewHTML`, `printLabel`, delete button, or barcode logic
-- Backup before editing
+## 5. อัพเดต Sidebar
+
+ตรวจหาไฟล์ sidebar/nav ใน `resources/views/layouts/` แล้วเพิ่ม link ไปยัง `/people` (ชื่อ "บุคคล") แทนที่หรือเพิ่มจาก link ผู้จำหน่ายเดิม
+
+---
+
+## Notes
+- ไม่ต้องลบ `/suppliers` routes เดิม เผื่อมี link เก่าอยู่
+- `User` model มี fillable `name`, `email`, `password` อยู่แล้ว
+- `Customer` model มี fillable ครบแล้วใน `app/Models/Customer.php`
+- `Supplier` model มี fillable ครบแล้วใน `app/Models/Supplier.php`
+- After creating files, verify UTF-8 without BOM
+- ตรวจสอบว่า `customers` table มีอยู่ใน DB แล้ว ถ้ายังไม่มีให้รัน migration ก่อน

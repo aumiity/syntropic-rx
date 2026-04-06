@@ -1687,7 +1687,7 @@
                 </div>
                 <!-- Right: Inline form for new label -->
                 <div class="flex-1">
-                    <div class="label-inline-form space-y-3" data-label-id="new">
+                    <form class="label-inline-form space-y-3" data-label-id="new">
                         <input type="hidden" id="label-id-new" name="label_id" value="">
                         <div>
                             <label for="label_name-new" class="block text-xs font-medium text-gray-600 mb-1">ชื่อฉลาก</label>
@@ -1786,7 +1786,7 @@
                             <button type="button" class="save-label-btn px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium">💾 บันทึก</button>
                             <button type="button" class="cancel-new-label px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium">ยกเลิก</button>
                         </div>
-                    </div>
+                    </form>
                 </div>
             `;
 
@@ -1827,11 +1827,7 @@
                     newForm.querySelector('#label_name-new')?.focus();
                     return;
                 }
-                const formData = new FormData();
-                newForm.querySelectorAll('[name]').forEach(el => {
-                    if (el.type === 'checkbox') return;
-                    formData.append(el.name, el.value);
-                });
+                const formData = new FormData(newForm);
                 formData.set('show_barcode', newForm.querySelector('#show_barcode-new')?.checked ? '1' : '0');
                 formData.set('is_default', newForm.querySelector('#is_default-new')?.checked ? '1' : '0');
                 formData.set('is_active', newForm.querySelector('#is_active-new')?.checked ? '1' : '0');
@@ -2027,13 +2023,6 @@
                 clearBtn.classList.add('hidden');
                 dropdown.classList.add('hidden');
                 searchInput.focus();
-            });
-
-            searchInput.addEventListener('blur', () => {
-                // Small delay so click on dropdown option fires before blur closes it
-                setTimeout(() => {
-                    dropdown.classList.add('hidden');
-                }, 150);
             });
         }
 
@@ -2299,7 +2288,7 @@
                             </div>
                         </div>
                         <div class="flex-1">
-                            <div class="label-inline-form space-y-3" data-label-id="${label.id}">
+                            <form class="label-inline-form space-y-3" data-label-id="${label.id}">
                                 <div class="grid grid-cols-2 gap-4">
                                     <div class="col-span-2">
                                         <label for="label_name-${label.id}" class="block text-xs font-medium text-gray-600 mb-1">ชื่อฉลาก</label>
@@ -2392,7 +2381,7 @@
                                     <button type="button" class="print-label-btn px-4 py-2 rounded-lg border border-purple-400 text-purple-600 hover:bg-purple-50 text-sm font-medium" data-id="${label.id}" data-lang="th">🖨 พิมพ์</button>
                                     <button type="button" class="delete-label-btn px-4 py-2 rounded-lg border border-red-400 text-red-600 hover:bg-red-50 text-sm font-medium" data-id="${label.id}">🗑 ลบ</button>
                                 </div>
-                            </div>
+                            </form>
                         </div>
                     </div>
                     `;
@@ -2554,11 +2543,7 @@
 
             // --- Silent Save Helper ---
             async function silentSaveLabel(labelId, formEl) {
-                const formData = new FormData();
-                formEl.querySelectorAll('[name]').forEach(el => {
-                    if (el.type === 'checkbox') return;
-                    formData.append(el.name, el.value);
-                });
+                const formData = new FormData(formEl);
                 let url = labelApiBase;
                 let method = 'POST';
                 if (labelId !== 'new') {
@@ -2578,11 +2563,44 @@
                     const data = await response.json().catch(() => ({}));
                     if (!response.ok) throw new Error(data.message || 'บันทึกไม่สำเร็จ');
                     showToast(data.message || 'บันทึกสำเร็จ', 'success');
-                    setTimeout(() => window.location.reload(), 800);
+                    // For new label, reload all
+                    if (labelId === 'new') {
+                        loadLabels();
+                    } else {
+                        // Update preview in-place
+                        const updatedLabel = data.label || null;
+                        if (updatedLabel) {
+                            // Update preview HTML
+                            const preview = document.querySelector(`.label-preview-${labelId}`);
+                            if (preview) {
+                                preview.innerHTML = generateLabelPreviewHTML(updatedLabel, shopSettings, 'th', false, labelSettings);
+                                // Re-render barcode if needed
+                                if (updatedLabel.show_barcode && updatedLabel.product_barcode && typeof JsBarcode !== 'undefined') {
+                                    setTimeout(() => {
+                                        try {
+                                            const barcodeId = `barcode-${labelId}-th`;
+                                            const barcodeEl = document.getElementById(barcodeId);
+                                            if (barcodeEl) {
+                                                JsBarcode(`#${barcodeId}`, updatedLabel.product_barcode, { format: 'EAN13' });
+                                            }
+                                        } catch (e) {}
+                                    }, 50);
+                                }
+                            }
+                        }
+                    }
                 } catch (error) {
                     showToast(error.message, 'error');
                 }
             }
+
+            // Keep Enter key from bubbling to the main form submit
+            container.querySelectorAll('.label-inline-form').forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+            });
 
             // Bind save button for each inline form (silent save)
             container.querySelectorAll('.save-label-btn').forEach(btn => {
@@ -2637,28 +2655,6 @@
             const target = e.target;
             if (!(target instanceof Element)) return;
 
-            // Close ALL visible label autocomplete dropdowns
-            // unless the click was inside that dropdown or its paired search input / clear button
-            document.querySelectorAll(
-                '[id^="dosage_id_dropdown-"], [id^="frequency_id_dropdown-"], ' +
-                '[id^="meal_relation_id_dropdown-"], [id^="label_time_id_dropdown-"], ' +
-                '[id^="advice_id_dropdown-"]'
-            ).forEach(dropdown => {
-                if (dropdown.classList.contains('hidden')) return;
-                // Extract the label suffix (e.g. "4", "5", "new")
-                const match = dropdown.id.match(/-(\w+)$/);
-                const suffix = match ? match[1] : null;
-                if (!suffix) { dropdown.classList.add('hidden'); return; }
-
-                const inDropdown = target.closest(`#${dropdown.id}`);
-                const inSearch   = suffix ? target.closest(`[id$="_search-${suffix}"]`) : false;
-                const inClear    = suffix ? target.closest(`[id$="-${suffix}"]`) : false;
-                if (!inDropdown && !inSearch && !inClear) {
-                    dropdown.classList.add('hidden');
-                }
-            });
-
-            // Also close the old-style modal autocomplete dropdowns (no suffix)
             labelSearchConfigs.forEach(config => {
                 const field = config.field;
                 if (target.closest(`#${field}_search`) || target.closest(`#${field}_dropdown`) || target.closest(`#clear-${field}`)) {
