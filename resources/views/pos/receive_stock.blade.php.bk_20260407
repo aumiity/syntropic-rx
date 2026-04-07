@@ -85,10 +85,9 @@
                         <tbody>
                             @forelse($receiveHistory as $history)
                                 @php
+                                    $detailParams = ['received_at' => $history->created_at];
                                     if (!empty($history->invoice_no)) {
-                                        $detailParams = ['invoice_no' => $history->invoice_no];
-                                    } else {
-                                        $detailParams = ['received_at' => $history->created_at];
+                                        $detailParams['invoice_no'] = $history->invoice_no;
                                     }
                                 @endphp
                                 <tr class="border-t border-gray-100">

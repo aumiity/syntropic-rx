@@ -38,7 +38,10 @@ Route::post('/pos/products', [PosController::class, 'storeProduct'])->name('pos.
 // Stock receive (รับยาเข้าสต๊อค)
 Route::get('/purchase', [PosController::class, 'receiveStockForm'])->name('pos.stock.receive');
 Route::post('/purchase', [PosController::class, 'receiveStock'])->name('pos.stock.receive.store');
+
 Route::get('/purchase/history', [PosController::class, 'receiveStockHistory'])->name('pos.stock.receive.history');
+Route::patch('/purchase/bill', [PosController::class, 'updateBillMeta'])->name('pos.stock.bill.update');
+Route::post('/purchase/bill/cancel', [PosController::class, 'cancelBill'])->name('pos.stock.bill.cancel');
 
 Route::get('/pos/stock/receive', function () {
     return redirect()->route('pos.stock.receive');

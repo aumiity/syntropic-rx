@@ -383,7 +383,6 @@ class PosController extends Controller
         $hasIsPaid          = Schema::hasColumn('product_lots', 'is_paid');
         $hasPaidDate        = Schema::hasColumn('product_lots', 'paid_date');
         $hasSupplierInvoice = Schema::hasColumn('product_lots', 'supplier_invoice_no');
-        $hasIsCancelled     = Schema::hasColumn('product_lots', 'is_cancelled');
 
         if ($request->filled('invoice_no') || $request->filled('received_at')) {
             $selectFields = [
@@ -419,12 +418,6 @@ class PosController extends Controller
                 $selectFields[]  = 'product_lots.paid_date';
                 $groupByFields[] = 'product_lots.paid_date';
             }
-            if ($hasIsCancelled) {
-                $selectFields[]  = 'product_lots.is_cancelled';
-                $groupByFields[] = 'product_lots.is_cancelled';
-            } else {
-                $selectFields[] = DB::raw('0 as is_cancelled');
-            }
 
             $billQuery = DB::table('product_lots')
                 ->leftJoin('suppliers', 'product_lots.supplier_id', '=', 'suppliers.id')
@@ -457,7 +450,7 @@ class PosController extends Controller
             'paid_date'           => 'nullable|date',
         ]);
 
-        $isPaid   = $request->boolean('is_paid');
+        $isPaid  = $request->boolean('is_paid');
         $paidDate = $isPaid ? ($data['paid_date'] ?? null) : null;
         $dueDate  = $data['payment_type'] === 'credit' ? ($data['due_date'] ?? null) : null;
 
@@ -468,9 +461,9 @@ class PosController extends Controller
         ];
 
         if (Schema::hasColumn('product_lots', 'supplier_invoice_no')) {
-        $isPaid   = $request->boolean('is_paid');
-        $paidDate = $isPaid ? ($data['paid_date'] ?? null) : null;
-        $dueDate  = $data['payment_type'] === 'credit' ? ($data['due_date'] ?? null) : null;
+            $update['supplier_invoice_no'] = $data['supplier_invoice_no'] ?? null;
+        }
+        if (Schema::hasColumn('product_lots', 'payment_type')) {
             $update['payment_type'] = $data['payment_type'];
         }
         if (Schema::hasColumn('product_lots', 'due_date')) {
@@ -490,94 +483,6 @@ class PosController extends Controller
         return redirect()
             ->route('pos.stock.receive.history', ['invoice_no' => $data['invoice_no']])
             ->with('success', 'แก้ไขรายละเอียดบิลเรียบร้อยแล้ว');
-    }
-
-
-    public function cancelBill(Request $request)
-    {
-        $data = $request->validate([
-            'invoice_no'  => 'required|string',
-            'cancel_note' => 'nullable|string|max:500',
-        ]);
-
-        $invoiceNo = $data['invoice_no'];
-        $cancelNote = $data['cancel_note'] ?? null;
-
-        $lots = DB::table('product_lots')
-            ->where('invoice_no', $invoiceNo)
-            ->get();
-
-        if ($lots->isEmpty()) {
-            return back()->with('error', 'ไม่พบบิลที่ต้องการยกเลิก');
-        }
-
-        $hasIsCancelled = Schema::hasColumn('product_lots', 'is_cancelled');
-        if ($hasIsCancelled && $lots->first()->is_cancelled) {
-            return back()->with('error', 'บิลนี้ถูกยกเลิกไปแล้ว');
-        }
-
-        $warnings = [];
-
-        DB::transaction(function () use ($lots, $invoiceNo, $cancelNote, $hasIsCancelled, &$warnings) {
-            foreach ($lots as $lot) {
-                $qtyReceived = (int) $lot->qty_received;
-                $qtyOnHand   = (int) $lot->qty_on_hand;
-
-                $qtyToReverse = max(0, min($qtyOnHand, $qtyReceived));
-
-                if ($qtyToReverse < $qtyReceived) {
-                    $soldQty = $qtyReceived - $qtyToReverse;
-                    $warnings[] = "Lot {$lot->lot_number}: จำหน่ายไปแล้ว {$soldQty} หน่วย - หักคืนได้ {$qtyToReverse} หน่วย";
-                }
-
-                $newQtyOnHand = $qtyOnHand - $qtyToReverse;
-
-                $lotUpdate = [
-                    'qty_on_hand' => $newQtyOnHand,
-                    'is_closed'   => true,
-                    'updated_at'  => now(),
-                ];
-                if ($hasIsCancelled) {
-                    $lotUpdate['is_cancelled'] = true;
-                    $lotUpdate['cancelled_at'] = now();
-                    $lotUpdate['cancel_note']  = $cancelNote;
-                }
-
-                DB::table('product_lots')->where('id', $lot->id)->update($lotUpdate);
-
-                if ($qtyToReverse > 0) {
-                    $movementNote = collect([
-                        'ยกเลิกบิลรับสินค้า',
-                        'เลขที่เอกสาร: ' . $invoiceNo,
-                        $cancelNote ? 'หมายเหตุ: ' . $cancelNote : null,
-                    ])->filter()->implode(' | ');
-
-                    DB::table('stock_movements')->insert([
-                        'product_id'    => $lot->product_id,
-                        'lot_id'        => $lot->id,
-                        'movement_type' => 'purchase_return',
-                        'ref_type'      => 'bill_cancel',
-                        'ref_id'        => null,
-                        'qty_change'    => $qtyToReverse,
-                        'qty_before'    => $qtyOnHand,
-                        'qty_after'     => $newQtyOnHand,
-                        'unit_cost'     => $lot->cost_price,
-                        'note'          => $movementNote,
-                        'created_by'    => optional(auth()->user())->id,
-                        'created_at'    => now(),
-                    ]);
-                }
-            }
-        });
-
-        $message = 'ยกเลิกบิล ' . $invoiceNo . ' เรียบร้อยแล้ว';
-        if (!empty($warnings)) {
-            $message .= ' (มีสินค้าบางส่วนที่จำหน่ายไปแล้ว: ' . implode(', ', $warnings) . ')';
-        }
-
-        return redirect()
-            ->route('pos.stock.receive')
-            ->with('success', $message);
     }
 
     public function search(Request $request)
