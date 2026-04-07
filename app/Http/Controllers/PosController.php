@@ -155,21 +155,58 @@ class PosController extends Controller
 
         $nextPoNumber = 'PO-' . $today . '-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
 
-        $receiveHistory = Schema::hasColumn('product_lots', 'invoice_no')
-            ? DB::table('product_lots')
-                ->join('products', 'product_lots.product_id', '=', 'products.id')
+        $hasSupplierInvoiceNo = Schema::hasColumn('product_lots', 'supplier_invoice_no');
+        $hasPaymentType       = Schema::hasColumn('product_lots', 'payment_type');
+        $hasIsPaid            = Schema::hasColumn('product_lots', 'is_paid');
+
+        $allowedSortBy = ['created_at', 'invoice_no', 'supplier_name', 'total_value'];
+        $sortBy  = in_array(request('sort_by'), $allowedSortBy) ? request('sort_by') : 'created_at';
+        $sortDir = request('sort_dir') === 'asc' ? 'asc' : 'desc';
+
+        $selectFields = [
+            'product_lots.invoice_no',
+            DB::raw('MIN(product_lots.created_at) as created_at'),
+            DB::raw('suppliers.name as supplier_name'),
+            DB::raw('COUNT(product_lots.id) as item_count'),
+            DB::raw('SUM(product_lots.cost_price * product_lots.qty_received) as total_value'),
+        ];
+        if ($hasSupplierInvoiceNo) {
+            $selectFields[] = DB::raw('MIN(product_lots.supplier_invoice_no) as supplier_invoice_no');
+        }
+        if ($hasPaymentType) {
+            $selectFields[] = DB::raw('MIN(product_lots.payment_type) as payment_type');
+        }
+        if ($hasIsPaid) {
+            $selectFields[] = DB::raw('MAX(product_lots.is_paid) as is_paid');
+        }
+
+        if (Schema::hasColumn('product_lots', 'invoice_no')) {
+            $historyQuery = DB::table('product_lots')
                 ->leftJoin('suppliers', 'product_lots.supplier_id', '=', 'suppliers.id')
-                ->select(
-                    'product_lots.invoice_no',
-                    'product_lots.created_at',
-                    DB::raw('suppliers.name as supplier_name'),
-                    DB::raw('COUNT(product_lots.id) as item_count'),
-                    DB::raw('SUM(product_lots.cost_price * product_lots.qty_received) as total_value')
-                )
-                ->groupBy('product_lots.invoice_no', 'product_lots.created_at', 'suppliers.name')
-                ->orderByDesc('product_lots.created_at')
-                ->paginate(20)
-            : ProductLot::query()->whereRaw('1 = 0')->paginate(20);
+                ->select($selectFields)
+                ->groupBy('product_lots.invoice_no', 'suppliers.name');
+
+            if (request('filter_date')) {
+                $historyQuery->whereDate('product_lots.created_at', request('filter_date'));
+            }
+            if (request('filter_supplier_invoice')) {
+                $historyQuery->where('product_lots.supplier_invoice_no', 'like', '%' . request('filter_supplier_invoice') . '%');
+            }
+            if (request('filter_supplier')) {
+                $historyQuery->where('product_lots.supplier_id', request('filter_supplier'));
+            }
+
+            $orderByCol = match($sortBy) {
+                'invoice_no'    => 'product_lots.invoice_no',
+                'supplier_name' => DB::raw('suppliers.name'),
+                'total_value'   => DB::raw('SUM(product_lots.cost_price * product_lots.qty_received)'),
+                default         => DB::raw('MIN(product_lots.created_at)'),
+            };
+
+            $receiveHistory = $historyQuery->orderBy($orderByCol, $sortDir)->paginate(20)->withQueryString();
+        } else {
+            $receiveHistory = ProductLot::query()->whereRaw('1 = 0')->paginate(20);
+        }
 
         return view('pos.receive_stock', compact('products', 'suppliers', 'receiveHistory', 'nextPoNumber'));
     }
@@ -355,7 +392,7 @@ class PosController extends Controller
         if ($request->filled('invoice_no')) {
             $query->where('product_lots.invoice_no', $request->invoice_no);
         } elseif ($request->filled('received_at')) {
-            $query->where('stock_movements.created_at', $request->received_at);
+            $query->whereDate('stock_movements.created_at', \Carbon\Carbon::parse($request->received_at)->toDateString());
         }
 
         if ($request->filled('date_from')) {
@@ -447,7 +484,7 @@ class PosController extends Controller
     public function updateBillMeta(Request $request)
     {
         $data = $request->validate([
-            'invoice_no'          => 'required|string',
+            'invoice_no'          => 'nullable|string',
             'supplier_invoice_no' => 'nullable|string|max:100',
             'supplier_id'         => 'required|exists:suppliers,id',
             'receive_date'        => 'required|date',
@@ -468,9 +505,9 @@ class PosController extends Controller
         ];
 
         if (Schema::hasColumn('product_lots', 'supplier_invoice_no')) {
-        $isPaid   = $request->boolean('is_paid');
-        $paidDate = $isPaid ? ($data['paid_date'] ?? null) : null;
-        $dueDate  = $data['payment_type'] === 'credit' ? ($data['due_date'] ?? null) : null;
+            $update['supplier_invoice_no'] = $data['supplier_invoice_no'] ?? null;
+        }
+        if (Schema::hasColumn('product_lots', 'payment_type')) {
             $update['payment_type'] = $data['payment_type'];
         }
         if (Schema::hasColumn('product_lots', 'due_date')) {
@@ -483,12 +520,18 @@ class PosController extends Controller
             $update['paid_date'] = $paidDate;
         }
 
-        DB::table('product_lots')
-            ->where('invoice_no', $data['invoice_no'])
-            ->update($update);
+        $invoiceNo = $data['invoice_no'] ?: null;
+
+        $query = DB::table('product_lots');
+        if ($invoiceNo === null) {
+            $query->whereNull('invoice_no');
+        } else {
+            $query->where('invoice_no', $invoiceNo);
+        }
+        $query->update($update);
 
         return redirect()
-            ->route('pos.stock.receive.history', ['invoice_no' => $data['invoice_no']])
+            ->back()
             ->with('success', 'แก้ไขรายละเอียดบิลเรียบร้อยแล้ว');
     }
 
@@ -706,7 +749,7 @@ class PosController extends Controller
         $purchaseHistory = DB::table('product_lots')
             ->leftJoin('suppliers', 'suppliers.id', '=', 'product_lots.supplier_id')
             ->where('product_lots.product_id', $product->id)
-            ->orderByDesc('product_lots.created_at')
+            ->orderBy(DB::raw('MAX(product_lots.created_at)'), 'desc')
             ->limit(20)
             ->select(
                 'product_lots.id',

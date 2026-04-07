@@ -70,15 +70,57 @@
                     </div>
                 </div>
 
+                <form method="GET" action="{{ route('pos.stock.receive') }}" class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-4">
+                    <input type="hidden" name="tab" value="history">
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-gray-600">วันที่</label>
+                        <input type="date" name="filter_date" value="{{ request('filter_date') }}"
+                            class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-emerald-400 focus:outline-none">
+                    </div>
+                        <div>
+                            <label class="mb-1 block text-xs font-medium text-gray-600">เลขที่บิลผู้จำหน่าย</label>
+                            <input type="text" name="filter_supplier_invoice" value="{{ request('filter_supplier_invoice') }}"
+                                placeholder="เลขที่บิลผู้จำหน่าย..."
+                                class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-emerald-400 focus:outline-none">
+                        </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-gray-600">ผู้จำหน่าย</label>
+                        <select name="filter_supplier" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-emerald-400 focus:outline-none">
+                            <option value="">ทั้งหมด</option>
+                            @foreach($suppliers as $s)
+                                <option value="{{ $s->id }}" {{ request('filter_supplier') == $s->id ? 'selected' : '' }}>{{ $s->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex items-end gap-2">
+                        <button type="submit" class="h-10 flex-1 rounded-lg bg-emerald-500 text-sm text-white hover:bg-emerald-600">ค้นหา</button>
+                        <a href="{{ route('pos.stock.receive') }}" class="flex h-10 items-center rounded-lg border border-gray-200 px-3 text-sm text-gray-600 hover:bg-gray-50">ล้าง</a>
+                    </div>
+                </form>
+
                 <div class="overflow-x-auto rounded-xl border border-gray-200">
                     <table class="min-w-full text-sm">
                         <thead class="bg-gray-50 text-gray-600">
+                        @php
+                            $sortBy = request('sort_by', 'created_at');
+                            $sortDir = request('sort_dir', 'desc');
+                            $fp = array_filter(['tab'=>'history','filter_date'=>request('filter_date'),'filter_invoice'=>request('filter_invoice'),'filter_supplier'=>request('filter_supplier')]);
+                            function thSort($col, $label, $sortBy, $sortDir, $fp) {
+                                $dir = ($sortBy === $col && $sortDir === 'asc') ? 'desc' : 'asc';
+                                $icon = $sortBy === $col ? ($sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+                                return '<a href="'.route('pos.stock.receive', array_merge($fp,['sort_by'=>$col,'sort_dir'=>$dir])).'" class="hover:text-emerald-600">'.$label.$icon.'</a>';
+                            }
+                        @endphp
+                        <thead class="bg-gray-50 text-gray-600">
                             <tr>
-                                <th class="px-4 py-3 text-left font-medium">วันที่รับ</th>
-                                <th class="px-4 py-3 text-left font-medium">เลขที่เอกสาร</th>
-                                <th class="px-4 py-3 text-left font-medium">ผู้จำหน่าย</th>
+                                <th class="px-4 py-3 text-left font-medium">{!! thSort('created_at','วันที่รับ',$sortBy,$sortDir,$fp) !!}</th>
+                                <th class="px-4 py-3 text-left font-medium">{!! thSort('invoice_no','เลขที่เอกสาร',$sortBy,$sortDir,$fp) !!}</th>
+                                <th class="px-4 py-3 text-left font-medium">เลขที่บิล</th>
+                                <th class="px-4 py-3 text-left font-medium">{!! thSort('supplier_name','ผู้จำหน่าย',$sortBy,$sortDir,$fp) !!}</th>
                                 <th class="px-4 py-3 text-center font-medium">รายการ</th>
-                                <th class="px-4 py-3 text-right font-medium">มูลค่ารวม</th>
+                                <th class="px-4 py-3 text-left font-medium">การชำระเงิน</th>
+                                <th class="px-4 py-3 text-left font-medium">สถานะ</th>
+                                <th class="px-4 py-3 text-right font-medium">{!! thSort('total_value','มูลค่ารวม',$sortBy,$sortDir,$fp) !!}</th>
                                 <th class="px-4 py-3 text-center font-medium">จัดการ</th>
                             </tr>
                         </thead>
@@ -91,13 +133,28 @@
                                         $detailParams = ['received_at' => $history->created_at];
                                     }
                                 @endphp
-                                <tr class="border-t border-gray-100">
+                                <tr class="border-t border-gray-100 hover:bg-gray-50">
                                     <td class="px-4 py-3 text-gray-700">
-                                        {{ $history->created_at ? \Carbon\Carbon::parse($history->created_at)->format('d/m/Y H:i') : '-' }}
+                                        {{ $history->created_at ? \Carbon\Carbon::parse($history->created_at)->format('d/m/Y') : '-' }}
                                     </td>
                                     <td class="px-4 py-3 font-medium text-gray-800">{{ $history->invoice_no ?: '-' }}</td>
+                                    <td class="px-4 py-3 text-gray-600">{{ $history->supplier_invoice_no ?? '-' }}</td>
                                     <td class="px-4 py-3 text-gray-700">{{ $history->supplier_name ?: '-' }}</td>
                                     <td class="px-4 py-3 text-center text-gray-700">{{ number_format($history->item_count ?? 0) }}</td>
+                                    <td class="px-4 py-3 text-gray-700">
+                                        {{ isset($history->payment_type) ? ($history->payment_type === 'credit' ? 'เครดิต' : 'เงินสด') : '-' }}
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        @if(isset($history->is_paid))
+                                            @if($history->is_paid)
+                                                <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">ชำระแล้ว</span>
+                                            @else
+                                                <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">ค้างชำระ</span>
+                                            @endif
+                                        @else
+                                            <span class="text-xs text-gray-400">-</span>
+                                        @endif
+                                    </td>
                                     <td class="px-4 py-3 text-right font-medium text-gray-800">{{ number_format((float) ($history->total_value ?? 0), 2) }}</td>
                                     <td class="px-4 py-3 text-center">
                                         <a href="{{ route('pos.stock.receive.history', $detailParams) }}" class="inline-flex rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50">
@@ -107,7 +164,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-4 py-10 text-center text-sm text-gray-500">
+                                    <td colspan="9" class="px-4 py-10 text-center text-sm text-gray-500">
                                         ยังไม่มีประวัติการรับสินค้า
                                     </td>
                                 </tr>
