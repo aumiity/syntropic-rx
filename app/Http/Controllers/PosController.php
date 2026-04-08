@@ -139,7 +139,18 @@ class PosController extends Controller
 
     public function receiveStockForm()
     {
-        $products = Product::with('unit')
+        $products = Product::with([
+                'unit',
+                'productUnits' => function ($query) {
+                    $query->where('is_disabled', false)
+                        ->where(function ($subQuery) {
+                            $subQuery->where('is_for_purchase', true)
+                                ->orWhere('is_base_unit', true);
+                        })
+                        ->orderByDesc('is_base_unit')
+                        ->orderBy('id');
+                },
+            ])
             ->where('is_disabled', false)
             ->orderBy('trade_name')
             ->get();
@@ -295,6 +306,7 @@ class PosController extends Controller
                 ]);
 
                 $prevOnHand = (int) ($lot->exists ? $lot->qty_on_hand : 0);
+                $oldQty = (float) ($lot->exists ? $lot->qty_on_hand : 0);
 
                 if (!$lot->exists) {
                     $lot->created_at = $receiveAt->copy();
@@ -321,7 +333,13 @@ class PosController extends Controller
                 }
                 $lot->manufactured_date = $manufacturedDate;
                 $lot->expiry_date = $expiryDate;
-                $lot->cost_price = $costPrice;
+                if ($lot->exists) {
+                    $lot->cost_price = ($oldQty > 0)
+                        ? round((($oldQty * (float) $lot->cost_price) + ($qtyReceived * $costPrice)) / ($oldQty + $qtyReceived), 4)
+                        : $costPrice;
+                } else {
+                    $lot->cost_price = $costPrice;
+                }
                 $lot->sell_price = $sellPrice;
                 $lot->qty_received = ($lot->qty_received ?: 0) + $qtyReceived;
                 $lot->qty_on_hand = ($lot->qty_on_hand ?: 0) + $qtyReceived;
@@ -642,6 +660,79 @@ class PosController extends Controller
         return response()->json($products);
     }
 
+    public function searchProducts(Request $request)
+    {
+        $q = trim((string) $request->query('q', ''));
+
+        if (strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $products = Product::query()
+            ->where('is_disabled', false)
+            ->where(function ($query) use ($q) {
+                $query->where('trade_name', 'like', "%{$q}%")
+                    ->orWhere('barcode', 'like', "%{$q}%");
+            })
+            ->orderBy('trade_name')
+            ->limit(10)
+            ->get(['id', 'trade_name', 'barcode', 'price_retail']);
+
+        if ($products->isEmpty()) {
+            return response()->json([]);
+        }
+
+        $productIds = $products->pluck('id')->all();
+
+        $unitsByProduct = DB::table('product_units')
+            ->select(['id', 'product_id', 'unit_name', 'qty_per_base', 'price_retail', 'is_base_unit'])
+            ->whereIn('product_id', $productIds)
+            ->where('is_disabled', 0)
+            ->where(function ($query) {
+                $query->where('is_for_purchase', 1)
+                    ->orWhere('is_base_unit', 1);
+            })
+            ->orderByDesc('is_base_unit')
+            ->orderBy('id')
+            ->get()
+            ->groupBy('product_id');
+
+        $payload = $products->map(function ($product) use ($unitsByProduct) {
+            $units = collect($unitsByProduct->get($product->id, []))
+                ->map(function ($unit) {
+                    return [
+                        'id' => $unit->id,
+                        'unit_name' => $unit->unit_name,
+                        'qty_per_base' => $unit->qty_per_base,
+                        'price_retail' => $unit->price_retail,
+                        'is_base_unit' => (bool) $unit->is_base_unit,
+                    ];
+                })
+                ->values();
+
+            $baseUnit = $units->firstWhere('is_base_unit', true);
+
+            return [
+                'id' => $product->id,
+                'trade_name' => $product->trade_name,
+                'barcode' => $product->barcode,
+                'price_retail' => $product->price_retail,
+                'unit_name' => $baseUnit['unit_name'] ?? null,
+                'base_unit' => $baseUnit
+                    ? [
+                        'id' => $baseUnit['id'],
+                        'unit_name' => $baseUnit['unit_name'],
+                        'qty_per_base' => $baseUnit['qty_per_base'],
+                        'price_retail' => $baseUnit['price_retail'],
+                    ]
+                    : null,
+                'units' => $units->all(),
+            ];
+        })->values();
+
+        return response()->json($payload);
+    }
+
     public function searchGenericName(Request $request)
     {
         $q = trim((string) $request->query('q', ''));
@@ -749,7 +840,7 @@ class PosController extends Controller
         $purchaseHistory = DB::table('product_lots')
             ->leftJoin('suppliers', 'suppliers.id', '=', 'product_lots.supplier_id')
             ->where('product_lots.product_id', $product->id)
-            ->orderBy(DB::raw('MAX(product_lots.created_at)'), 'desc')
+            ->orderBy('product_lots.created_at', 'desc')
             ->limit(20)
             ->select(
                 'product_lots.id',

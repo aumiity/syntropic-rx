@@ -10,6 +10,8 @@ use App\Http\Controllers\ProductUnitController;
 Route::get('/', [PosController::class, 'index'])->name('pos.index');
 Route::get('/pos', [PosController::class, 'index'])->name('pos');
 Route::get('/pos/search', [PosController::class, 'search'])->name('pos.search');
+Route::get('/api/products/search', [PosController::class, 'searchProducts'])
+    ->name('api.products.search');
 
 // Product menu route (จาก sidebar)
 Route::get('/products', [PosController::class, 'productIndex'])->name('products.index');

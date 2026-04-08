@@ -13,13 +13,29 @@
 
     $productLookup = $products->map(function ($product) {
         $identifier = $product->barcode ?: $product->code ?: 'ไม่มีรหัส';
+        $units = $product->productUnits
+            ->where('is_disabled', false)
+            ->filter(fn ($unit) => $unit->is_for_purchase || $unit->is_base_unit)
+            ->sortByDesc(fn ($unit) => (int) $unit->is_base_unit)
+            ->values()
+            ->map(fn ($unit) => [
+                'id' => $unit->id,
+                'unit_name' => $unit->unit_name,
+                'qty_per_base' => $unit->qty_per_base,
+                'price_retail' => $unit->price_retail,
+                'is_base_unit' => (bool) $unit->is_base_unit,
+            ])
+            ->values();
+        $baseUnit = $units->firstWhere('is_base_unit', true) ?? $units->first();
 
         return [
             'id' => $product->id,
             'name' => $product->trade_name,
             'label' => $product->trade_name . ' (' . $identifier . ')',
             'barcode' => $identifier,
-            'unit_name' => optional($product->unit)->unit_name ?? $product->unit_name ?? '-',
+            'unit_name' => $baseUnit['unit_name'] ?? optional($product->unit)->unit_name ?? $product->unit_name ?? '-',
+            'base_unit' => $baseUnit,
+            'units' => $units,
         ];
     })->values();
 @endphp
@@ -281,7 +297,18 @@
                                         @php
                                             $selectedProductId = old('product_id.' . $i);
                                             $selectedProduct = $selectedProductId ? $products->firstWhere('id', (int) $selectedProductId) : null;
-                                            $baseUnitName = optional($selectedProduct?->unit)->unit_name ?? $selectedProduct?->unit_name ?? '-';
+                                            $selectedUnits = $selectedProduct
+                                                ? $selectedProduct->productUnits
+                                                    ->where('is_disabled', false)
+                                                    ->filter(fn ($unit) => $unit->is_for_purchase || $unit->is_base_unit)
+                                                    ->sortByDesc(fn ($unit) => (int) $unit->is_base_unit)
+                                                    ->values()
+                                                : collect();
+                                            $selectedUnitId = old('unit_id.' . $i, optional($selectedUnits->firstWhere('is_base_unit', true) ?? $selectedUnits->first())->id);
+                                            $baseUnitName = optional($selectedUnits->firstWhere('id', (int) $selectedUnitId) ?? $selectedUnits->firstWhere('is_base_unit', true) ?? $selectedUnits->first())->unit_name
+                                                ?? optional($selectedProduct?->unit)->unit_name
+                                                ?? $selectedProduct?->unit_name
+                                                ?? '-';
                                             $selectedLabel = $selectedProduct
                                                 ? $selectedProduct->trade_name . ' (' . ($selectedProduct->barcode ?: $selectedProduct->code ?: 'ไม่มีรหัส') . ')'
                                                 : '';
@@ -298,7 +325,7 @@
                                         @endphp
                                         <tr class="border-t border-gray-100" data-item-row>
                                             <td class="row-number px-2 py-3 text-center align-top text-gray-500">{{ $i + 1 }}</td>
-                                            <td class="min-w-[360px] px-2 py-3 align-top">
+                                            <td class="min-w-90 px-2 py-3 align-top">
                                                 <div class="space-y-2">
                                                     <input type="hidden" name="product_id[]" class="product-id-input" value="{{ old('product_id.' . $i) }}">
 
@@ -335,20 +362,26 @@
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td class="min-w-[110px] px-2 py-3 align-top">
-                                                <input type="text" class="unit-name-input w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600" value="{{ $baseUnitName }}" readonly>
+                                            <td class="min-w-27.5 px-2 py-3 align-top">
+                                                <select name="unit_name[]" class="unit-select w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none">
+                                                    <option value="">-</option>
+                                                    @foreach($selectedUnits as $unit)
+                                                        <option value="{{ $unit->id }}" {{ (string) $selectedUnitId === (string) $unit->id ? 'selected' : '' }}>{{ $unit->unit_name }}</option>
+                                                    @endforeach
+                                                </select>
+                                                <input type="hidden" name="unit_id[]" class="unit-id-input" value="{{ $selectedUnitId ?? '' }}">
                                             </td>
-                                            <td class="min-w-[100px] px-2 py-3 align-top">
+                                            <td class="min-w-25 px-2 py-3 align-top">
                                                 <input type="number" name="qty_received[]" value="{{ old('qty_received.' . $i, 1) }}" min="1" step="1" class="qty-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none" required>
                                             </td>
-                                            <td class="min-w-[120px] px-2 py-3 align-top">
+                                            <td class="min-w-30 px-2 py-3 align-top">
                                                 <input type="number" name="cost_price[]" value="{{ old('cost_price.' . $i, '0.00') }}" min="0" step="0.01" class="cost-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none" required>
                                             </td>
-                                            <td class="min-w-[110px] px-2 py-3 align-top">
+                                            <td class="min-w-27.5 px-2 py-3 align-top">
                                                 <input type="number" name="discount[]" value="{{ old('discount.' . $i, '0.00') }}" min="0" step="0.01" class="discount-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none">
                                             </td>
-                                            <td class="min-w-[130px] px-2 py-3 align-top">
-                                                <input type="number" name="line_total[]" value="{{ number_format($lineTotal, 2, '.', '') }}" step="0.01" min="0" class="line-total-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-emerald-700 focus:border-emerald-400 focus:outline-none">
+                                            <td class="min-w-32.5 px-2 py-3 align-top">
+                                                <input type="number" name="line_total[]" value="{{ number_format($lineTotal, 2, '.', '') }}" step="0.01" min="0" class="line-total-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-emerald-700 focus:border-emerald-400 focus:outline-none" readonly>
                                             </td>
                                             <td class="px-2 py-3 text-center align-top">
                                                 <button type="button" class="remove-row rounded-lg border border-red-200 px-3 py-2 text-xs text-red-600 hover:bg-red-50">ลบ</button>
@@ -397,6 +430,33 @@
         });
     }
 
+    function parseDDMMYY(value) {
+        const clean = String(value ?? '').replace(/\D/g, '');
+        if (clean.length !== 6 && clean.length !== 8) {
+            return null;
+        }
+
+        const dd = clean.slice(0, 2);
+        const mm = clean.slice(2, 4);
+        const yyyy = clean.length === 6 ? `20${clean.slice(4, 6)}` : clean.slice(4, 8);
+        const iso = `${yyyy}-${mm}-${dd}`;
+        const date = new Date(`${iso}T00:00:00`);
+
+        if (
+            Number.isNaN(date.getTime()) ||
+            date.getFullYear() !== Number(yyyy) ||
+            date.getMonth() + 1 !== Number(mm) ||
+            date.getDate() !== Number(dd)
+        ) {
+            return null;
+        }
+
+        return {
+            display: `${dd}/${mm}/${yyyy}`,
+            iso,
+        };
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         const productMap = new Map(initialProducts.map((product) => [String(product.id), product]));
         const body = document.getElementById('receive-items-body');
@@ -435,33 +495,6 @@
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
             });
-        }
-
-        function parseDDMMYY(value) {
-            const clean = String(value ?? '').replace(/\D/g, '');
-            if (clean.length !== 6 && clean.length !== 8) {
-                return null;
-            }
-
-            const dd = clean.slice(0, 2);
-            const mm = clean.slice(2, 4);
-            const yyyy = clean.length === 6 ? `20${clean.slice(4, 6)}` : clean.slice(4, 8);
-            const iso = `${yyyy}-${mm}-${dd}`;
-            const date = new Date(`${iso}T00:00:00`);
-
-            if (
-                Number.isNaN(date.getTime()) ||
-                date.getUTCFullYear() !== Number(yyyy) ||
-                date.getUTCMonth() + 1 !== Number(mm) ||
-                date.getUTCDate() !== Number(dd)
-            ) {
-                return null;
-            }
-
-            return {
-                display: `${dd}/${mm}/${yyyy}`,
-                iso,
-            };
         }
 
         function updateRowNumbers() {
@@ -537,12 +570,47 @@
             input.classList.remove('border-red-400', 'border-emerald-400');
         }
 
+        function populateUnitSelect(row, product, preferredUnitId = '') {
+            const unitSelect = row.querySelector('.unit-select');
+            const unitIdInput = row.querySelector('.unit-id-input');
+            if (!unitSelect || !unitIdInput) {
+                return null;
+            }
+
+            const units = Array.isArray(product?.units) ? product.units : [];
+            if (!units.length) {
+                unitSelect.innerHTML = '<option value="">-</option>';
+                unitSelect.value = '';
+                unitIdInput.value = '';
+                return null;
+            }
+
+            const defaultUnit = units.find((unit) => String(unit.id) === String(preferredUnitId))
+                || units.find((unit) => unit.is_base_unit)
+                || units[0];
+            const selectedUnitId = String(preferredUnitId || defaultUnit?.id || '');
+
+            unitSelect.innerHTML = ['<option value="">-</option>']
+                .concat(units.map((unit) => {
+                    const isSelected = String(unit.id) === selectedUnitId;
+                    return `<option value="${unit.id}"${isSelected ? ' selected' : ''}>${escapeHtml(unit.unit_name || '-')}</option>`;
+                }))
+                .join('');
+
+            unitSelect.value = selectedUnitId;
+            unitIdInput.value = selectedUnitId;
+
+            return units.find((unit) => String(unit.id) === selectedUnitId) || defaultUnit || null;
+        }
+
         function resetRow(row) {
             row.querySelector('.product-id-input').value = '';
             row.querySelector('.product-search-input').value = '';
             row.querySelector('.selected-product-label').textContent = '';
             row.querySelector('.selected-product-meta').textContent = '';
-            row.querySelector('.unit-name-input').value = '-';
+            row.querySelector('.unit-id-input').value = '';
+            row._searchResults = [];
+            populateUnitSelect(row, null);
             row.querySelector('input[name="lot_number[]"]').value = '';
             resetDateInput(row.querySelector('.manufactured-date-input'));
             resetDateInput(row.querySelector('.expiry-date-input'));
@@ -560,9 +628,9 @@
 
         function applyProductSelection(row, product) {
             row.querySelector('.product-id-input').value = product.id;
-            row.querySelector('.unit-name-input').value = product.unit_name || '-';
+            const selectedUnit = populateUnitSelect(row, product, product.base_unit?.id || '');
             row.querySelector('.selected-product-label').textContent = product.label || product.name || '';
-            row.querySelector('.selected-product-meta').textContent = `หน่วย: ${product.unit_name || '-'}`;
+            row.querySelector('.selected-product-meta').textContent = `หน่วย: ${selectedUnit?.unit_name || product.unit_name || '-'}`;
             row.querySelector('.product-search-input').value = '';
 
             const selectedBox = row.querySelector('.selected-product');
@@ -616,7 +684,10 @@
                         </div>
                     </td>
                     <td class="min-w-[110px] px-2 py-3 align-top">
-                        <input type="text" class="unit-name-input w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600" value="-" readonly>
+                        <select name="unit_name[]" class="unit-select w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none">
+                            <option value="">-</option>
+                        </select>
+                        <input type="hidden" name="unit_id[]" class="unit-id-input" value="">
                     </td>
                     <td class="min-w-[100px] px-2 py-3 align-top">
                         <input type="number" name="qty_received[]" value="1" min="1" step="1" class="qty-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none" required>
@@ -628,7 +699,7 @@
                         <input type="number" name="discount[]" value="0.00" min="0" step="0.01" class="discount-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none">
                     </td>
                     <td class="min-w-[130px] px-2 py-3 align-top">
-                        <input type="number" name="line_total[]" value="0.00" step="0.01" min="0" class="line-total-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-emerald-700 focus:border-emerald-400 focus:outline-none">
+                        <input type="number" name="line_total[]" value="0.00" step="0.01" min="0" class="line-total-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-emerald-700 focus:border-emerald-400 focus:outline-none" readonly>
                     </td>
                     <td class="px-2 py-3 text-center align-top">
                         <button type="button" class="remove-row rounded-lg border border-red-200 px-3 py-2 text-xs text-red-600 hover:bg-red-50">ลบ</button>
@@ -638,7 +709,7 @@
         }
 
         async function searchProducts(query) {
-            const response = await fetch(`{{ url('/pos/search') }}?q=${encodeURIComponent(query)}`, {
+            const response = await fetch(`/api/products/search?q=${encodeURIComponent(query)}`, {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                 },
@@ -652,8 +723,10 @@
             return items.map((item) => ({
                 id: item.id,
                 name: item.trade_name,
-                label: `${item.trade_name} (${item.barcode || item.code || 'ไม่มีรหัส'})`,
-                unit_name: item.base_unit_name || item.unit?.unit_name || item.unit_name || '-',
+                label: `${item.trade_name} (${item.barcode || 'ไม่มีรหัส'})`,
+                unit_name: item.base_unit?.unit_name || item.unit_name || '-',
+                base_unit: item.base_unit || null,
+                units: Array.isArray(item.units) ? item.units : [],
             }));
         }
 
@@ -662,6 +735,8 @@
             if (!resultsBox) {
                 return;
             }
+
+            row._searchResults = products;
 
             if (!products.length) {
                 resultsBox.innerHTML = '<div class="px-3 py-2 text-xs text-gray-500">ไม่พบสินค้า</div>';
@@ -718,6 +793,21 @@
             `).join('');
             supplierDropdown.classList.remove('hidden');
         }
+
+        body.querySelectorAll('tr[data-item-row]').forEach((row) => {
+            const productId = row.querySelector('.product-id-input')?.value;
+            const unitId = row.querySelector('.unit-id-input')?.value || '';
+
+            if (productId) {
+                const product = productMap.get(String(productId));
+                const selectedUnit = populateUnitSelect(row, product, unitId);
+                if (selectedUnit) {
+                    row.querySelector('.selected-product-meta').textContent = `หน่วย: ${selectedUnit.unit_name || '-'}`;
+                }
+            } else {
+                populateUnitSelect(row, null);
+            }
+        });
 
         addButtons.forEach((button) => {
             button.addEventListener('click', () => {
@@ -836,6 +926,40 @@
             }
         });
 
+        document.addEventListener('blur', (event) => {
+            if (!event.target.classList.contains('expiry-date-input') && !event.target.classList.contains('manufactured-date-input')) return;
+            const input = event.target;
+            const clean = input.value.replace(/\D/g, '');
+            if (clean.length === 6 || clean.length === 8) {
+                const parsed = parseDDMMYY(clean);
+                if (parsed) {
+                    input.value = parsed.display;
+                    input.dataset.isoValue = parsed.iso;
+                    input.classList.remove('border-red-400');
+                    input.classList.add('border-emerald-400');
+                } else {
+                    delete input.dataset.isoValue;
+                    input.classList.remove('border-emerald-400');
+                    input.classList.add('border-red-400');
+                }
+            }
+        }, true);
+
+        body.addEventListener('change', (event) => {
+            const row = event.target.closest('tr[data-item-row]');
+            if (!row || !event.target.classList.contains('unit-select')) {
+                return;
+            }
+
+            const unitIdInput = row.querySelector('.unit-id-input');
+            if (unitIdInput) {
+                unitIdInput.value = event.target.value || '';
+            }
+
+            const selectedText = event.target.options[event.target.selectedIndex]?.text || '-';
+            row.querySelector('.selected-product-meta').textContent = `หน่วย: ${selectedText}`;
+        });
+
         body.addEventListener('click', (event) => {
             const row = event.target.closest('tr[data-item-row]');
             if (!row) {
@@ -844,10 +968,12 @@
 
             const selectButton = event.target.closest('[data-select-product]');
             if (selectButton) {
-                applyProductSelection(row, {
+                const matchedProduct = (row._searchResults || []).find((product) => String(product.id) === String(selectButton.dataset.productId));
+                applyProductSelection(row, matchedProduct || {
                     id: selectButton.dataset.productId,
                     label: selectButton.dataset.productLabel,
                     unit_name: selectButton.dataset.productUnit,
+                    units: [],
                 });
                 return;
             }
@@ -859,7 +985,8 @@
                 row.querySelector('.product-search-input').focus();
                 row.querySelector('.product-search-results').classList.add('hidden');
                 row.querySelector('.product-id-input').value = '';
-                row.querySelector('.unit-name-input').value = '-';
+                row.querySelector('.unit-id-input').value = '';
+                populateUnitSelect(row, null);
                 return;
             }
 
@@ -907,7 +1034,7 @@
                     return;
                 }
 
-                const parsed = parseDDMMYY(input.value);
+                const parsed = parseDDMMYY(input.value.replace(/\D/g, ''));
                 if (parsed) {
                     input.value = parsed.iso;
                 }

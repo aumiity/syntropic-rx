@@ -11,7 +11,7 @@
 <div class="flex min-h-screen">
 
     {{-- Sidebar --}}
-    <div class="w-20 bg-emerald-700 flex flex-col items-center py-4 gap-1 flex-shrink-0">
+    <div class="w-20 bg-emerald-700 flex flex-col items-center py-4 gap-1 shrink-0">
 
         {{-- Logo --}}
         <div class="text-white font-bold text-xs text-center mb-4 leading-tight">
@@ -60,18 +60,16 @@
         @yield('content')
     {{-- Toast Blade blocks --}}
     @if(session('success'))
-        <div id="toast-data" data-type="success"
+        <div class="toast-data" data-type="success"
              data-message="{{ session('success') }}"></div>
     @endif
     @if(session('error'))
-        <div id="toast-data" data-type="error"
+        <div class="toast-data" data-type="error"
              data-message="{{ session('error') }}"></div>
     @endif
 
-    <div id="toast-container" class="fixed top-5 left-1/2 -translate-x-1/2 z-50
-         flex flex-col gap-2 items-center pointer-events-none"></div>
+    <div id="toast-container" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 items-center pointer-events-none"></div>
     </div>
-
 </div>
 
 
@@ -105,10 +103,9 @@ function showToast(message, type = 'success') {
 
 // Auto-show toast from session
 document.addEventListener('DOMContentLoaded', () => {
-    const data = document.getElementById('toast-data');
-    if (data) {
+    document.querySelectorAll('.toast-data').forEach(data => {
         showToast(data.dataset.message, data.dataset.type);
-    }
+    });
 });
 </script>
 
@@ -298,9 +295,6 @@ function generateLabelPreview(label, settings, previewMaxWidthPx = 380, options 
 }
 </script>
 
-</body>
-</script>
-
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('form').forEach(form => {
@@ -341,4 +335,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 </script>
+
+</body>
 </html>
