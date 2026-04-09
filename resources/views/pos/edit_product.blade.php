@@ -704,7 +704,11 @@
                                         <td class="px-3 py-2 text-right text-gray-700">{{ number_format((float) $row->qty_received, 2) }}</td>
                                         <td class="px-3 py-2 text-right text-gray-800 font-medium">{{ number_format((float) $row->cost_price, 2) }} ฿</td>
                                         <td class="px-3 py-2 text-center">
-                                            <button disabled class="px-3 py-1 rounded-lg border border-gray-200 text-xs text-gray-400 cursor-not-allowed">ดูใบรับ</button>
+                                            @if(!empty($row->invoice_no))
+                                                <a href="{{ route('pos.stock.receive.history', ['invoice_no' => $row->invoice_no]) }}" class="px-3 py-1 rounded-lg border border-emerald-200 text-xs text-emerald-700 hover:bg-emerald-50">ดูเพิ่มเติม</a>
+                                            @else
+                                                <button disabled class="px-3 py-1 rounded-lg border border-gray-200 text-xs text-gray-400 cursor-not-allowed">ดูเพิ่มเติม</button>
+                                            @endif
                                         </td>
                                     </tr>
                                 @empty
@@ -1229,7 +1233,12 @@
             if (retailUnitText) retailUnitText.textContent = `ต่อ 1 (${unitName})`;
 
             window.closeBaseUnitModal();
-            mainForm.submit(); // submit form ตรงๆ → refresh หน้าเหมือนกดปุ่มอัพเดต
+            try {
+                await triggerAutoSave('บันทึกหน่วยขายแล้ว');
+                setTimeout(() => window.location.reload(), 800);
+            } catch (error) {
+                notify('บันทึกไม่สำเร็จ', 'error');
+            }
         };
 
         function notify(message, type = 'info') {

@@ -10,8 +10,15 @@ use App\Http\Controllers\ProductUnitController;
 Route::get('/', [PosController::class, 'index'])->name('pos.index');
 Route::get('/pos', [PosController::class, 'index'])->name('pos');
 Route::get('/pos/search', [PosController::class, 'search'])->name('pos.search');
+Route::get('/pos/customers/search', [PosController::class, 'searchCustomers'])->name('pos.customers.search');
+Route::post('/pos/bill', [PosController::class, 'saveBill'])->name('pos.bill.save');
 Route::get('/api/products/search', [PosController::class, 'searchProducts'])
     ->name('api.products.search');
+Route::get('/reports/sales', [App\Http\Controllers\SalesReportController::class, 'index'])->name('reports.sales');
+Route::get('/reports/sales/{sale}', [App\Http\Controllers\SalesReportController::class, 'show'])->name('reports.sales.show');
+Route::post('/reports/sales/{sale}/void', [App\Http\Controllers\SalesReportController::class, 'void'])->name('reports.sales.void');
+Route::get('/reports', function () { return redirect()->route('reports.sales'); });
+Route::get('/reports/purchases', [App\Http\Controllers\SalesReportController::class, 'purchaseHistory'])->name('reports.purchases');
 
 // Product menu route (จาก sidebar)
 Route::get('/products', [PosController::class, 'productIndex'])->name('products.index');

@@ -2,10 +2,10 @@
 
 @section('content')
 
-<div class="flex flex-col h-screen bg-slate-50 text-slate-800 overflow-hidden px-4 py-4">
+<div class="flex flex-col bg-slate-50 text-slate-800 overflow-hidden px-3 py-3" style="height: 100dvh; box-sizing: border-box;">
 
     {{-- Hygeia Header (temporary mockup) --}}
-    <div class="mb-4 px-4 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-sky-600 text-white shadow-md">
+    <div class="mb-3 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-sky-600 text-white shadow-md">
         <div class="flex items-center justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-extrabold">Syntropic RX</h1>
@@ -22,7 +22,7 @@
     {{-- ========================================== --}}
     {{-- TOP SECTION: SEARCH & CUSTOMER INFO --}}
     {{-- ========================================== --}}
-    <div class="flex gap-4 mb-4">
+    <div class="flex gap-4 mb-3">
 
         {{-- Search Input with Dropdown --}}
         <div class="flex-1 relative z-50">
@@ -87,7 +87,7 @@
     {{-- ========================================== --}}
     {{-- BOTTOM SECTION: SUMMARY & PAYMENT --}}
     {{-- ========================================== --}}
-    <div class="h-44 mt-4 flex gap-4 flex-shrink-0">
+    <div class="mt-3 flex gap-4 flex-shrink-0" style="height: 164px;">
 
         {{-- Left: Functions & Warnings --}}
         <div class="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col justify-between">
@@ -96,7 +96,7 @@
                 คำเตือน: พบประวัติแพ้ยาในรายการสั่งซื้อ!
             </div>
 
-            <div class="flex gap-2 mt-auto">
+            <div class="flex items-end gap-2 mt-auto">
                 <button onclick="clearCart()" class="px-6 py-3 rounded-lg bg-white hover:bg-red-50 text-slate-600 hover:text-red-500 font-medium border border-slate-300 hover:border-red-200 transition-colors flex items-center gap-2 shadow-sm">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     ยกเลิกบิล [F8]
@@ -104,6 +104,9 @@
                 <button onclick="holdBill()" class="px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm">พักบิล</button>
                 <button onclick="showHeldBills()" class="px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm">เรียกบิลที่พัก</button>
                 <button onclick="printLabel()" class="px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm">พิมพ์ฉลากยา</button>
+                <button id="pay-btn" disabled onclick="handlePay()" class="flex-1 px-6 py-12 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-2xl shadow-md transition-all flex items-center justify-center gap-2">
+                        รับชำระเงิน <span class="text-base bg-black/10 px-3 py-1 rounded-md font-medium ml-2">F9</span>
+                </button>
             </div>
         </div>
 
@@ -123,10 +126,6 @@
                 <span class="text-xl font-bold text-slate-700">ยอดสุทธิ</span>
                 <span class="text-4xl font-extrabold text-emerald-600" id="tb-total">฿ 0.00</span>
             </div>
-
-            <button id="pay-btn" disabled onclick="handlePay()" class="mt-auto w-full py-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xl shadow-md transition-all flex items-center justify-center gap-2">
-                รับชำระเงิน <span class="text-sm bg-black/10 px-2 py-1 rounded-md font-medium ml-2">F9</span>
-            </button>
         </div>
 
     </div>
@@ -159,7 +158,7 @@ input[type=number] {
 </style>
 
 <!-- Modals -->
-<div id="price-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+<div id="price-modal" class="fixed inset-0 bg-black/40 bg-opacity-50 hidden flex items-center justify-center z-50">
     <div class="bg-white rounded-lg p-6 w-96 shadow-lg">
         <h3 class="text-lg font-bold text-slate-800 mb-4">เปลี่ยนราคา</h3>
         <input type="number" id="price-input" class="w-full border border-slate-300 rounded px-3 py-2 mb-4 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" min="0" step="0.01" placeholder="ใส่ราคาใหม่">
@@ -170,7 +169,7 @@ input[type=number] {
     </div>
 </div>
 
-<div id="discount-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+<div id="discount-modal" class="fixed inset-0 bg-black/40 bg-opacity-50 hidden flex items-center justify-center z-50">
     <div class="bg-white rounded-lg p-6 w-96 shadow-lg">
         <h3 class="text-lg font-bold text-slate-800 mb-4">ใส่ส่วนลด</h3>
         <input type="number" id="discount-input" class="w-full border border-slate-300 rounded px-3 py-2 mb-4 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" min="0" step="0.01" placeholder="ใส่ส่วนลด">
@@ -181,9 +180,77 @@ input[type=number] {
     </div>
 </div>
 
+<div id="customer-modal" class="fixed inset-0 bg-black/40 bg-opacity-50 hidden items-center justify-center z-[70] px-4">
+    <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-slate-200">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+            <h3 class="text-xl font-bold text-slate-800">เลือกลูกค้า</h3>
+            <button onclick="closeCustomerModal()" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+        </div>
+        <div class="p-4">
+            <input type="text" id="cust-search-input"
+                oninput="searchCustomers(this.value)"
+                placeholder="ค้นหาชื่อ, เบอร์โทร, รหัส HN..."
+                class="w-full h-11 px-4 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-base mb-3">
+            <div class="mb-2">
+                <button onclick="selectWalkIn()" class="w-full px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-left transition-colors">
+                    👤 ลูกค้าทั่วไป (เงินสด) — ไม่ระบุชื่อ
+                </button>
+            </div>
+            <div id="cust-search-results" class="max-h-72 overflow-y-auto custom-scrollbar rounded-xl border border-slate-100"></div>
+        </div>
+    </div>
+</div>
+
+<div id="pay-modal" class="fixed inset-0 bg-black/40 bg-opacity-50 hidden items-center justify-center z-60 z-[60] px-4">
+    <div class="bg-white rounded-2xl w-full max-w-xl shadow-2xl border border-slate-200 p-6">
+        <h3 class="text-2xl font-bold text-slate-800 mb-4">ชำระเงิน</h3>
+
+        <div class="bg-emerald-50 rounded-xl px-4 py-4 mb-5 border border-emerald-100">
+            <div class="text-sm text-slate-500">ยอดสุทธิ</div>
+            <div id="pay-total-display" class="text-4xl font-extrabold text-emerald-600 leading-tight">฿ 0.00</div>
+        </div>
+
+        <div id="pay-type-radio" class="mb-4">
+            <label class="inline-flex items-center gap-2 mr-4 cursor-pointer">
+                <input type="radio" name="pay-type" value="cash" checked class="text-emerald-600 focus:ring-emerald-500">
+                <span class="font-medium text-slate-700">เงินสด</span>
+            </label>
+            <label class="inline-flex items-center gap-2 mr-4 cursor-pointer">
+                <input type="radio" name="pay-type" value="transfer" class="text-emerald-600 focus:ring-emerald-500">
+                <span class="font-medium text-slate-700">โอนเงิน</span>
+            </label>
+            <label class="inline-flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="pay-type" value="card" class="text-emerald-600 focus:ring-emerald-500">
+                <span class="font-medium text-slate-700">บัตร</span>
+            </label>
+        </div>
+
+        <div id="pay-received-wrap" class="mb-3">
+            <label for="pay-received" class="block text-sm text-slate-600 mb-1">รับเงินมา</label>
+            <input type="number" id="pay-received" min="0" step="0.01" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="0.00">
+        </div>
+
+        <div class="mb-3">
+            <label for="pay-change" class="block text-sm text-slate-600 mb-1">เงินทอน</label>
+            <input type="text" id="pay-change" readonly value="฿ 0.00" class="w-full border border-slate-200 bg-slate-50 rounded-lg px-3 py-2 font-bold text-emerald-600">
+        </div>
+
+        <div class="mb-5">
+            <label for="pay-note" class="block text-sm text-slate-600 mb-1">หมายเหตุ (ถ้ามี)</label>
+            <textarea id="pay-note" rows="2" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="หมายเหตุเพิ่มเติม"></textarea>
+        </div>
+
+        <div class="flex gap-2 justify-end">
+            <button id="pay-cancel-btn" class="px-5 py-3 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold">ยกเลิก</button>
+            <button id="pay-confirm-btn" class="px-6 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg">ยืนยันชำระเงิน</button>
+        </div>
+    </div>
+</div>
+
 <script>
 // --- State ---
 let cart = {}, allProducts = [], heldBills = JSON.parse(localStorage.getItem('held_bills') || '[]');
+let grandTotal = 0;
 
 // --- Search & Popup Logic ---
 let timer;
@@ -365,7 +432,7 @@ function updateAll() {
     const emptyState = document.getElementById('empty-cart'); // โค้ดที่ Copilot สร้างอาจจะไม่มีตัวนี้
     const keys = Object.keys(cart);
 
-    let grandTotal = 0;
+    grandTotal = 0;
 
     if (!keys.length) {
         list.innerHTML = '';
@@ -468,8 +535,213 @@ cartList.addEventListener('click', function(event) {
 });
 
 // --- General Actions ---
-function changeCustomer() { alert('เปิดหน้าเลือกลูกค้า'); }
-function handlePay() { if(!Object.keys(cart).length) return; alert('ไปหน้าต่างรับเงิน (คำนวณเงินทอน)'); }
+const CUSTOMER_SEARCH_URL = '{{ route("pos.customers.search") }}';
+let currentCustomerId = null;
+let currentCustomerName = 'ลูกค้าทั่วไป (เงินสด)';
+
+function changeCustomer() {
+    document.getElementById('cust-search-input').value = '';
+    document.getElementById('cust-search-results').innerHTML = '';
+    document.getElementById('customer-modal').classList.remove('hidden');
+    document.getElementById('customer-modal').classList.add('flex');
+    setTimeout(() => document.getElementById('cust-search-input').focus(), 100);
+}
+
+function selectCustomer(id, name, isAlert, alertNote) {
+    currentCustomerId = id;
+    currentCustomerName = name;
+    document.getElementById('cust-name').textContent = name;
+    if (isAlert && alertNote) {
+        document.getElementById('allergy-warn').classList.remove('hidden');
+        document.getElementById('allergy-warn').querySelector('span') &&
+            (document.getElementById('allergy-warn').innerHTML = `
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                คำเตือน: ${alertNote}`);
+    } else {
+        document.getElementById('allergy-warn').classList.add('hidden');
+    }
+    closeCustomerModal();
+}
+
+function selectWalkIn() {
+    currentCustomerId = null;
+    currentCustomerName = 'ลูกค้าทั่วไป (เงินสด)';
+    document.getElementById('cust-name').textContent = currentCustomerName;
+    document.getElementById('allergy-warn').classList.add('hidden');
+    closeCustomerModal();
+}
+
+function closeCustomerModal() {
+    document.getElementById('customer-modal').classList.add('hidden');
+    document.getElementById('customer-modal').classList.remove('flex');
+}
+
+let custSearchTimer;
+function searchCustomers(q) {
+    clearTimeout(custSearchTimer);
+    const resultsEl = document.getElementById('cust-search-results');
+    if (!q.trim()) {
+        resultsEl.innerHTML = '';
+        return;
+    }
+    custSearchTimer = setTimeout(async () => {
+        const res = await fetch(`${CUSTOMER_SEARCH_URL}?q=${encodeURIComponent(q)}`);
+        const customers = await res.json();
+        if (!customers.length) {
+            resultsEl.innerHTML = '<div class="p-4 text-center text-slate-400">ไม่พบลูกค้า</div>';
+            return;
+        }
+        resultsEl.innerHTML = customers.map(c => `
+              <div onclick="selectCustomer(${c.id}, '${c.full_name.replace(/'/g,"\\'")}', ${c.is_alert ? 1 : 0}, '${(c.alert_note||'').replace(/'/g,"\\'")}'')"
+                 class="px-4 py-3 border-b border-slate-100 hover:bg-emerald-50 cursor-pointer flex justify-between items-center">
+                <div>
+                    <div class="font-semibold text-slate-800">${c.full_name} ${c.is_alert ? '<span class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded ml-1">⚠ แจ้งเตือน</span>' : ''}</div>
+                    <div class="text-xs text-slate-400">${c.code || ''} ${c.phone ? '· ' + c.phone : ''}</div>
+                </div>
+            </div>`).join('');
+    }, 200);
+}
+
+function getGrandTotal() {
+    return Object.keys(cart).reduce((sum, id) => {
+        const item = cart[id];
+        const price = parseFloat(item.product.price_retail) || 0;
+        const effectivePrice = item.customPrice || price;
+        const discount = item.discount || 0;
+        return sum + ((effectivePrice * item.qty) - discount);
+    }, 0);
+}
+
+function hidePayModal() {
+    const modal = document.getElementById('pay-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function updatePayChange() {
+    const changeEl = document.getElementById('pay-change');
+    const receivedEl = document.getElementById('pay-received');
+    const typeEl = document.querySelector('input[name="pay-type"]:checked');
+    if (!changeEl || !receivedEl) return;
+
+    const total = getGrandTotal();
+    let change = 0;
+
+    if (typeEl && typeEl.value === 'cash') {
+        const received = parseFloat(receivedEl.value) || 0;
+        change = received - total;
+    }
+
+    changeEl.value = `฿ ${change.toLocaleString('th', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    changeEl.classList.toggle('text-red-600', change < 0);
+    changeEl.classList.toggle('text-emerald-600', change >= 0);
+}
+
+function handlePay() {
+    if (!Object.keys(cart).length) return;
+
+    const total = getGrandTotal();
+    const totalDisplay = document.getElementById('pay-total-display');
+    const payReceived = document.getElementById('pay-received');
+    const payNote = document.getElementById('pay-note');
+    const cashRadio = document.querySelector('input[name="pay-type"][value="cash"]');
+    const receivedWrap = document.getElementById('pay-received-wrap');
+    const modal = document.getElementById('pay-modal');
+
+    if (!modal || !totalDisplay || !payReceived || !payNote || !cashRadio || !receivedWrap) return;
+
+    totalDisplay.textContent = `฿ ${total.toLocaleString('th', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    payReceived.value = '';
+    payNote.value = '';
+    cashRadio.checked = true;
+    receivedWrap.classList.remove('hidden');
+    updatePayChange();
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    payReceived.focus();
+}
+
+async function submitBill() {
+    const csrfToken = '{{ csrf_token() }}';
+    const payType = document.querySelector('input[name="pay-type"]:checked').value;
+    const totalAmount = getGrandTotal();
+    const received = parseFloat(document.getElementById('pay-received').value) || 0;
+
+    const items = Object.values(cart).map(item => ({
+        product_id: item.product.id,
+        item_name: item.product.trade_name,
+        unit_name: item.product.unit ? item.product.unit.name : item.product.unit_name,
+        qty: item.qty,
+        unit_price: item.customPrice || parseFloat(item.product.price_retail),
+        discount: item.discount || 0,
+        line_total: ((item.customPrice || parseFloat(item.product.price_retail)) * item.qty) - (item.discount || 0)
+    }));
+
+    const payload = {
+        customer_id: currentCustomerId || null,
+        subtotal: totalAmount,
+        total_discount: Object.values(cart).reduce((s, i) => s + (i.discount || 0), 0),
+        total_amount: totalAmount,
+        cash_amount: payType === 'cash' ? received : 0,
+        transfer_amount: payType === 'transfer' ? totalAmount : 0,
+        card_amount: payType === 'card' ? totalAmount : 0,
+        change_amount: payType === 'cash' ? Math.max(0, received - totalAmount) : 0,
+        note: document.getElementById('pay-note').value,
+        items: items
+
+    };
+
+    document.getElementById('pay-confirm-btn').disabled = true;
+
+    try {
+        const res = await fetch('{{ route("pos.bill.save") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('บันทึกบิล ' + data.invoice_no + ' เรียบร้อยแล้ว', 'success');
+            cart = {};
+            updateAll();
+            document.getElementById('pay-modal').classList.add('hidden');
+            document.getElementById('pay-modal').classList.remove('flex');
+        } else {
+            showToast(data.message || 'เกิดข้อผิดพลาด', 'error');
+        }
+    } catch(e) {
+        showToast('ไม่สามารถเชื่อมต่อได้', 'error');
+    } finally {
+        document.getElementById('pay-confirm-btn').disabled = false;
+    }
+}
+
+document.getElementById('pay-type-radio')?.addEventListener('change', function(event) {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || target.name !== 'pay-type') return;
+
+    const receivedWrap = document.getElementById('pay-received-wrap');
+    if (!receivedWrap) return;
+
+    if (target.value === 'cash') {
+        receivedWrap.classList.remove('hidden');
+    } else {
+        receivedWrap.classList.add('hidden');
+    }
+
+    updatePayChange();
+});
+
+document.getElementById('pay-received')?.addEventListener('input', updatePayChange);
+document.getElementById('pay-received')?.addEventListener('change', updatePayChange);
+
+document.getElementById('pay-confirm-btn')?.addEventListener('click', function() {
+    submitBill();
+});
+
+document.getElementById('pay-cancel-btn')?.addEventListener('click', hidePayModal);
 
 // --- Keyboard Shortcuts ---
 document.addEventListener('keydown', e => {

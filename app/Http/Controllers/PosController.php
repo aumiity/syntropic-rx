@@ -5,11 +5,15 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Product;
 use App\Models\ProductLabel;
 use App\Models\ProductUnit;
 use App\Models\Customer;
+use App\Models\Sale;
+use App\Models\SaleItem;
+use App\Models\SaleItemLot;
 use App\Models\ProductLot;
 use App\Models\Supplier;
 use App\Models\DrugType;
@@ -133,8 +137,25 @@ class PosController extends Controller
 
     public function index()
     {
-        $customers = Customer::where('id', '!=', 1)->get();
+        $customers = Customer::where('is_hidden', false)
+            ->orderBy('full_name')
+            ->get(['id', 'full_name', 'phone', 'code', 'is_alert', 'alert_note']);
         return view('pos.index', compact('customers'));
+    }
+
+    public function searchCustomers(Request $request)
+    {
+        $q = trim($request->input('q', ''));
+        $customers = Customer::where('is_hidden', false)
+            ->where(function($query) use ($q) {
+                $query->where('full_name', 'like', "%{$q}%")
+                      ->orWhere('phone', 'like', "%{$q}%")
+                      ->orWhere('code', 'like', "%{$q}%")
+                      ->orWhere('hn', 'like', "%{$q}%");
+            })
+            ->limit(20)
+            ->get(['id', 'full_name', 'phone', 'code', 'is_alert', 'alert_note']);
+        return response()->json($customers);
     }
 
     public function receiveStockForm()
@@ -496,7 +517,7 @@ class PosController extends Controller
         }
 
 
-        return view('pos.receive_stock_history', compact('movements', 'suppliers', 'products', 'billHeader'));
+        return view('reports.purchases_show', compact('movements', 'suppliers', 'products', 'billHeader'));
     }
 
     public function updateBillMeta(Request $request)
@@ -844,6 +865,7 @@ class PosController extends Controller
             ->limit(20)
             ->select(
                 'product_lots.id',
+                'product_lots.invoice_no',
                 'product_lots.lot_number',
                 'product_lots.created_at',
                 'product_lots.qty_received',
@@ -1597,5 +1619,100 @@ class PosController extends Controller
     {
         $productUnit->delete();
         return redirect()->back()->with('success', 'ลบหน่วยสำเร็จ');
+    }
+
+    public function saveBill(Request $request)
+    {
+        $items = $request->input('items', []);
+        if (empty($items)) {
+            return response()->json(['success' => false, 'message' => 'ไม่มีรายการสินค้า'], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // 1. Generate invoice_no
+            $today = now()->format('Ymd');
+            $count = Sale::whereDate('sold_at', today())->count();
+            $invoiceNo = 'RX-' . $today . '-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+
+            // 2. Create Sale record
+            $sale = Sale::create([
+                'invoice_no'     => $invoiceNo,
+                'sale_type'      => $request->input('sale_type', 'retail'),
+                'customer_id'    => $request->input('customer_id') ?: null,
+                'sold_by'        => Auth::check() ? Auth::id() : \App\Models\User::first()->id,
+                'sold_at'        => now(),
+                'subtotal'       => $request->input('subtotal', 0),
+                'total_discount' => $request->input('total_discount', 0),
+                'total_vat'      => 0,
+                'total_amount'   => $request->input('total_amount', 0),
+                'cash_amount'    => $request->input('cash_amount', 0),
+                'transfer_amount'=> $request->input('transfer_amount', 0),
+                'card_amount'    => $request->input('card_amount', 0),
+                'change_amount'  => $request->input('change_amount', 0),
+                'status'         => 'completed',
+                'note'           => $request->input('note'),
+            ]);
+
+            // 3. Loop items -> create SaleItem + FEFO stock deduction
+            foreach ($items as $itemData) {
+                $saleItem = SaleItem::create([
+                    'sale_id'    => $sale->id,
+                    'product_id' => $itemData['product_id'],
+                    'item_name'  => $itemData['item_name'],
+                    'unit_name'  => $itemData['unit_name'] ?? null,
+                    'qty'        => $itemData['qty'],
+                    'unit_price' => $itemData['unit_price'],
+                    'discount'   => $itemData['discount'] ?? 0,
+                    'unit_vat'   => 0,
+                    'line_total' => $itemData['line_total'],
+                ]);
+
+                // FEFO deduction
+                $remainingQty = (float) $itemData['qty'];
+
+                $lots = ProductLot::where('product_id', $itemData['product_id'])
+                    ->where('qty_on_hand', '>', 0)
+                    ->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END ASC')
+                    ->orderBy('expiry_date', 'asc')
+                    ->orderBy('id', 'asc')
+                    ->get();
+
+                foreach ($lots as $lot) {
+                    if ($remainingQty <= 0) break;
+
+                    $deduct = min((float) $lot->qty_on_hand, $remainingQty);
+
+                    SaleItemLot::create([
+                        'sale_item_id' => $saleItem->id,
+                        'lot_id'       => $lot->id,
+                        'product_id'   => $itemData['product_id'],
+                        'qty'          => $deduct,
+                    ]);
+
+                    $lot->decrement('qty_on_hand', $deduct);
+                    $remainingQty -= $deduct;
+                }
+
+                if ($remainingQty > 0) {
+                    throw new \Exception("สินค้า '{$itemData['item_name']}' มีสต็อกไม่เพียงพอ");
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success'    => true,
+                'invoice_no' => $sale->invoice_no,
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
     }
 }

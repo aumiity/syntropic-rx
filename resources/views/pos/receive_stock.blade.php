@@ -6,7 +6,7 @@
     $rowCount = max(1, is_array($oldProductIds) ? count($oldProductIds) : 1);
     $paymentType = old('payment_type', 'cash');
     $isPaid = old('is_paid', $paymentType === 'cash');
-    $activeTab = $errors->any() ? 'tab-receive' : 'tab-history';
+    $activeTab = 'tab-receive';
     $selectedSupplierId = old('supplier_id');
     $selectedSupplier = $selectedSupplierId ? $suppliers->firstWhere('id', (int) $selectedSupplierId) : null;
     $supplierLookup = $suppliers->map(fn ($s) => ['id' => $s->id, 'name' => $s->name])->values();
@@ -45,7 +45,7 @@
         <div class="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
                 <h1 class="text-2xl font-semibold text-gray-800">รับสินค้า</h1>
-                <p class="text-sm text-gray-500">บันทึกรายการรับสินค้าใหม่ พร้อมดูประวัติย้อนหลังได้ในหน้าเดียว</p>
+                <p class="text-sm text-gray-500">บันทึกรายการรับสินค้าใหม่เข้าสต๊อค</p>
             </div>
         </div>
 
@@ -65,136 +65,14 @@
             </div>
         @endif
 
-        <div class="mb-6 flex flex-wrap gap-2 border-b border-gray-200">
-            <button type="button" data-tab="tab-history" class="tab-button {{ $activeTab === 'tab-history' ? 'active text-emerald-600 border-emerald-600' : 'text-gray-600 border-transparent' }} min-h-11 rounded-t-lg border-b-2 px-4 py-2.5 text-sm font-medium hover:text-gray-800">
-                ประวัติการรับสินค้า
-            </button>
-            <button type="button" data-tab="tab-receive" class="tab-button {{ $activeTab === 'tab-receive' ? 'active text-emerald-600 border-emerald-600' : 'text-gray-600 border-transparent' }} min-h-11 rounded-t-lg border-b-2 px-4 py-2.5 text-sm font-medium hover:text-gray-800">
-                รับสินค้า
-            </button>
+        <div class="mb-4 flex items-center justify-between">
+            <a href="{{ route('reports.purchases') }}" class="text-sm text-slate-500 hover:text-emerald-600 flex items-center gap-1">
+                ← ดูประวัติการรับสินค้า
+            </a>
         </div>
 
         <div class="space-y-5">
-            <div id="tab-history" class="tab-panel {{ $activeTab === 'tab-history' ? 'active' : 'hidden' }} rounded-xl border border-gray-200 bg-white p-5">
-                <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <h2 class="text-lg font-semibold text-gray-800">ประวัติการรับสินค้า</h2>
-                        <p class="text-sm text-gray-500">สรุปรายการรับสินค้าล่าสุดจากใบรับเข้า</p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button type="button" onclick="switchPurchaseTab('tab-receive')" class="rounded-lg bg-emerald-500 px-3 py-2 text-sm text-white hover:bg-emerald-600">รับสินค้าใหม่</button>
-                    </div>
-                </div>
-
-                <form method="GET" action="{{ route('pos.stock.receive') }}" class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-4">
-                    <input type="hidden" name="tab" value="history">
-                    <div>
-                        <label class="mb-1 block text-xs font-medium text-gray-600">วันที่</label>
-                        <input type="date" name="filter_date" value="{{ request('filter_date') }}"
-                            class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-emerald-400 focus:outline-none">
-                    </div>
-                        <div>
-                            <label class="mb-1 block text-xs font-medium text-gray-600">เลขที่บิลผู้จำหน่าย</label>
-                            <input type="text" name="filter_supplier_invoice" value="{{ request('filter_supplier_invoice') }}"
-                                placeholder="เลขที่บิลผู้จำหน่าย..."
-                                class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-emerald-400 focus:outline-none">
-                        </div>
-                    <div>
-                        <label class="mb-1 block text-xs font-medium text-gray-600">ผู้จำหน่าย</label>
-                        <select name="filter_supplier" class="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-emerald-400 focus:outline-none">
-                            <option value="">ทั้งหมด</option>
-                            @foreach($suppliers as $s)
-                                <option value="{{ $s->id }}" {{ request('filter_supplier') == $s->id ? 'selected' : '' }}>{{ $s->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="flex items-end gap-2">
-                        <button type="submit" class="h-10 flex-1 rounded-lg bg-emerald-500 text-sm text-white hover:bg-emerald-600">ค้นหา</button>
-                        <a href="{{ route('pos.stock.receive') }}" class="flex h-10 items-center rounded-lg border border-gray-200 px-3 text-sm text-gray-600 hover:bg-gray-50">ล้าง</a>
-                    </div>
-                </form>
-
-                <div class="overflow-x-auto rounded-xl border border-gray-200">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-gray-50 text-gray-600">
-                        @php
-                            $sortBy = request('sort_by', 'created_at');
-                            $sortDir = request('sort_dir', 'desc');
-                            $fp = array_filter(['tab'=>'history','filter_date'=>request('filter_date'),'filter_invoice'=>request('filter_invoice'),'filter_supplier'=>request('filter_supplier')]);
-                            function thSort($col, $label, $sortBy, $sortDir, $fp) {
-                                $dir = ($sortBy === $col && $sortDir === 'asc') ? 'desc' : 'asc';
-                                $icon = $sortBy === $col ? ($sortDir === 'asc' ? ' ↑' : ' ↓') : '';
-                                return '<a href="'.route('pos.stock.receive', array_merge($fp,['sort_by'=>$col,'sort_dir'=>$dir])).'" class="hover:text-emerald-600">'.$label.$icon.'</a>';
-                            }
-                        @endphp
-                        <thead class="bg-gray-50 text-gray-600">
-                            <tr>
-                                <th class="px-4 py-3 text-left font-medium">{!! thSort('created_at','วันที่รับ',$sortBy,$sortDir,$fp) !!}</th>
-                                <th class="px-4 py-3 text-left font-medium">{!! thSort('invoice_no','เลขที่เอกสาร',$sortBy,$sortDir,$fp) !!}</th>
-                                <th class="px-4 py-3 text-left font-medium">เลขที่บิล</th>
-                                <th class="px-4 py-3 text-left font-medium">{!! thSort('supplier_name','ผู้จำหน่าย',$sortBy,$sortDir,$fp) !!}</th>
-                                <th class="px-4 py-3 text-center font-medium">รายการ</th>
-                                <th class="px-4 py-3 text-left font-medium">การชำระเงิน</th>
-                                <th class="px-4 py-3 text-left font-medium">สถานะ</th>
-                                <th class="px-4 py-3 text-right font-medium">{!! thSort('total_value','มูลค่ารวม',$sortBy,$sortDir,$fp) !!}</th>
-                                <th class="px-4 py-3 text-center font-medium">จัดการ</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($receiveHistory as $history)
-                                @php
-                                    if (!empty($history->invoice_no)) {
-                                        $detailParams = ['invoice_no' => $history->invoice_no];
-                                    } else {
-                                        $detailParams = ['received_at' => $history->created_at];
-                                    }
-                                @endphp
-                                <tr class="border-t border-gray-100 hover:bg-gray-50">
-                                    <td class="px-4 py-3 text-gray-700">
-                                        {{ $history->created_at ? \Carbon\Carbon::parse($history->created_at)->format('d/m/Y') : '-' }}
-                                    </td>
-                                    <td class="px-4 py-3 font-medium text-gray-800">{{ $history->invoice_no ?: '-' }}</td>
-                                    <td class="px-4 py-3 text-gray-600">{{ $history->supplier_invoice_no ?? '-' }}</td>
-                                    <td class="px-4 py-3 text-gray-700">{{ $history->supplier_name ?: '-' }}</td>
-                                    <td class="px-4 py-3 text-center text-gray-700">{{ number_format($history->item_count ?? 0) }}</td>
-                                    <td class="px-4 py-3 text-gray-700">
-                                        {{ isset($history->payment_type) ? ($history->payment_type === 'credit' ? 'เครดิต' : 'เงินสด') : '-' }}
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        @if(isset($history->is_paid))
-                                            @if($history->is_paid)
-                                                <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">ชำระแล้ว</span>
-                                            @else
-                                                <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">ค้างชำระ</span>
-                                            @endif
-                                        @else
-                                            <span class="text-xs text-gray-400">-</span>
-                                        @endif
-                                    </td>
-                                    <td class="px-4 py-3 text-right font-medium text-gray-800">{{ number_format((float) ($history->total_value ?? 0), 2) }}</td>
-                                    <td class="px-4 py-3 text-center">
-                                        <a href="{{ route('pos.stock.receive.history', $detailParams) }}" class="inline-flex rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50">
-                                            ดูรายละเอียด
-                                        </a>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="9" class="px-4 py-10 text-center text-sm text-gray-500">
-                                        ยังไม่มีประวัติการรับสินค้า
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="mt-4">
-                    {{ $receiveHistory->links() }}
-                </div>
-            </div>
-
-            <div id="tab-receive" class="tab-panel {{ $activeTab === 'tab-receive' ? 'active' : 'hidden' }}">
+            <div id="tab-receive" class="tab-panel active">
                 <form action="{{ route('pos.stock.receive.store') }}" method="POST" id="stock-receive-form" class="space-y-5">
                     @csrf
 
@@ -270,139 +148,111 @@
                     </div>
 
                     <div class="rounded-xl border border-gray-200 bg-white p-5">
-                        <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                            <div>
-                                <h2 class="text-lg font-semibold text-gray-800">รายการรับยา</h2>
-                                <p class="text-sm text-gray-500">ค้นหาสินค้าแบบ autocomplete และคำนวณยอดรวมอัตโนมัติแบบเรียลไทม์</p>
-                            </div>
-                            <button type="button" id="add-row" class="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">+ เพิ่มรายการ</button>
-                        </div>
-
-                        <div class="overflow-x-auto rounded-xl border border-gray-200">
-                            <table class="min-w-full text-sm">
-                                <thead class="bg-gray-50 text-gray-600">
-                                    <tr>
-                                        <th class="px-2 py-3 text-center font-medium">#</th>
-                                        <th class="px-2 py-3 text-left font-medium">ชื่อยา</th>
-                                        <th class="px-2 py-3 text-left font-medium">หน่วย</th>
-                                        <th class="px-2 py-3 text-left font-medium">จำนวน</th>
-                                        <th class="px-2 py-3 text-left font-medium">ราคาทุน</th>
-                                        <th class="px-2 py-3 text-left font-medium">ส่วนลด</th>
-                                        <th class="px-2 py-3 text-left font-medium">ราคารวม</th>
-                                        <th class="px-2 py-3 text-center font-medium">-</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="receive-items-body">
-                                    @for($i = 0; $i < $rowCount; $i++)
-                                        @php
-                                            $selectedProductId = old('product_id.' . $i);
-                                            $selectedProduct = $selectedProductId ? $products->firstWhere('id', (int) $selectedProductId) : null;
-                                            $selectedUnits = $selectedProduct
-                                                ? $selectedProduct->productUnits
-                                                    ->where('is_disabled', false)
-                                                    ->filter(fn ($unit) => $unit->is_for_purchase || $unit->is_base_unit)
-                                                    ->sortByDesc(fn ($unit) => (int) $unit->is_base_unit)
-                                                    ->values()
-                                                : collect();
-                                            $selectedUnitId = old('unit_id.' . $i, optional($selectedUnits->firstWhere('is_base_unit', true) ?? $selectedUnits->first())->id);
-                                            $baseUnitName = optional($selectedUnits->firstWhere('id', (int) $selectedUnitId) ?? $selectedUnits->firstWhere('is_base_unit', true) ?? $selectedUnits->first())->unit_name
-                                                ?? optional($selectedProduct?->unit)->unit_name
-                                                ?? $selectedProduct?->unit_name
-                                                ?? '-';
-                                            $selectedLabel = $selectedProduct
-                                                ? $selectedProduct->trade_name . ' (' . ($selectedProduct->barcode ?: $selectedProduct->code ?: 'ไม่มีรหัส') . ')'
-                                                : '';
-                                            $qty = (float) old('qty_received.' . $i, 1);
-                                            $cost = (float) old('cost_price.' . $i, 0);
-                                            $discount = (float) old('discount.' . $i, 0);
-                                            $lineTotal = (float) old('line_total.' . $i, max(($qty * $cost) - $discount, 0));
-                                            $expiryRaw = old('expiry_date.' . $i);
-                                            $manufacturedRaw = old('manufactured_date.' . $i);
-                                            $expiryIso = ($expiryRaw && preg_match('/^\d{4}-\d{2}-\d{2}$/', $expiryRaw)) ? $expiryRaw : '';
-                                            $manufacturedIso = ($manufacturedRaw && preg_match('/^\d{4}-\d{2}-\d{2}$/', $manufacturedRaw)) ? $manufacturedRaw : '';
-                                            $expiryDisplay = $expiryIso ? \Carbon\Carbon::parse($expiryIso)->format('d/m/Y') : ($expiryRaw ?? '');
-                                            $manufacturedDisplay = $manufacturedIso ? \Carbon\Carbon::parse($manufacturedIso)->format('d/m/Y') : ($manufacturedRaw ?? '');
-                                        @endphp
-                                        <tr class="border-t border-gray-100" data-item-row>
-                                            <td class="row-number px-2 py-3 text-center align-top text-gray-500">{{ $i + 1 }}</td>
-                                            <td class="min-w-90 px-2 py-3 align-top">
-                                                <div class="space-y-2">
-                                                    <input type="hidden" name="product_id[]" class="product-id-input" value="{{ old('product_id.' . $i) }}">
-
-                                                    <div class="selected-product {{ $selectedProduct ? 'flex' : 'hidden' }} items-start justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
-                                                        <div class="min-w-0">
-                                                            <div class="selected-product-label truncate font-medium text-gray-700">{{ $selectedLabel }}</div>
-                                                            <div class="selected-product-meta text-[11px] text-gray-500">{{ $baseUnitName !== '-' ? 'หน่วย: ' . $baseUnitName : '' }}</div>
-                                                        </div>
-                                                        <button type="button" class="clear-selected-product shrink-0 text-xs font-medium text-emerald-600 hover:text-emerald-700">เปลี่ยน</button>
-                                                    </div>
-
-                                                    <div class="product-search-wrap {{ $selectedProduct ? 'hidden' : '' }} relative">
-                                                        <input type="text" class="product-search-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none" placeholder="ค้นหาจากชื่อยา / barcode / คำค้น">
-                                                        <div class="product-search-results absolute z-30 mt-1 hidden max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg"></div>
-                                                    </div>
-
-                                                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                                        <div>
-                                                            <label class="mb-1 block text-[11px] text-gray-500">Lot No. <span class="text-red-500">*</span></label>
-                                                            <input type="text" name="lot_number[]" value="{{ old('lot_number.' . $i) }}" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none" placeholder="เช่น LOT240601">
-                                                        </div>
-                                                        <div>
-                                                            <label class="mb-1 block text-[11px] text-gray-500">วันหมดอายุ <span class="text-red-500">*</span></label>
-                                                            <input type="text" name="expiry_date[]" value="{{ $expiryDisplay }}" data-iso-value="{{ $expiryIso }}" required placeholder="ddmmyy เช่น 311226" class="expiry-date-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none">
-                                                        </div>
-                                                        <div>
-                                                            <label class="mb-1 block text-[11px] text-gray-500">วันที่ผลิต</label>
-                                                            <input type="text" name="manufactured_date[]" value="{{ $manufacturedDisplay }}" data-iso-value="{{ $manufacturedIso }}" placeholder="ddmmyy เช่น 010124" class="manufactured-date-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none">
-                                                        </div>
-                                                        <div>
-                                                            <label class="mb-1 block text-[11px] text-gray-500">หมายเหตุ</label>
-                                                            <input type="text" name="note[]" value="{{ old('note.' . $i) }}" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none" placeholder="ถ้ามี">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td class="min-w-27.5 px-2 py-3 align-top">
-                                                <select name="unit_name[]" class="unit-select w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none">
-                                                    <option value="">-</option>
-                                                    @foreach($selectedUnits as $unit)
-                                                        <option value="{{ $unit->id }}" {{ (string) $selectedUnitId === (string) $unit->id ? 'selected' : '' }}>{{ $unit->unit_name }}</option>
-                                                    @endforeach
-                                                </select>
-                                                <input type="hidden" name="unit_id[]" class="unit-id-input" value="{{ $selectedUnitId ?? '' }}">
-                                            </td>
-                                            <td class="min-w-25 px-2 py-3 align-top">
-                                                <input type="number" name="qty_received[]" value="{{ old('qty_received.' . $i, 1) }}" min="1" step="1" class="qty-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none" required>
-                                            </td>
-                                            <td class="min-w-30 px-2 py-3 align-top">
-                                                <input type="number" name="cost_price[]" value="{{ old('cost_price.' . $i, '0.00') }}" min="0" step="0.01" class="cost-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none" required>
-                                            </td>
-                                            <td class="min-w-27.5 px-2 py-3 align-top">
-                                                <input type="number" name="discount[]" value="{{ old('discount.' . $i, '0.00') }}" min="0" step="0.01" class="discount-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none">
-                                            </td>
-                                            <td class="min-w-32.5 px-2 py-3 align-top">
-                                                <input type="number" name="line_total[]" value="{{ number_format($lineTotal, 2, '.', '') }}" step="0.01" min="0" class="line-total-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-emerald-700 focus:border-emerald-400 focus:outline-none" readonly>
-                                            </td>
-                                            <td class="px-2 py-3 text-center align-top">
-                                                <button type="button" class="remove-row rounded-lg border border-red-200 px-3 py-2 text-xs text-red-600 hover:bg-red-50">ลบ</button>
-                                            </td>
+                        <div>
+                            <div class="overflow-x-auto rounded-xl border border-gray-200">
+                                <table class="min-w-full text-sm" id="import-table">
+                                    <thead class="bg-gray-50 text-gray-600">
+                                        <tr>
+                                            <th class="px-2 py-3 text-center font-medium w-8">#</th>
+                                            <th class="px-2 py-3 text-left font-medium">Barcode / ชื่อยา</th>
+                                            <th class="px-2 py-3 text-left font-medium w-24">หน่วย</th>
+                                            <th class="px-2 py-3 text-left font-medium w-20">จำนวน</th>
+                                            <th class="px-2 py-3 text-left font-medium w-28">ล็อต</th>
+                                            <th class="px-2 py-3 text-left font-medium w-28">วันผลิต</th>
+                                            <th class="px-2 py-3 text-left font-medium w-28">วันหมดอายุ</th>
+                                            <th class="px-2 py-3 text-left font-medium w-28">ราคารวม (บาท)</th>
+                                            <th class="px-2 py-3 text-center font-medium w-10">-</th>
                                         </tr>
-                                    @endfor
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody id="import-items-body"></tbody>
+                                </table>
+                            </div>
+                            <div class="mt-4 flex items-center justify-between flex-wrap gap-3">
+                                <button type="button" id="add-import-row"
+                                    class="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">
+                                    + เพิ่มรายการ
+                                </button>
+
+                                <div class="flex items-center gap-4">
+                                    <button type="button" id="open-bill-discount"
+                                        class="rounded-lg border border-emerald-300 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50">
+                                        ปรับยอดท้ายบิล
+                                    </button>
+                                    <div class="text-right space-y-1">
+                                        <div id="summary-before-adjust" class="hidden">
+                                            <p class="text-sm text-gray-500">
+                                                ยอดก่อนปรับ
+                                                <span id="import-subtotal" class="font-medium text-gray-700 ml-2">0.00</span> บาท
+                                            </p>
+                                        </div>
+                                        <div id="summary-discount-row" class="hidden">
+                                            <p class="text-sm text-emerald-600">
+                                                ส่วนลด
+                                                <span id="summary-discount-amount" class="font-medium ml-2">0.00</span> บาท
+                                            </p>
+                                        </div>
+                                        <div id="summary-surcharge-row" class="hidden">
+                                            <p class="text-sm text-amber-600">
+                                                ค่าเพิ่ม
+                                                <span id="summary-surcharge-amount" class="font-medium ml-2">0.00</span> บาท
+                                            </p>
+                                        </div>
+                                        <p class="text-xs text-gray-500">ยอดรวมทั้งหมด</p>
+                                        <p class="text-2xl font-semibold text-emerald-600">
+                                            <span id="import-grand-total">0.00</span> บาท
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                            <button type="button" id="add-row-bottom" class="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">+ เพิ่มรายการ</button>
-                            <div class="text-right">
-                                <p class="text-xs text-gray-500">สรุปยอดรวมทั้งหมด</p>
-                                <p class="text-2xl font-semibold text-emerald-600"><span id="grand-total">0.00</span> บาท</p>
+                        <div id="bill-discount-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40">
+                                                                            <div id="bill-toast" class="fixed bottom-6 left-1/2 z-50 hidden -translate-x-1/2 rounded-xl border border-red-200 bg-white px-5 py-3 shadow-lg">
+                                                                                <p id="bill-toast-msg" class="text-sm font-medium text-red-600"></p>
+                                                                            </div>
+                            <div class="w-96 rounded-xl border border-gray-200 bg-white p-5 shadow-xl">
+                                <h3 class="mb-4 text-base font-medium text-gray-800">ปรับยอดท้ายบิล</h3>
+
+                                <div class="mb-3 grid grid-cols-3 items-center gap-2">
+                                    <label class="text-sm text-gray-600">ส่วนลด</label>
+                                    <input type="number" id="bill-discount-value" min="0" step="0.01" value=""
+                                        placeholder="0.00"
+                                        class="col-span-1 h-10 rounded-lg border border-gray-300 px-3 text-sm focus:border-emerald-400 focus:outline-none">
+                                    <select id="bill-discount-type"
+                                        class="h-10 rounded-lg border border-gray-300 px-2 text-sm focus:border-emerald-400 focus:outline-none">
+                                        <option value="amount">บาท</option>
+                                        <option value="percent">%</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-5 grid grid-cols-3 items-center gap-2">
+                                    <label class="text-sm text-gray-600">ค่าเพิ่ม</label>
+                                    <input type="number" id="bill-surcharge-value" min="0" step="0.01" value=""
+                                        placeholder="0.00"
+                                        class="col-span-1 h-10 rounded-lg border border-gray-300 px-3 text-sm focus:border-emerald-400 focus:outline-none">
+                                    <select id="bill-surcharge-type"
+                                        class="h-10 rounded-lg border border-gray-300 px-2 text-sm focus:border-emerald-400 focus:outline-none">
+                                        <option value="amount">บาท</option>
+                                        <option value="percent">%</option>
+                                    </select>
+                                </div>
+
+                                <div class="flex gap-2">
+                                    <button type="button" id="bill-discount-cancel"
+                                        class="h-10 flex-1 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">
+                                        ยกเลิก
+                                    </button>
+                                    <button type="button" id="bill-discount-confirm"
+                                        class="h-10 flex-1 rounded-lg bg-emerald-500 text-sm text-white hover:bg-emerald-600">
+                                        ตกลง
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <div class="flex justify-end">
-                        <button type="submit" class="rounded-lg bg-emerald-500 px-6 py-3 text-sm font-medium text-white hover:bg-emerald-600">บันทึกการรับเข้า</button>
+                        <button type="button" id="primary-submit-btn" class="rounded-lg bg-emerald-500 px-6 py-3 text-sm font-medium text-white hover:bg-emerald-600">บันทึกการรับเข้า</button>
                     </div>
                 </form>
             </div>
@@ -458,11 +308,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        const productMap = new Map(initialProducts.map((product) => [String(product.id), product]));
-        const body = document.getElementById('receive-items-body');
         const form = document.getElementById('stock-receive-form');
-        const addButtons = [document.getElementById('add-row'), document.getElementById('add-row-bottom')].filter(Boolean);
-        const grandTotal = document.getElementById('grand-total');
         const paymentType = document.getElementById('payment_type');
         const dueDateWrapper = document.getElementById('due-date-wrapper');
         const dueDateInput = document.getElementById('due_date');
@@ -478,6 +324,283 @@
         document.querySelectorAll('.tab-button').forEach((button) => {
             button.addEventListener('click', () => switchPurchaseTab(button.dataset.tab));
         });
+
+                function updateImportRowNumbers() {
+                        document.querySelectorAll('#import-items-body tr[data-import-row]').forEach((row, i) => {
+                                const cell = row.querySelector('.import-row-num');
+                                if (cell) cell.textContent = i + 1;
+                        });
+                }
+
+                function updateImportGrandTotal() {
+                        let sum = 0;
+                        document.querySelectorAll('#import-items-body tr[data-import-row]').forEach((row) => {
+                                sum += parseFloat(row.querySelector('.import-total')?.value || 0);
+                        });
+                        const el = document.getElementById('import-grand-total');
+                        if (el) el.textContent = sum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+
+                function populateImportUnitSelect(row, units) {
+                        const select = row.querySelector('.import-unit-select');
+                        const unitIdInput = row.querySelector('.import-unit-id');
+                        if (!select) return;
+                        select.innerHTML = '<option value="">-</option>';
+                        (units || []).forEach((u) => {
+                                const opt = document.createElement('option');
+                                opt.value = u.id;
+                                opt.dataset.qtyPerBase = u.qty_per_base;
+                                opt.textContent = u.unit_name;
+                                if (u.is_base_unit) opt.selected = true;
+                                select.appendChild(opt);
+                        });
+                        if (unitIdInput) unitIdInput.value = select.value;
+                }
+
+                function createImportRow() {
+                        const tr = document.createElement('tr');
+                        tr.setAttribute('data-import-row', '');
+                        tr.className = 'border-t border-gray-100';
+                        tr.innerHTML = `
+                                <td class="import-row-num px-2 py-3 text-center text-gray-500 align-top"></td>
+                                <td class="min-w-64 px-2 py-3 align-top">
+                                    <input type="hidden" class="import-product-id">
+                                    <input type="hidden" class="import-unit-id">
+                                    <div class="selected-product hidden items-start justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+                                        <div class="min-w-0">
+                                            <div class="selected-product-label truncate font-medium text-gray-700"></div>
+                                            <div class="selected-product-meta text-[11px] text-gray-500"></div>
+                                        </div>
+                                        <button type="button" class="clear-selected-product shrink-0 text-xs font-medium text-emerald-600 hover:text-emerald-700">เปลี่ยน</button>
+                                    </div>
+                                    <div class="product-search-wrap relative">
+                                        <input type="text" class="product-search-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none" placeholder="Barcode / ชื่อยา">
+                                        <div class="product-search-results absolute z-30 mt-1 hidden max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg"></div>
+                                    </div>
+                                </td>
+                                <td class="px-2 py-3 align-top">
+                                    <select class="import-unit-select w-full rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-emerald-400 focus:outline-none">
+                                        <option value="">-</option>
+                                    </select>
+                                </td>
+                                <td class="px-2 py-3 align-top">
+                                    <input type="number" class="import-qty w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none" min="1" value="1">
+                                </td>
+                                <td class="px-2 py-3 align-top">
+                                    <input type="text" class="import-lot w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none" placeholder="LOT...">
+                                </td>
+                                <td class="px-2 py-3 align-top">
+                                    <input type="text" class="import-mfg expiry-date-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none" placeholder="ddmmyy">
+                                </td>
+                                <td class="px-2 py-3 align-top">
+                                    <input type="text" class="import-exp expiry-date-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none" placeholder="ddmmyy">
+                                </td>
+                                <td class="px-2 py-3 align-top">
+                                    <input type="number" class="import-total w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none" min="0" step="0.01" value="0">
+                                </td>
+                                <td class="px-2 py-3 text-center align-top">
+                                    <button type="button" class="remove-import-row rounded-lg border border-red-200 px-3 py-2 text-xs text-red-600 hover:bg-red-50">ลบ</button>
+                                </td>
+                        `;
+                        return tr;
+                }
+
+                const importBody = document.getElementById('import-items-body');
+                for (let i = 0; i < 3; i++) {
+                        importBody.appendChild(createImportRow());
+                }
+                updateImportRowNumbers();
+
+                document.getElementById('add-import-row').addEventListener('click', () => {
+                        importBody.appendChild(createImportRow());
+                        updateImportRowNumbers();
+                });
+
+                document.getElementById('import-items-body').addEventListener('input', (e) => {
+                    if (!e.target.classList.contains('product-search-input')) return;
+                    const row = e.target.closest('tr[data-import-row]');
+                    if (!row) return;
+                    const query = e.target.value.trim();
+                    if (query.length < 1) {
+                        row.querySelector('.product-search-results')?.classList.add('hidden');
+                        return;
+                    }
+                    clearTimeout(row._importSearchTimer);
+                    row._importSearchTimer = setTimeout(async () => {
+                        const products = await searchProducts(query);
+                        renderSearchResults(row, products);
+                    }, 250);
+                });
+
+                document.getElementById('import-items-body').addEventListener('mousedown', (e) => {
+                    const row = e.target.closest('tr[data-import-row]');
+                    if (!row) return;
+
+                    const selectBtn = e.target.closest('[data-select-product]');
+                    if (selectBtn) {
+                        selectSearchResult(row, selectBtn);
+                        return;
+                    }
+                });
+
+                document.getElementById('import-items-body').addEventListener('click', (e) => {
+                    const row = e.target.closest('tr[data-import-row]');
+                    if (!row) return;
+
+                    if (e.target.closest('.clear-selected-product')) {
+                        row.querySelector('.selected-product').classList.add('hidden');
+                        row.querySelector('.selected-product').classList.remove('flex');
+                        row.querySelector('.product-search-wrap').classList.remove('hidden');
+                        row.querySelector('.product-search-input').value = '';
+                        row.querySelector('.product-search-results').classList.add('hidden');
+                        row.querySelector('.import-product-id').value = '';
+                        row.querySelector('.import-unit-id').value = '';
+                        populateImportUnitSelect(row, []);
+                        return;
+                    }
+
+                    if (e.target.closest('.remove-import-row')) {
+                        const rows = document.querySelectorAll('#import-items-body tr[data-import-row]');
+                        if (rows.length > 1) row.remove();
+                        else row.querySelector('.import-product-id').value = '';
+                        updateImportRowNumbers();
+                        updateImportGrandTotal();
+                    }
+                });
+
+                document.getElementById('import-items-body').addEventListener('change', (e) => {
+                    if (!e.target.classList.contains('import-unit-select')) return;
+                    const row = e.target.closest('tr[data-import-row]');
+                    if (!row) return;
+                    row.querySelector('.import-unit-id').value = e.target.value;
+                });
+
+                document.getElementById('import-items-body').addEventListener('input', (e) => {
+                    if (e.target.classList.contains('import-total')) updateImportGrandTotal();
+                });
+
+                document.getElementById('import-items-body').addEventListener('paste', async (e) => {
+                    const target = e.target.closest('tr[data-import-row]');
+                    if (!target) return;
+                    e.preventDefault();
+                    const text = e.clipboardData.getData('text');
+                    const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+                    const allRows = [...document.querySelectorAll('#import-items-body tr[data-import-row]')];
+                    const startIndex = allRows.indexOf(target);
+
+                    for (let i = 0; i < lines.length; i++) {
+                        const cols = lines[i].split('\t');
+                        const [barcode, qty, lot, mfgRaw, expRaw, totalPrice] = cols;
+                        let row = allRows[startIndex + i];
+                        if (!row) {
+                            row = createImportRow();
+                            document.getElementById('import-items-body').appendChild(row);
+                            allRows.push(row);
+                        }
+                        if (qty) row.querySelector('.import-qty').value = parseFloat(qty) || 1;
+                        if (lot) row.querySelector('.import-lot').value = lot.trim();
+                        if (mfgRaw) row.querySelector('.import-mfg').value = mfgRaw.trim();
+                        if (expRaw) row.querySelector('.import-exp').value = expRaw.trim();
+                        if (totalPrice) row.querySelector('.import-total').value = parseFloat(totalPrice.replace(/,/g, '')) || 0;
+
+                        if (barcode) {
+                            const barcodeClean = barcode.trim();
+                            row.querySelector('.product-search-input').value = barcodeClean;
+                            const results = await searchProducts(barcodeClean);
+                            if (results.length === 1) {
+                                applyProductSelection(row, results[0]);
+                                populateImportUnitSelect(row, (results[0].units || []).filter((u) => u.is_for_purchase || u.is_base_unit));
+                                row.querySelector('.import-product-id').value = results[0].id;
+                            }
+                        }
+                    }
+                    updateImportRowNumbers();
+                    updateImportGrandTotal();
+                });
+
+                function submitImportRows() {
+                    const rows = [...document.querySelectorAll('#import-items-body tr[data-import-row]')];
+                    let valid = true;
+
+                    rows.forEach((row) => {
+                        const pid = row.querySelector('.import-product-id').value;
+                        const qty = parseFloat(row.querySelector('.import-qty').value);
+                        const exp = row.querySelector('.import-exp').value.trim();
+                        ['.import-product-id', '.import-qty', '.import-exp'].forEach((sel) => {
+                            row.querySelector(sel)?.classList.remove('border-red-400');
+                        });
+                        if (!pid) {
+                            row.querySelector('.product-search-input').classList.add('border-red-400');
+                            valid = false;
+                        }
+                        if (!qty || qty < 1) {
+                            row.querySelector('.import-qty').classList.add('border-red-400');
+                            valid = false;
+                        }
+                        if (!exp) {
+                            row.querySelector('.import-exp').classList.add('border-red-400');
+                            valid = false;
+                        }
+                    });
+
+                    if (!valid) {
+                        alert('กรุณากรอกข้อมูลให้ครบ: ชื่อยา, จำนวน และวันหมดอายุ');
+                        return;
+                    }
+
+                    const totalSum = rows.reduce((s, row) => s + (parseFloat(row.querySelector('.import-total').value) || 0), 0);
+                    const confirmed = confirm(
+                        `ยืนยันการรับสินค้า?\nจำนวน ${rows.length} รายการ\nมูลค่ารวม ${totalSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} บาท`
+                    );
+                    if (!confirmed) return;
+
+                    const form = document.getElementById('stock-receive-form');
+                    form.querySelectorAll('.generated-import-input').forEach((el) => el.remove());
+
+                    rows.forEach((row) => {
+                        const qty = parseFloat(row.querySelector('.import-qty').value) || 1;
+                        const total = parseFloat(row.querySelector('.import-total').value) || 0;
+                        const costPrice = (total / qty).toFixed(4);
+
+                        const getMfgIso = () => {
+                            const input = row.querySelector('.import-mfg');
+                            if (input.dataset.isoValue) return input.dataset.isoValue;
+                            const parsed = parseDDMMYY(input.value.replace(/\D/g, ''));
+                            return parsed ? parsed.iso : '';
+                        };
+                        const getExpIso = () => {
+                            const input = row.querySelector('.import-exp');
+                            if (input.dataset.isoValue) return input.dataset.isoValue;
+                            const parsed = parseDDMMYY(input.value.replace(/\D/g, ''));
+                            return parsed ? parsed.iso : '';
+                        };
+
+                        const fields = {
+                            'product_id[]': row.querySelector('.import-product-id').value,
+                            'unit_id[]': row.querySelector('.import-unit-id').value,
+                            'qty_received[]': qty,
+                            'lot_number[]': row.querySelector('.import-lot').value,
+                            'manufactured_date[]': getMfgIso(),
+                            'expiry_date[]': getExpIso(),
+                            'cost_price[]': costPrice,
+                            'discount[]': '0',
+                            'line_total[]': total,
+                        };
+
+                        Object.entries(fields).forEach(([name, value]) => {
+                            const input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.className = 'generated-import-input';
+                            input.name = name;
+                            input.value = value;
+                            form.appendChild(input);
+                        });
+                    });
+
+                    form.submit();
+                }
+
+                document.getElementById('import-submit-btn')?.addEventListener('click', submitImportRows);
 
         function escapeHtml(value) {
             const div = document.createElement('div');
@@ -497,44 +620,8 @@
             });
         }
 
-        function updateRowNumbers() {
-            body.querySelectorAll('tr[data-item-row]').forEach((row, index) => {
-                const numberCell = row.querySelector('.row-number');
-                if (numberCell) {
-                    numberCell.textContent = index + 1;
-                }
-            });
-        }
-
-        function updateGrandTotal() {
-            let total = 0;
-            body.querySelectorAll('.line-total-input').forEach((input) => {
-                total += parseNumber(input.value);
-            });
-            grandTotal.textContent = formatMoney(total);
-        }
-
-        function updateRowTotal(row, skipTotalUpdate = false) {
-            if (!row) {
-                return;
-            }
-
-            if (skipTotalUpdate) {
-                updateGrandTotal();
-                return;
-            }
-
-            const qty = parseNumber(row.querySelector('.qty-input')?.value);
-            const cost = parseNumber(row.querySelector('.cost-input')?.value);
-            const discount = parseNumber(row.querySelector('.discount-input')?.value);
-            const lineTotal = Math.max((qty * cost) - discount, 0);
-            const lineTotalInput = row.querySelector('.line-total-input');
-
-            if (lineTotalInput) {
-                lineTotalInput.value = lineTotal.toFixed(2);
-            }
-
-            updateGrandTotal();
+        function getSearchResultRow(target) {
+            return target.closest('tr[data-import-row]');
         }
 
         function togglePaidDateField() {
@@ -570,68 +657,26 @@
             input.classList.remove('border-red-400', 'border-emerald-400');
         }
 
-        function populateUnitSelect(row, product, preferredUnitId = '') {
-            const unitSelect = row.querySelector('.unit-select');
-            const unitIdInput = row.querySelector('.unit-id-input');
-            if (!unitSelect || !unitIdInput) {
-                return null;
-            }
-
-            const units = Array.isArray(product?.units) ? product.units : [];
-            if (!units.length) {
-                unitSelect.innerHTML = '<option value="">-</option>';
-                unitSelect.value = '';
-                unitIdInput.value = '';
-                return null;
-            }
-
-            const defaultUnit = units.find((unit) => String(unit.id) === String(preferredUnitId))
-                || units.find((unit) => unit.is_base_unit)
-                || units[0];
-            const selectedUnitId = String(preferredUnitId || defaultUnit?.id || '');
-
-            unitSelect.innerHTML = ['<option value="">-</option>']
-                .concat(units.map((unit) => {
-                    const isSelected = String(unit.id) === selectedUnitId;
-                    return `<option value="${unit.id}"${isSelected ? ' selected' : ''}>${escapeHtml(unit.unit_name || '-')}</option>`;
-                }))
-                .join('');
-
-            unitSelect.value = selectedUnitId;
-            unitIdInput.value = selectedUnitId;
-
-            return units.find((unit) => String(unit.id) === selectedUnitId) || defaultUnit || null;
-        }
-
-        function resetRow(row) {
-            row.querySelector('.product-id-input').value = '';
-            row.querySelector('.product-search-input').value = '';
-            row.querySelector('.selected-product-label').textContent = '';
-            row.querySelector('.selected-product-meta').textContent = '';
-            row.querySelector('.unit-id-input').value = '';
-            row._searchResults = [];
-            populateUnitSelect(row, null);
-            row.querySelector('input[name="lot_number[]"]').value = '';
-            resetDateInput(row.querySelector('.manufactured-date-input'));
-            resetDateInput(row.querySelector('.expiry-date-input'));
-            row.querySelector('input[name="note[]"]').value = '';
-            row.querySelector('.qty-input').value = '1';
-            row.querySelector('.cost-input').value = '0.00';
-            row.querySelector('.discount-input').value = '0.00';
-            row.querySelector('.line-total-input').value = '0.00';
-            row.querySelector('.selected-product').classList.add('hidden');
-            row.querySelector('.selected-product').classList.remove('flex');
-            row.querySelector('.product-search-wrap').classList.remove('hidden');
-            row.querySelector('.product-search-results').classList.add('hidden');
-            updateRowTotal(row);
-        }
-
         function applyProductSelection(row, product) {
-            row.querySelector('.product-id-input').value = product.id;
-            const selectedUnit = populateUnitSelect(row, product, product.base_unit?.id || '');
+            const productIdInput = row.querySelector('.import-product-id');
+            if (productIdInput) {
+                productIdInput.value = product.id;
+            }
+
+            const units = (product.units || []).filter((unit) => unit.is_for_purchase || unit.is_base_unit);
+            populateImportUnitSelect(row, units);
+            const unitSelect = row.querySelector('.import-unit-select');
+            const unitIdInput = row.querySelector('.import-unit-id');
+            const selectedUnitId = unitSelect?.value || product.base_unit?.id || units[0]?.id || '';
+            const selectedUnit = units.find((unit) => String(unit.id) === String(selectedUnitId)) || product.base_unit || units[0] || null;
+            if (unitIdInput) {
+                unitIdInput.value = selectedUnitId;
+            }
+
             row.querySelector('.selected-product-label').textContent = product.label || product.name || '';
             row.querySelector('.selected-product-meta').textContent = `หน่วย: ${selectedUnit?.unit_name || product.unit_name || '-'}`;
             row.querySelector('.product-search-input').value = '';
+            row.querySelector('.product-search-input').classList.remove('border-red-400');
 
             const selectedBox = row.querySelector('.selected-product');
             selectedBox.classList.remove('hidden');
@@ -639,73 +684,20 @@
 
             row.querySelector('.product-search-wrap').classList.add('hidden');
             row.querySelector('.product-search-results').classList.add('hidden');
-            updateRowTotal(row, true);
         }
 
-        function createRowHtml(index) {
-            return `
-                <tr class="border-t border-gray-100" data-item-row>
-                    <td class="row-number px-2 py-3 text-center align-top text-gray-500">${index + 1}</td>
-                    <td class="min-w-[360px] px-2 py-3 align-top">
-                        <div class="space-y-2">
-                            <input type="hidden" name="product_id[]" class="product-id-input" value="">
+        function selectSearchResult(row, selectButton) {
+            if (!row || !selectButton) {
+                return;
+            }
 
-                            <div class="selected-product hidden items-start justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
-                                <div class="min-w-0">
-                                    <div class="selected-product-label truncate font-medium text-gray-700"></div>
-                                    <div class="selected-product-meta text-[11px] text-gray-500"></div>
-                                </div>
-                                <button type="button" class="clear-selected-product shrink-0 text-xs font-medium text-emerald-600 hover:text-emerald-700">เปลี่ยน</button>
-                            </div>
-
-                            <div class="product-search-wrap relative">
-                                <input type="text" class="product-search-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none" placeholder="ค้นหาจากชื่อยา / barcode / คำค้น">
-                                <div class="product-search-results absolute z-30 mt-1 hidden max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg"></div>
-                            </div>
-
-                            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                <div>
-                                    <label class="mb-1 block text-[11px] text-gray-500">Lot No. <span class="text-red-500">*</span></label>
-                                    <input type="text" name="lot_number[]" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none" placeholder="เช่น LOT240601">
-                                </div>
-                                <div>
-                                    <label class="mb-1 block text-[11px] text-gray-500">วันหมดอายุ <span class="text-red-500">*</span></label>
-                                    <input type="text" name="expiry_date[]" required placeholder="ddmmyy เช่น 311226" class="expiry-date-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none">
-                                </div>
-                                <div>
-                                    <label class="mb-1 block text-[11px] text-gray-500">วันที่ผลิต</label>
-                                    <input type="text" name="manufactured_date[]" placeholder="ddmmyy เช่น 010124" class="manufactured-date-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none">
-                                </div>
-                                <div>
-                                    <label class="mb-1 block text-[11px] text-gray-500">หมายเหตุ</label>
-                                    <input type="text" name="note[]" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none" placeholder="ถ้ามี">
-                                </div>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="min-w-[110px] px-2 py-3 align-top">
-                        <select name="unit_name[]" class="unit-select w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none">
-                            <option value="">-</option>
-                        </select>
-                        <input type="hidden" name="unit_id[]" class="unit-id-input" value="">
-                    </td>
-                    <td class="min-w-[100px] px-2 py-3 align-top">
-                        <input type="number" name="qty_received[]" value="1" min="1" step="1" class="qty-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none" required>
-                    </td>
-                    <td class="min-w-[120px] px-2 py-3 align-top">
-                        <input type="number" name="cost_price[]" value="0.00" min="0" step="0.01" class="cost-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none" required>
-                    </td>
-                    <td class="min-w-[110px] px-2 py-3 align-top">
-                        <input type="number" name="discount[]" value="0.00" min="0" step="0.01" class="discount-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none">
-                    </td>
-                    <td class="min-w-[130px] px-2 py-3 align-top">
-                        <input type="number" name="line_total[]" value="0.00" step="0.01" min="0" class="line-total-input w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-emerald-700 focus:border-emerald-400 focus:outline-none" readonly>
-                    </td>
-                    <td class="px-2 py-3 text-center align-top">
-                        <button type="button" class="remove-row rounded-lg border border-red-200 px-3 py-2 text-xs text-red-600 hover:bg-red-50">ลบ</button>
-                    </td>
-                </tr>
-            `;
+            const matchedProduct = (row._searchResults || []).find((product) => String(product.id) === String(selectButton.dataset.productId));
+            applyProductSelection(row, matchedProduct || {
+                id: selectButton.dataset.productId,
+                label: selectButton.dataset.productLabel,
+                unit_name: selectButton.dataset.productUnit,
+                units: [],
+            });
         }
 
         async function searchProducts(query) {
@@ -794,27 +786,84 @@
             supplierDropdown.classList.remove('hidden');
         }
 
-        body.querySelectorAll('tr[data-item-row]').forEach((row) => {
-            const productId = row.querySelector('.product-id-input')?.value;
-            const unitId = row.querySelector('.unit-id-input')?.value || '';
-
-            if (productId) {
-                const product = productMap.get(String(productId));
-                const selectedUnit = populateUnitSelect(row, product, unitId);
-                if (selectedUnit) {
-                    row.querySelector('.selected-product-meta').textContent = `หน่วย: ${selectedUnit.unit_name || '-'}`;
+                function showBillToast(message) {
+                    const toast = document.getElementById('bill-toast');
+                    const msg = document.getElementById('bill-toast-msg');
+                    msg.textContent = message;
+                    toast.classList.remove('hidden');
+                    clearTimeout(toast._timer);
+                    toast._timer = setTimeout(() => toast.classList.add('hidden'), 3000);
                 }
-            } else {
-                populateUnitSelect(row, null);
-            }
+
+                function closeBillModal() {
+            const modal = document.getElementById('bill-discount-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        document.getElementById('open-bill-discount').addEventListener('click', () => {
+            const modal = document.getElementById('bill-discount-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.getElementById('bill-discount-value').focus();
         });
 
-        addButtons.forEach((button) => {
-            button.addEventListener('click', () => {
-                body.insertAdjacentHTML('beforeend', createRowHtml(body.querySelectorAll('tr[data-item-row]').length));
-                updateRowNumbers();
-                updateGrandTotal();
+        document.getElementById('bill-discount-cancel').addEventListener('click', closeBillModal);
+
+        document.getElementById('bill-discount-modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('bill-discount-modal')) closeBillModal();
+        });
+
+        document.getElementById('bill-discount-confirm').addEventListener('click', () => {
+            const rows = [...document.querySelectorAll('#import-items-body tr[data-import-row]')];
+            const hasItems = rows.some(row => row.querySelector('.import-product-id')?.value);
+            if (!hasItems) {
+                showBillToast('กรุณาเพิ่มรายการยาก่อนปรับยอดท้ายบิล');
+                return;
+            }
+
+            const discountVal = parseFloat(document.getElementById('bill-discount-value').value) || 0;
+            const discountType = document.getElementById('bill-discount-type').value;
+            const surchargeVal = parseFloat(document.getElementById('bill-surcharge-value').value) || 0;
+            const surchargeType = document.getElementById('bill-surcharge-type').value;
+
+            const rawTotals = rows.map(row => parseFloat(row.querySelector('.import-total')?.value) || 0);
+            const sumRaw = rawTotals.reduce((a, b) => a + b, 0);
+            if (sumRaw === 0) {
+                showBillToast('ยอดรวมเป็น 0 ไม่สามารถปรับยอดได้');
+                return;
+            }
+
+            const discountAmount = discountType === 'percent' ? sumRaw * (discountVal / 100) : discountVal;
+            const surchargeAmount = surchargeType === 'percent' ? sumRaw * (surchargeVal / 100) : surchargeVal;
+            const netAdjust = surchargeAmount - discountAmount;
+
+            rows.forEach((row, i) => {
+                const share = (rawTotals[i] / sumRaw) * netAdjust;
+                const newTotal = Math.max((rawTotals[i] + share), 0);
+                row.querySelector('.import-total').value = newTotal.toFixed(2);
             });
+
+            const finalTotal = sumRaw + netAdjust;
+
+            document.getElementById('import-subtotal').textContent =
+                sumRaw.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('summary-discount-amount').textContent =
+                discountAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('summary-surcharge-amount').textContent =
+                surchargeAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('import-grand-total').textContent =
+                Math.max(finalTotal, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            const hasDiscount = discountAmount > 0;
+            const hasSurcharge = surchargeAmount > 0;
+            const hasAdjust = hasDiscount || hasSurcharge;
+
+            document.getElementById('summary-before-adjust').classList.toggle('hidden', !hasAdjust);
+            document.getElementById('summary-discount-row').classList.toggle('hidden', !hasDiscount);
+            document.getElementById('summary-surcharge-row').classList.toggle('hidden', !hasSurcharge);
+
+            closeBillModal();
         });
 
         supplierSearch?.addEventListener('input', () => {
@@ -831,6 +880,70 @@
 
         supplierSearch?.addEventListener('blur', () => {
             window.setTimeout(() => supplierDropdown?.classList.add('hidden'), 150);
+        });
+
+        supplierSearch?.addEventListener('keydown', function(event) {
+            if (!['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) return;
+            if (supplierDropdown?.classList.contains('hidden')) return;
+
+            const items = Array.from(supplierDropdown.querySelectorAll('button[data-supplier-id]'));
+            if (!items.length) return;
+
+            const current = supplierDropdown.querySelector('button[data-supplier-id].bg-emerald-100');
+            let index = current ? items.indexOf(current) : -1;
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                if (current) current.classList.remove('bg-emerald-100');
+                index = (index + 1) % items.length;
+                items[index].classList.add('bg-emerald-100');
+                items[index].scrollIntoView({ block: 'nearest' });
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                if (current) current.classList.remove('bg-emerald-100');
+                index = (index - 1 + items.length) % items.length;
+                items[index].classList.add('bg-emerald-100');
+                items[index].scrollIntoView({ block: 'nearest' });
+            } else if (event.key === 'Enter') {
+                event.preventDefault();
+                if (current) current.click();
+            }
+        });
+
+        document.addEventListener('keydown', function(event) {
+            if (!['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) return;
+
+            const input = event.target;
+            if (!input.classList.contains('product-search-input')) return;
+
+            const row = getSearchResultRow(input);
+            if (!row) return;
+
+            const resultsBox = row.querySelector('.product-search-results');
+            if (!resultsBox || resultsBox.classList.contains('hidden')) return;
+
+            const items = Array.from(resultsBox.querySelectorAll('button[data-select-product]'));
+            if (!items.length) return;
+
+            const current = resultsBox.querySelector('button[data-select-product].bg-emerald-100');
+            let index = current ? items.indexOf(current) : -1;
+
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                if (current) current.classList.remove('bg-emerald-100');
+                index = (index + 1) % items.length;
+                items[index].classList.add('bg-emerald-100');
+                items[index].scrollIntoView({ block: 'nearest' });
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                if (current) current.classList.remove('bg-emerald-100');
+                index = (index - 1 + items.length) % items.length;
+                items[index].classList.add('bg-emerald-100');
+                items[index].scrollIntoView({ block: 'nearest' });
+            } else if (event.key === 'Enter') {
+                event.preventDefault();
+                if (current) selectSearchResult(row, current);
+            }
         });
 
         clearSupplierButton?.addEventListener('click', () => {
@@ -861,29 +974,7 @@
             updateSupplierClearState();
         });
 
-        body.addEventListener('input', (event) => {
-            const row = event.target.closest('tr[data-item-row]');
-            if (!row) {
-                return;
-            }
-
-            if (event.target.classList.contains('line-total-input')) {
-                const lineTotal = parseNumber(event.target.value);
-                const qty = parseNumber(row.querySelector('.qty-input')?.value) || 1;
-                const discount = parseNumber(row.querySelector('.discount-input')?.value);
-                const costPerUnit = (lineTotal + discount) / qty;
-                const costInput = row.querySelector('.cost-input');
-                if (costInput) {
-                    costInput.value = costPerUnit.toFixed(2);
-                }
-                updateGrandTotal();
-                return;
-            }
-
-            if (event.target.matches('.qty-input, .cost-input, .discount-input')) {
-                updateRowTotal(row);
-            }
-
+        document.addEventListener('input', (event) => {
             if (event.target.classList.contains('expiry-date-input') || event.target.classList.contains('manufactured-date-input')) {
                 const input = event.target;
                 const clean = input.value.replace(/\D/g, '');
@@ -906,24 +997,6 @@
                 }
             }
 
-            if (event.target.classList.contains('product-search-input')) {
-                const query = event.target.value.trim();
-                const resultsBox = row.querySelector('.product-search-results');
-
-                if (query.length < 2) {
-                    resultsBox?.classList.add('hidden');
-                    if (resultsBox) {
-                        resultsBox.innerHTML = '';
-                    }
-                    return;
-                }
-
-                clearTimeout(row._searchTimer);
-                row._searchTimer = setTimeout(async () => {
-                    const products = await searchProducts(query);
-                    renderSearchResults(row, products);
-                }, 250);
-            }
         });
 
         document.addEventListener('blur', (event) => {
@@ -944,64 +1017,6 @@
                 }
             }
         }, true);
-
-        body.addEventListener('change', (event) => {
-            const row = event.target.closest('tr[data-item-row]');
-            if (!row || !event.target.classList.contains('unit-select')) {
-                return;
-            }
-
-            const unitIdInput = row.querySelector('.unit-id-input');
-            if (unitIdInput) {
-                unitIdInput.value = event.target.value || '';
-            }
-
-            const selectedText = event.target.options[event.target.selectedIndex]?.text || '-';
-            row.querySelector('.selected-product-meta').textContent = `หน่วย: ${selectedText}`;
-        });
-
-        body.addEventListener('click', (event) => {
-            const row = event.target.closest('tr[data-item-row]');
-            if (!row) {
-                return;
-            }
-
-            const selectButton = event.target.closest('[data-select-product]');
-            if (selectButton) {
-                const matchedProduct = (row._searchResults || []).find((product) => String(product.id) === String(selectButton.dataset.productId));
-                applyProductSelection(row, matchedProduct || {
-                    id: selectButton.dataset.productId,
-                    label: selectButton.dataset.productLabel,
-                    unit_name: selectButton.dataset.productUnit,
-                    units: [],
-                });
-                return;
-            }
-
-            if (event.target.closest('.clear-selected-product')) {
-                row.querySelector('.selected-product').classList.add('hidden');
-                row.querySelector('.selected-product').classList.remove('flex');
-                row.querySelector('.product-search-wrap').classList.remove('hidden');
-                row.querySelector('.product-search-input').focus();
-                row.querySelector('.product-search-results').classList.add('hidden');
-                row.querySelector('.product-id-input').value = '';
-                row.querySelector('.unit-id-input').value = '';
-                populateUnitSelect(row, null);
-                return;
-            }
-
-            if (event.target.closest('.remove-row')) {
-                const rows = body.querySelectorAll('tr[data-item-row]');
-                if (rows.length === 1) {
-                    resetRow(row);
-                    return;
-                }
-
-                row.remove();
-                updateRowNumbers();
-                updateGrandTotal();
-            }
-        });
 
         document.addEventListener('click', (event) => {
             if (!event.target.closest('.product-search-wrap')) {
@@ -1027,6 +1042,17 @@
             });
         });
 
+        document.getElementById('primary-submit-btn')?.addEventListener('click', () => {
+            const hasImportData = Array.from(document.querySelectorAll('#import-items-body .import-product-id'))
+                .some((input) => Boolean(input.value));
+            if (hasImportData) {
+                submitImportRows();
+                return;
+            }
+
+            form?.requestSubmit();
+        });
+
         form?.addEventListener('submit', function () {
             document.querySelectorAll('.expiry-date-input, .manufactured-date-input').forEach((input) => {
                 if (input.dataset.isoValue) {
@@ -1039,30 +1065,11 @@
                     input.value = parsed.iso;
                 }
             });
-
-            this.querySelectorAll('.generated-sell-price').forEach((input) => input.remove());
-            body.querySelectorAll('tr[data-item-row]').forEach((row) => {
-                const hiddenInput = document.createElement('input');
-                hiddenInput.type = 'hidden';
-                hiddenInput.className = 'generated-sell-price';
-                hiddenInput.name = ['sell', 'price[]'].join('_');
-                hiddenInput.value = row.querySelector('.cost-input')?.value || '0.00';
-                this.appendChild(hiddenInput);
-            });
-        });
-
-        body.querySelectorAll('tr[data-item-row]').forEach((row) => {
-            const productId = row.querySelector('.product-id-input')?.value;
-            if (productId && productMap.has(String(productId))) {
-                applyProductSelection(row, productMap.get(String(productId)));
-            }
-            updateRowTotal(row);
         });
 
         updateSupplierClearState();
         togglePaymentFields();
-        updateRowNumbers();
-        updateGrandTotal();
+        updateImportGrandTotal();
     });
 </script>
 @endsection
