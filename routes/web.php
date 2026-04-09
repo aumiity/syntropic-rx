@@ -12,6 +12,7 @@ Route::get('/pos', [PosController::class, 'index'])->name('pos');
 Route::get('/pos/search', [PosController::class, 'search'])->name('pos.search');
 Route::get('/pos/customers/search', [PosController::class, 'searchCustomers'])->name('pos.customers.search');
 Route::post('/pos/bill', [PosController::class, 'saveBill'])->name('pos.bill.save');
+Route::post('/pos/customers/store', [PosController::class, 'storeCustomer'])->name('pos.customers.store');
 Route::get('/api/products/search', [PosController::class, 'searchProducts'])
     ->name('api.products.search');
 Route::get('/reports/sales', [App\Http\Controllers\SalesReportController::class, 'index'])->name('reports.sales');
@@ -19,6 +20,7 @@ Route::get('/reports/sales/{sale}', [App\Http\Controllers\SalesReportController:
 Route::post('/reports/sales/{sale}/void', [App\Http\Controllers\SalesReportController::class, 'void'])->name('reports.sales.void');
 Route::get('/reports', function () { return redirect()->route('reports.sales'); });
 Route::get('/reports/purchases', [App\Http\Controllers\SalesReportController::class, 'purchaseHistory'])->name('reports.purchases');
+Route::get('/reports/purchases/history', [PosController::class, 'receiveStockHistory'])->name('reports.purchases.history');
 
 // Product menu route (จาก sidebar)
 Route::get('/products', [PosController::class, 'productIndex'])->name('products.index');
@@ -48,7 +50,6 @@ Route::post('/pos/products', [PosController::class, 'storeProduct'])->name('pos.
 Route::get('/purchase', [PosController::class, 'receiveStockForm'])->name('pos.stock.receive');
 Route::post('/purchase', [PosController::class, 'receiveStock'])->name('pos.stock.receive.store');
 
-Route::get('/purchase/history', [PosController::class, 'receiveStockHistory'])->name('pos.stock.receive.history');
 Route::patch('/purchase/bill', [PosController::class, 'updateBillMeta'])->name('pos.stock.bill.update');
 Route::post('/purchase/bill/cancel', [PosController::class, 'cancelBill'])->name('pos.stock.bill.cancel');
 

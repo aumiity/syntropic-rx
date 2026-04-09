@@ -2,20 +2,18 @@
 
 @section('report_content')
 
-<div class="max-w-5xl mx-auto">
+<div class="max-w-full mx-auto">
 
         {{-- Page Header --}}
-        <div class="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-                <h1 class="text-2xl font-semibold text-gray-800">ประวัติการรับสินค้า</h1>
-                <p class="text-sm text-gray-500">รายการรับยาเข้าสต๊อค</p>
-            </div>
-            <div class="flex items-center gap-2">
-                <a href="{{ route('reports.purchases') }}" class="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">← กลับประวัติการรับสินค้า</a>
-                <a href="{{ route('pos.stock.receive') }}" class="rounded-lg bg-emerald-500 px-4 py-2 text-sm text-white hover:bg-emerald-600">+ รับสินค้าใหม่</a>
-            </div>
+        <div class="flex items-center gap-3 mb-4">
+             <a href="{{ route('reports.purchases') }}"
+           class="text-slate-400 hover:text-slate-600 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+        </a>
+        <h2 class="text-xl font-bold text-slate-800">ใบรับสินค้า</h2>
         </div>
-
         @if(session('success'))
             <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
                 {{ session('success') }}
@@ -28,7 +26,7 @@
             {{-- Bill Header Card --}}
             <div class="mb-5 rounded-xl border border-gray-200 bg-white p-5">
                 <div class="mb-5 flex items-center justify-between">
-                    <h2 class="text-lg font-semibold text-gray-800">{{ $billHeader->invoice_no }}</h2>
+                    <h2 class="text-lg font-semibold text-gray-800">รายละเอียด</h2>
                     <div class="flex items-center gap-2">
                         @if($billHeader->is_cancelled ?? false)
                             <span class="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700">
@@ -142,7 +140,6 @@
                                     <td class="px-4 py-3">
                                         <p class="font-medium text-gray-800">{{ $movement->trade_name }}</p>
                                         @if($movement->barcode ?? $movement->code)
-                                            <p class="text-[11px] text-gray-400">{{ $movement->barcode ?? $movement->code }}</p>
                                         @endif
                                     </td>
                                     <td class="px-4 py-3 text-gray-700">{{ $movement->lot_number ?: '-' }}</td>

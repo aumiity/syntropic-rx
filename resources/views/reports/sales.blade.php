@@ -1,6 +1,20 @@
 @extends('reports.layout')
 @section('report_content')
 
+@php
+    $fp = array_filter([
+        'date_from' => $dateFrom,
+        'date_to'   => $dateTo,
+        'q'         => $search ?? '',
+    ]);
+    function salesThSort($col, $label, $sortBy, $sortDir, $fp) {
+        $dir  = ($sortBy === $col && $sortDir === 'asc') ? 'desc' : 'asc';
+        $icon = $sortBy === $col ? ($sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+        return '<a href="' . route('reports.sales', array_merge($fp, ['sort_by' => $col, 'sort_dir' => $dir])) . '"
+                   class="hover:text-emerald-600 whitespace-nowrap">' . $label . $icon . '</a>';
+    }
+@endphp
+
     {{-- Filter Bar --}}
     <form method="GET" action="{{ route('reports.sales') }}"
           class="bg-white rounded-xl border border-slate-200 p-4 mb-4 flex flex-wrap gap-3 items-end">
@@ -52,12 +66,12 @@
         <table class="min-w-full text-sm divide-y divide-slate-100">
             <thead class="bg-slate-50 text-slate-600 text-xs font-semibold">
                 <tr>
-                    <th class="px-4 py-3 text-left">วัน/เวลา</th>
-                    <th class="px-4 py-3 text-left">เลขที่บิล</th>
+                    <th class="px-4 py-3 text-left">{!! salesThSort('sold_at','วัน/เวลา',$sortBy,$sortDir,$fp) !!}</th>
+                    <th class="px-4 py-3 text-left">{!! salesThSort('invoice_no','เลขที่บิล',$sortBy,$sortDir,$fp) !!}</th>
                     <th class="px-4 py-3 text-left">ลูกค้า</th>
-                    <th class="px-4 py-3 text-right">ราคา</th>
-                    <th class="px-4 py-3 text-right">ส่วนลด</th>
-                    <th class="px-4 py-3 text-right">มูลค่ารวม</th>
+                    <th class="px-4 py-3 text-right">{!! salesThSort('subtotal','ราคา',$sortBy,$sortDir,$fp) !!}</th>
+                    <th class="px-4 py-3 text-right">{!! salesThSort('total_discount','ส่วนลด',$sortBy,$sortDir,$fp) !!}</th>
+                    <th class="px-4 py-3 text-right">{!! salesThSort('total_amount','มูลค่ารวม',$sortBy,$sortDir,$fp) !!}</th>
                     <th class="px-4 py-3 text-right">ต้นทุน</th>
                     <th class="px-4 py-3 text-right">กำไร</th>
                     <th class="px-4 py-3 text-center">ดูบิล</th>

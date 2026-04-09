@@ -158,6 +158,49 @@ class PosController extends Controller
         return response()->json($customers);
     }
 
+    public function storeCustomer(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'full_name' => 'required|string|max:255',
+            'phone' => 'nullable|string|max:20',
+            'gender' => 'nullable|in:ไม่ระบุ,ชาย,หญิง',
+            'alert_note' => 'nullable|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+            ], 422);
+        }
+
+        $validated = $validator->validated();
+
+        $customerData = [
+            'full_name' => $validated['full_name'],
+            'phone' => $validated['phone'] ?? null,
+            'alert_note' => $validated['alert_note'] ?? null,
+            'is_alert' => !empty($validated['alert_note']),
+            'is_hidden' => false,
+        ];
+
+        if (Schema::hasColumn('customers', 'gender')) {
+            $customerData['gender'] = $validated['gender'] ?? 'ไม่ระบุ';
+        }
+
+        $customer = Customer::create($customerData);
+
+        return response()->json([
+            'success' => true,
+            'customer' => [
+                'id' => $customer->id,
+                'full_name' => $customer->full_name,
+                'is_alert' => (bool) $customer->is_alert,
+                'alert_note' => $customer->alert_note,
+            ],
+        ]);
+    }
+
     public function receiveStockForm()
     {
         $products = Product::with([
@@ -181,11 +224,11 @@ class PosController extends Controller
         $today = now()->format('Ymd');
         $count = Schema::hasColumn('product_lots', 'invoice_no')
             ? DB::table('product_lots')
-                ->where('invoice_no', 'like', "PO-{$today}-%")
+                ->where('invoice_no', 'like', "GR-{$today}-%")
                 ->count()
             : 0;
 
-        $nextPoNumber = 'PO-' . $today . '-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+        $nextGrNumber = 'GR-' . $today . '-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
 
         $hasSupplierInvoiceNo = Schema::hasColumn('product_lots', 'supplier_invoice_no');
         $hasPaymentType       = Schema::hasColumn('product_lots', 'payment_type');
@@ -240,7 +283,7 @@ class PosController extends Controller
             $receiveHistory = ProductLot::query()->whereRaw('1 = 0')->paginate(20);
         }
 
-        return view('pos.receive_stock', compact('products', 'suppliers', 'receiveHistory', 'nextPoNumber'));
+        return view('pos.receive_stock', compact('products', 'suppliers', 'receiveHistory', 'nextGrNumber'));
     }
 
     public function receiveStock(Request $request)

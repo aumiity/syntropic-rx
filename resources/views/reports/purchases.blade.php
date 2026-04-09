@@ -42,9 +42,6 @@
     </div>
     <button type="submit" class="h-10 px-5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium">ค้นหา</button>
     <a href="{{ route('reports.purchases') }}" class="h-10 px-4 rounded-lg border border-slate-200 text-slate-600 text-sm flex items-center hover:bg-slate-50">รีเซ็ต</a>
-    <a href="{{ route('pos.stock.receive') }}" class="h-10 px-5 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-sm font-medium flex items-center gap-1 ml-auto">
-        + รับสินค้าใหม่
-    </a>
 </form>
 
 {{-- Table --}}
@@ -108,7 +105,7 @@
                     ฿{{ number_format((float)($history->total_value ?? 0), 2) }}
                 </td>
                 <td class="px-4 py-3 text-center">
-                    <a href="{{ route('pos.stock.receive.history', $detailParams) }}"
+                    <a href="{{ route('reports.purchases.history', $detailParams) }}"
                        class="inline-flex px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 text-xs font-medium">
                         ดูรายละเอียด
                     </a>

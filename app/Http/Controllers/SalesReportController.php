@@ -19,6 +19,10 @@ class SalesReportController extends Controller
         $dateTo   = $request->input('date_to',   now()->toDateString());
         $search   = trim($request->input('q', ''));
 
+        $allowedSortBy = ['sold_at', 'invoice_no', 'subtotal', 'total_discount', 'total_amount'];
+        $sortBy  = in_array($request->input('sort_by'), $allowedSortBy) ? $request->input('sort_by') : 'sold_at';
+        $sortDir = $request->input('sort_dir') === 'asc' ? 'asc' : 'desc';
+
         $query = Sale::with(['saleItems.saleItemLots.lot', 'customer'])
             ->whereDate('sold_at', '>=', $dateFrom)
             ->whereDate('sold_at', '<=', $dateTo)
@@ -31,7 +35,8 @@ class SalesReportController extends Controller
             });
         }
 
-        $sales = $query->orderByDesc('sold_at')->get();
+        $query->orderBy($sortBy, $sortDir);
+        $sales = $query->get();
 
         // คำนวณ cost จาก sale_item_lots → product_lots.cost_price
         $sales->each(function ($sale) {
@@ -54,7 +59,7 @@ class SalesReportController extends Controller
             'total_profit'   => $sales->sum('total_profit'),
         ];
 
-        return view('reports.sales', compact('sales', 'summary', 'dateFrom', 'dateTo', 'search'));
+        return view('reports.sales', compact('sales', 'summary', 'dateFrom', 'dateTo', 'search', 'sortBy', 'sortDir'));
     }
 
     public function show(Sale $sale)

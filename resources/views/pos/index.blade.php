@@ -49,8 +49,11 @@
                 </div>
                 <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
             </button>
-            <button class="w-14 h-14 bg-white border border-slate-300 rounded-xl flex items-center justify-center hover:bg-slate-50 shadow-sm text-slate-500" title="เพิ่มข้อมูลแพทย์">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+            <button onclick="openQuickAddCustomer()" class="w-14 h-14 bg-white border border-slate-300 rounded-xl flex flex-col items-center justify-center hover:bg-slate-50 shadow-sm text-slate-500" title="เพิ่มลูกค้าใหม่">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                <span class="text-[10px] leading-none mt-0.5">เพิ่มลูกค้า</span>
             </button>
         </div>
     </div>
@@ -201,6 +204,42 @@ input[type=number] {
     </div>
 </div>
 
+<!-- Quick Add Customer Modal -->
+<div id="quick-add-customer-modal" class="fixed inset-0 bg-black/40 bg-opacity-50 hidden items-center justify-center z-[80] px-4">
+    <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+            <h3 class="text-xl font-bold text-slate-800">เพิ่มลูกค้าใหม่</h3>
+            <button id="quick-add-x-btn" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+        </div>
+        <form class="p-6">
+            <div class="mb-4">
+                <label for="quick-add-full-name" class="block text-sm font-medium text-slate-700 mb-1">ชื่อ-นามสกุล <span class="text-red-500">*</span></label>
+                <input type="text" id="quick-add-full-name" name="full_name" required class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="ชื่อ-นามสกุล">
+            </div>
+            <div class="mb-4">
+                <label for="quick-add-phone" class="block text-sm font-medium text-slate-700 mb-1">เบอร์โทรศัพท์</label>
+                <input type="text" id="quick-add-phone" name="phone" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="เบอร์โทรศัพท์">
+            </div>
+            <div class="mb-4">
+                <label for="quick-add-gender" class="block text-sm font-medium text-slate-700 mb-1">เพศ</label>
+                <select id="quick-add-gender" name="gender" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    <option value="">ไม่ระบุ</option>
+                    <option value="ชาย">ชาย</option>
+                    <option value="หญิง">หญิง</option>
+                </select>
+            </div>
+            <div class="mb-6">
+                <label for="quick-add-alert-note" class="block text-sm font-medium text-slate-700 mb-1">หมายเหตุ</label>
+                <textarea id="quick-add-alert-note" name="alert_note" rows="2" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="ประวัติแพ้ยา ถ้ามี"></textarea>
+            </div>
+            <div class="flex gap-2 justify-end">
+                <button type="button" id="quick-add-cancel-btn" class="px-5 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold">ยกเลิก</button>
+                <button type="submit" id="quick-add-save-btn" class="px-6 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold">บันทึก</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div id="pay-modal" class="fixed inset-0 bg-black/40 bg-opacity-50 hidden items-center justify-center z-60 z-[60] px-4">
     <div class="bg-white rounded-2xl w-full max-w-xl shadow-2xl border border-slate-200 p-6">
         <h3 class="text-2xl font-bold text-slate-800 mb-4">ชำระเงิน</h3>
@@ -219,28 +258,19 @@ input[type=number] {
                 <input type="radio" name="pay-type" value="transfer" class="text-emerald-600 focus:ring-emerald-500">
                 <span class="font-medium text-slate-700">โอนเงิน</span>
             </label>
-            <label class="inline-flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="pay-type" value="card" class="text-emerald-600 focus:ring-emerald-500">
-                <span class="font-medium text-slate-700">บัตร</span>
-            </label>
         </div>
 
         <div id="pay-received-wrap" class="mb-3">
-            <label for="pay-received" class="block text-sm text-slate-600 mb-1">รับเงินมา</label>
-            <input type="number" id="pay-received" min="0" step="0.01" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="0.00">
-        </div>
-
-        <div class="mb-3">
-            <label for="pay-change" class="block text-sm text-slate-600 mb-1">เงินทอน</label>
-            <input type="text" id="pay-change" readonly value="฿ 0.00" class="w-full border border-slate-200 bg-slate-50 rounded-lg px-3 py-2 font-bold text-emerald-600">
+            <div class="text-sm text-slate-500 mb-1">รับเงินมา</div>
+            <input type="number" id="pay-received" min="0" step="0.01" class="text-4xl font-extrabold text-slate-800 w-full bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-4 text-right outline-none focus:ring-2 focus:ring-emerald-400" placeholder="0.00">
         </div>
 
         <div class="mb-5">
-            <label for="pay-note" class="block text-sm text-slate-600 mb-1">หมายเหตุ (ถ้ามี)</label>
-            <textarea id="pay-note" rows="2" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="หมายเหตุเพิ่มเติม"></textarea>
+            <div class="text-sm text-slate-500 mb-1">เงินทอน</div>
+            <input type="text" id="pay-change" readonly value="฿ 0.00" class="text-4xl font-extrabold w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 text-right text-emerald-600">
         </div>
 
-        <div class="flex gap-2 justify-end">
+        <div class="flex gap-2 justify-between">
             <button id="pay-cancel-btn" class="px-5 py-3 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold">ยกเลิก</button>
             <button id="pay-confirm-btn" class="px-6 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg">ยืนยันชำระเงิน</button>
         </div>
@@ -252,15 +282,137 @@ input[type=number] {
 let cart = {}, allProducts = [], heldBills = JSON.parse(localStorage.getItem('held_bills') || '[]');
 let grandTotal = 0;
 
+// --- Quick Add Customer Submit Logic ---
+async function submitQuickAddCustomer() {
+    const modal = document.getElementById('quick-add-customer-modal');
+    const full_name = modal.querySelector('#quick-add-full-name').value.trim();
+    const phone = modal.querySelector('#quick-add-phone').value.trim();
+    const gender = modal.querySelector('#quick-add-gender').value;
+    const alert_note = modal.querySelector('#quick-add-alert-note').value.trim();
+
+    try {
+        const res = await fetch("{{ route('pos.customers.store') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || ''
+            },
+            body: JSON.stringify({ full_name, phone, gender, alert_note })
+        });
+        const data = await res.json();
+        if (data.success === true) {
+            selectCustomer(data.customer.id, data.customer.full_name, data.customer.is_alert, data.customer.alert_note);
+            closeQuickAddCustomer();
+            closeCustomerModal();
+            showToast('เพิ่มลูกค้าใหม่เรียบร้อยแล้ว', 'success');
+        } else {
+            showToast(data.message || 'เกิดข้อผิดพลาด', 'error');
+        }
+    } catch (e) {
+        showToast('เกิดข้อผิดพลาด', 'error');
+    }
+}
+
+// --- Quick Add Customer Modal Logic ---
+function openQuickAddCustomer() {
+    const modal = document.getElementById('quick-add-customer-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    // Clear all form fields
+    modal.querySelector('form').reset();
+}
+
+function closeQuickAddCustomer() {
+    const modal = document.getElementById('quick-add-customer-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+// Wire up buttons after DOMContentLoaded
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('quick-add-customer-btn')?.addEventListener('click', openQuickAddCustomer);
+    document.getElementById('quick-add-cancel-btn')?.addEventListener('click', closeQuickAddCustomer);
+    document.getElementById('quick-add-x-btn')?.addEventListener('click', closeQuickAddCustomer);
+    // Wire save button if route exists
+    const saveBtn = document.getElementById('quick-add-save-btn');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            submitQuickAddCustomer();
+        });
+    }
+});
+
+
 // --- Search & Popup Logic ---
 let timer;
 const searchInput = document.getElementById('search-input');
 const searchDropdown = document.getElementById('search-dropdown');
 const searchContainer = document.getElementById('search-results-container');
+let searchSelectedIndex = -1;
 
 document.addEventListener('click', function(event) {
     if (!searchInput.contains(event.target) && !searchDropdown.contains(event.target)) {
         searchDropdown.classList.add('hidden');
+    }
+});
+
+// --- Keyboard navigation for search autocomplete ---
+searchInput.addEventListener('keydown', function(e) {
+    const items = searchContainer.querySelectorAll(':scope > div');
+    const max = items.length;
+    if (!max) return;
+
+    function updateSelection(newIndex) {
+        searchSelectedIndex = newIndex;
+        items.forEach((el, idx) => {
+            if (idx === searchSelectedIndex) {
+                el.classList.add('bg-emerald-100');
+                el.scrollIntoView({ block: 'nearest' });
+            } else {
+                el.classList.remove('bg-emerald-100');
+            }
+        });
+    }
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        let next = searchSelectedIndex;
+        do {
+            next = (next + 1) % max;
+        } while (items[next].classList.contains('cursor-not-allowed') && next !== searchSelectedIndex);
+        updateSelection(next);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        let prev = searchSelectedIndex;
+        do {
+            prev = (prev - 1 + max) % max;
+        } while (items[prev].classList.contains('cursor-not-allowed') && prev !== searchSelectedIndex);
+        updateSelection(prev);
+    } else if (e.key === 'Enter') {
+        if (searchSelectedIndex >= 0) {
+            const selected = items[searchSelectedIndex];
+            if (!selected.classList.contains('cursor-not-allowed')) {
+                // Extract product id from onclick="addToCart('ID')"
+                const onclick = selected.getAttribute('onclick');
+                const match = onclick && onclick.match(/addToCart\('(.+?)'\)/);
+                if (match) {
+                    addToCart(match[1]);
+                }
+            }
+        } else if (max === 1) {
+            const only = items[0];
+            if (!only.classList.contains('cursor-not-allowed')) {
+                const onclick = only.getAttribute('onclick');
+                const match = onclick && onclick.match(/addToCart\('(.+?)'\)/);
+                if (match) {
+                    addToCart(match[1]);
+                }
+            }
+        }
+    } else if (e.key === 'Escape') {
+        searchDropdown.classList.add('hidden');
+        searchInput.value = '';
     }
 });
 
@@ -283,6 +435,7 @@ function searchDrugs(q) {
 }
 
 function renderSearchResults(products) {
+    searchSelectedIndex = -1;
     searchDropdown.classList.remove('hidden');
 
     if (!products.length) {
@@ -644,16 +797,14 @@ function handlePay() {
     const total = getGrandTotal();
     const totalDisplay = document.getElementById('pay-total-display');
     const payReceived = document.getElementById('pay-received');
-    const payNote = document.getElementById('pay-note');
     const cashRadio = document.querySelector('input[name="pay-type"][value="cash"]');
     const receivedWrap = document.getElementById('pay-received-wrap');
     const modal = document.getElementById('pay-modal');
 
-    if (!modal || !totalDisplay || !payReceived || !payNote || !cashRadio || !receivedWrap) return;
+    if (!modal || !totalDisplay || !payReceived || !cashRadio || !receivedWrap) return;
 
     totalDisplay.textContent = `฿ ${total.toLocaleString('th', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     payReceived.value = '';
-    payNote.value = '';
     cashRadio.checked = true;
     receivedWrap.classList.remove('hidden');
     updatePayChange();
@@ -688,7 +839,6 @@ async function submitBill() {
         transfer_amount: payType === 'transfer' ? totalAmount : 0,
         card_amount: payType === 'card' ? totalAmount : 0,
         change_amount: payType === 'cash' ? Math.max(0, received - totalAmount) : 0,
-        note: document.getElementById('pay-note').value,
         items: items
 
     };
@@ -736,6 +886,13 @@ document.getElementById('pay-type-radio')?.addEventListener('change', function(e
 
 document.getElementById('pay-received')?.addEventListener('input', updatePayChange);
 document.getElementById('pay-received')?.addEventListener('change', updatePayChange);
+document.getElementById('pay-received')?.addEventListener('keydown', function(event) {
+    const modal = document.getElementById('pay-modal');
+    if (event.key === 'Enter' && modal && !modal.classList.contains('hidden')) {
+        event.preventDefault();
+        submitBill();
+    }
+});
 
 document.getElementById('pay-confirm-btn')?.addEventListener('click', function() {
     submitBill();
@@ -748,6 +905,13 @@ document.addEventListener('keydown', e => {
     if(e.key === 'F9') { e.preventDefault(); handlePay(); }
     if(e.key === 'F8') { e.preventDefault(); clearCart(); }
     if(e.key === 'F2') { e.preventDefault(); searchInput.focus(); }
+    if (e.key === 'Escape') {
+        const payModal = document.getElementById('pay-modal');
+        if (payModal && !payModal.classList.contains('hidden')) {
+            e.preventDefault();
+            hidePayModal();
+        }
+    }
 });
 
 // --- Hygeia-style helper: realtime clock ---

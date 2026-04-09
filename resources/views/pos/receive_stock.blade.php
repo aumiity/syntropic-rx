@@ -65,12 +65,6 @@
             </div>
         @endif
 
-        <div class="mb-4 flex items-center justify-between">
-            <a href="{{ route('reports.purchases') }}" class="text-sm text-slate-500 hover:text-emerald-600 flex items-center gap-1">
-                ← ดูประวัติการรับสินค้า
-            </a>
-        </div>
-
         <div class="space-y-5">
             <div id="tab-receive" class="tab-panel active">
                 <form action="{{ route('pos.stock.receive.store') }}" method="POST" id="stock-receive-form" class="space-y-5">
@@ -83,14 +77,14 @@
                                 <p class="text-sm text-gray-500">เลขที่เอกสารจะถูกสร้างให้อัตโนมัติ และบันทึกรายละเอียดการชำระเงินได้ทันที</p>
                             </div>
                             <div class="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
-                                วันที่วันนี้: {{ now()->format('d/m/Y') }}
+                                วันที่: {{ now()->format('d/m/Y') }}
                             </div>
                         </div>
 
                         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                             <div>
-                                <label class="mb-1 block text-sm font-medium text-gray-600">เลขที่เอกสาร (auto)</label>
-                                <input type="text" name="invoice_no" value="{{ old('invoice_no', $nextPoNumber) }}" readonly class="h-11 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700">
+                                <label class="mb-1 block text-sm font-medium text-gray-600">เลขที่เอกสาร</label>
+                                <input type="text" name="invoice_no" value="{{ old('invoice_no', $nextGrNumber) }}" readonly class="h-11 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-700">
                             </div>
                             <div>
                                 <label class="mb-1 block text-sm font-medium text-gray-600">ผู้จำหน่าย <span class="text-red-500">*</span></label>
@@ -149,6 +143,13 @@
 
                     <div class="rounded-xl border border-gray-200 bg-white p-5">
                         <div>
+                            <div class="mb-3 flex items-center justify-between">
+                                <h2 class="text-lg font-semibold text-gray-800">รายการสินค้า</h2>
+                                <button type="button" id="open-bill-discount"
+                                    class="rounded-lg border border-emerald-300 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50">
+                                    ปรับยอดท้ายบิล
+                                </button>
+                            </div>
                             <div class="overflow-x-auto rounded-xl border border-gray-200">
                                 <table class="min-w-full text-sm" id="import-table">
                                     <thead class="bg-gray-50 text-gray-600">
@@ -174,10 +175,6 @@
                                 </button>
 
                                 <div class="flex items-center gap-4">
-                                    <button type="button" id="open-bill-discount"
-                                        class="rounded-lg border border-emerald-300 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50">
-                                        ปรับยอดท้ายบิล
-                                    </button>
                                     <div class="text-right space-y-1">
                                         <div id="summary-before-adjust" class="hidden">
                                             <p class="text-sm text-gray-500">
@@ -193,7 +190,7 @@
                                         </div>
                                         <div id="summary-surcharge-row" class="hidden">
                                             <p class="text-sm text-amber-600">
-                                                ค่าเพิ่ม
+                                                ส่วนเพิ่ม
                                                 <span id="summary-surcharge-amount" class="font-medium ml-2">0.00</span> บาท
                                             </p>
                                         </div>
@@ -226,7 +223,7 @@
                                 </div>
 
                                 <div class="mb-5 grid grid-cols-3 items-center gap-2">
-                                    <label class="text-sm text-gray-600">ค่าเพิ่ม</label>
+                                    <label class="text-sm text-gray-600">ส่วนเพิ่ม</label>
                                     <input type="number" id="bill-surcharge-value" min="0" step="0.01" value=""
                                         placeholder="0.00"
                                         class="col-span-1 h-10 rounded-lg border border-gray-300 px-3 text-sm focus:border-emerald-400 focus:outline-none">
