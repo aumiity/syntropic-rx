@@ -831,7 +831,7 @@ class PosController extends Controller
         if (!in_array($sort_by, $allowedSortBy)) {
             $sort_by = 'id';
         }
-        $sort_dir = strtolower($request->get('sort_dir', 'desc'));
+        $sort_dir = strtolower($request->get('sort_dir', 'asc'));
         if (!in_array($sort_dir, ['asc', 'desc'])) {
             $sort_dir = 'desc';
         }

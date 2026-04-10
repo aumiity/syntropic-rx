@@ -28,7 +28,7 @@
             <input type="date" name="date_to" value="{{ $dateTo }}"
                 class="h-10 px-3 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-400">
         </div>
-        <div class="flex-1 min-w-[200px]">
+        <div class="flex-1 min-w-50">
             <label class="block text-xs text-slate-500 mb-1">ค้นหา</label>
             <input type="text" name="q" value="{{ $search }}" placeholder="เลขที่บิล, ชื่อลูกค้า..."
                 class="w-full h-10 px-3 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-emerald-400">

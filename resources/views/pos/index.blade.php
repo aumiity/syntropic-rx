@@ -5,7 +5,7 @@
 <div class="flex flex-col bg-slate-50 text-slate-800 overflow-hidden px-3 py-3" style="height: 100dvh; box-sizing: border-box;">
 
     {{-- Hygeia Header (temporary mockup) --}}
-    <div class="mb-3 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-sky-600 text-white shadow-md">
+    <div class="mb-3 px-4 py-2 rounded-xl bg-linear-to-r from-emerald-600 to-sky-600 text-white shadow-md">
         <div class="flex items-center justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-extrabold">Syntropic RX</h1>
@@ -20,117 +20,110 @@
     </div>
 
     {{-- ========================================== --}}
-    {{-- TOP SECTION: SEARCH & CUSTOMER INFO --}}
+    {{-- MAIN CONTENT: 2-COLUMN POS LAYOUT --}}
     {{-- ========================================== --}}
-    <div class="flex gap-4 mb-3">
+    <div class="flex-1 flex flex-row gap-4 min-h-0">
 
-        {{-- Search Input with Dropdown --}}
-        <div class="flex-1 relative z-50">
-            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <svg class="w-6 h-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            </div>
-            <input type="text" id="search-input"
-                placeholder="ค้นหารหัส, ชื่อยา หรือสแกนบาร์โค้ด [F2]..."
-                class="w-full h-14 pl-12 pr-4 rounded-xl border border-slate-300 shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-lg bg-white outline-none transition-all"
-                oninput="searchDrugs(this.value)" autocomplete="off" autofocus>
+        {{-- Left Column: Search + Warning + Cart --}}
+        <div class="flex-1 flex flex-col gap-3 min-h-0">
 
-            {{-- Search Results Popup (Dropdown) --}}
-            <div id="search-dropdown" class="absolute top-[110%] left-0 w-full bg-white shadow-2xl rounded-xl border border-slate-200 hidden max-h-[400px] overflow-y-auto custom-scrollbar">
-                <div id="search-results-container" class="py-2"></div>
-            </div>
-        </div>
-
-        {{-- Customer & Doctor Selection --}}
-        <div class="w-[400px] flex gap-2">
-            <button onclick="changeCustomer()" class="flex-1 bg-white border border-slate-300 rounded-xl px-4 flex items-center justify-between hover:bg-slate-50 transition-colors shadow-sm">
-                <div class="flex flex-col text-left">
-                    <span class="text-xs text-slate-400 font-medium">ลูกค้า / สมาชิก</span>
-                    <span class="text-sm font-bold text-emerald-600" id="cust-name">ลูกค้าทั่วไป (เงินสด)</span>
+            {{-- Search Input with Dropdown --}}
+            <div class="relative z-50">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <svg class="w-6 h-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 </div>
-                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-            </button>
-            <button onclick="openQuickAddCustomer()" class="w-14 h-14 bg-white border border-slate-300 rounded-xl flex flex-col items-center justify-center hover:bg-slate-50 shadow-sm text-slate-500" title="เพิ่มลูกค้าใหม่">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                </svg>
-                <span class="text-[10px] leading-none mt-0.5">เพิ่มลูกค้า</span>
-            </button>
-        </div>
-    </div>
+                <input type="text" id="search-input"
+                    placeholder="ค้นหารหัส, ชื่อยา หรือสแกนบาร์โค้ด [F2]..."
+                    class="w-full h-14 pl-12 pr-4 rounded-xl border border-slate-300 shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-lg bg-white outline-none transition-all"
+                    oninput="searchDrugs(this.value)" autocomplete="off" autofocus>
 
-    {{-- ========================================== --}}
-    {{-- MAIN SECTION: ORDER LIST TABLE --}}
-    {{-- ========================================== --}}
-    <div class="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden relative">
+                {{-- Search Results Popup (Dropdown) --}}
+                <div id="search-dropdown" class="absolute top-[110%] left-0 w-full bg-white shadow-2xl rounded-xl border border-slate-200 hidden max-h-100 overflow-y-auto custom-scrollbar">
+                    <div id="search-results-container" class="py-2"></div>
+                </div>
+            </div>
 
-       {{-- Table Header (ล็อกขนาด Grid ตายตัว 100%) --}}
-        <div class="w-full grid gap-2 px-4 py-3 bg-slate-100 text-slate-600 text-sm font-bold border-b border-slate-200 items-center" 
-             style="grid-template-columns: 50px 3fr 1fr 80px 1fr 1fr 1fr 50px;">
-            <div class="text-center">ลำดับ</div>
-            <div>รายการสินค้า (Product)</div>
-            <div class="text-center">หน่วย</div>
-            <div class="text-center">จำนวน (Qty)</div>
-            <div class="text-center">ราคา/หน่วย</div>
-            <div class="text-center">ส่วนลด</div>
-            <div class="text-center">รวมเงิน</div>
-            <div class="text-center">ลบ</div>
-        </div>
+            <div id="allergy-warn" class="hidden bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-600 items-center gap-2 font-bold">
+                <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <span id="allergy-warn-text">คำเตือน: พบประวัติแพ้ยาในรายการสั่งซื้อ!</span>
+            </div>
 
-        {{-- Table Body (Cart Items) --}}
-        <div class="flex-1 overflow-y-auto custom-scrollbar bg-white" id="cart-list">
-            <div id="empty-cart" class="h-full flex flex-col items-center justify-center text-slate-300 gap-3">
-                <svg class="w-16 h-16 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
-                <p class="text-lg font-medium">ยังไม่มีรายการสั่งซื้อ</p>
-                <p class="text-sm text-slate-400">พิมพ์ค้นหา หรือ สแกนบาร์โค้ด เพื่อเริ่มขาย</p>
+            {{-- Cart Table --}}
+            <div class="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden relative min-h-0">
+
+               {{-- Table Header (ล็อกขนาด Grid ตายตัว 100%) --}}
+                <div class="w-full grid gap-2 px-4 py-3 bg-slate-100 text-slate-600 text-sm font-bold border-b border-slate-200 items-center"
+                     style="grid-template-columns: 50px 3fr 1fr 80px 1fr 1fr 1fr 50px;">
+                    <div class="text-center">ลำดับ</div>
+                    <div>รายการสินค้า (Product)</div>
+                    <div class="text-center">หน่วย</div>
+                    <div class="text-center">จำนวน</div>
+                    <div class="text-center">ราคา/หน่วย</div>
+                    <div class="text-center">ส่วนลด</div>
+                    <div class="text-center">รวมเงิน</div>
+                    <div class="text-center">ลบ</div>
+                </div>
+
+                {{-- Table Body (Cart Items) --}}
+                <div class="flex-1 overflow-y-auto custom-scrollbar bg-white" id="cart-list">
+                    <div id="empty-cart" class="h-full flex flex-col items-center justify-center text-slate-300 gap-3">
+                        <svg class="w-16 h-16 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                        <p class="text-lg font-medium">ยังไม่มีรายการสั่งซื้อ</p>
+                        <p class="text-sm text-slate-400">พิมพ์ค้นหา หรือ สแกนบาร์โค้ด เพื่อเริ่มขาย</p>
+                    </div>
+                </div>
+
             </div>
         </div>
 
-    </div>
-
-    {{-- ========================================== --}}
-    {{-- BOTTOM SECTION: SUMMARY & PAYMENT --}}
-    {{-- ========================================== --}}
-    <div class="mt-3 flex gap-4 flex-shrink-0" style="height: 164px;">
-
-        {{-- Left: Functions & Warnings --}}
-        <div class="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col justify-between">
-            <div id="allergy-warn" class="hidden bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-600 flex items-center gap-2 font-bold mb-2">
-                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                คำเตือน: พบประวัติแพ้ยาในรายการสั่งซื้อ!
+        {{-- Right Column: Customer + Totals + Actions --}}
+        <div class="w-72 shrink-0 flex flex-col gap-3 min-h-0">
+            <div class="flex gap-2">
+                <button onclick="changeCustomer()" class="flex-1 h-14 bg-white border border-slate-300 rounded-xl px-4 flex items-center justify-between hover:bg-slate-50 transition-colors shadow-sm">
+                    <div class="flex flex-col text-left">
+                        <span class="text-xs text-slate-400 font-medium">ลูกค้า / สมาชิก</span>
+                        <span class="text-sm font-bold text-emerald-600" id="cust-name">ลูกค้าทั่วไป (เงินสด)</span>
+                    </div>
+                    <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <button onclick="openQuickAddCustomer()" class="w-14 h-14 bg-white border border-slate-300 rounded-xl flex flex-col items-center justify-center hover:bg-slate-50 shadow-sm text-slate-500" title="เพิ่มลูกค้าใหม่">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    <span class="text-[10px] leading-none mt-0.5">เพิ่มลูกค้า</span>
+                </button>
             </div>
 
-            <div class="flex items-end gap-2 mt-auto">
-                <button onclick="clearCart()" class="px-6 py-3 rounded-lg bg-white hover:bg-red-50 text-slate-600 hover:text-red-500 font-medium border border-slate-300 hover:border-red-200 transition-colors flex items-center gap-2 shadow-sm">
+            <div class="flex-1 flex flex-col gap-3 min-h-0">
+                <button id="pay-btn" disabled onclick="handlePay()" class="w-full flex-1 px-6 py-6 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-2xl shadow-md transition-all flex items-center justify-center gap-2">
+                    รับชำระเงิน <span class="text-base bg-black/10 px-3 py-1 rounded-md font-medium ml-2">F9</span>
+                </button>
+                <button class="w-full px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm">เปิดลิ้นชัก</button>
+                <button onclick="printLabel()" class="w-full px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm">พิมพ์ฉลากยา</button>
+                <button onclick="holdBill()" class="w-full px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm">พักบิล</button>
+                <button onclick="showHeldBills()" class="w-full px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm">เรียกบิลที่พัก</button>
+                <button onclick="clearCart()" class="w-full px-6 py-3 rounded-lg bg-white hover:bg-red-50 text-slate-600 hover:text-red-500 font-medium border border-slate-300 hover:border-red-200 transition-colors flex items-center justify-center gap-2 shadow-sm">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     ยกเลิกบิล [F8]
                 </button>
-                <button onclick="holdBill()" class="px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm">พักบิล</button>
-                <button onclick="showHeldBills()" class="px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm">เรียกบิลที่พัก</button>
-                <button onclick="printLabel()" class="px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm">พิมพ์ฉลากยา</button>
-                <button id="pay-btn" disabled onclick="handlePay()" class="flex-1 px-6 py-12 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-2xl shadow-md transition-all flex items-center justify-center gap-2">
-                        รับชำระเงิน <span class="text-base bg-black/10 px-3 py-1 rounded-md font-medium ml-2">F9</span>
-                </button>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border-2 border-emerald-50 p-5 flex flex-col relative overflow-hidden">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-slate-500 font-medium">จำนวนรายการ</span>
+                    <span id="s-count" class="font-bold text-slate-700 text-lg">0</span>
+                </div>
+                <div class="flex justify-between items-center mb-4 pb-4 border-b border-slate-100">
+                    <span class="text-slate-500 font-medium">ส่วนลดรวม</span>
+                    <span id="s-discount" class="font-bold text-emerald-500">0.00</span>
+                </div>
+                <div class="items-end text-right">
+                    <span class="text-xl font-bold text-slate-700">ยอดสุทธิ</span>
+                </div>
+                <div class="items-end text-right">
+                    <span class="text-5xl font-extrabold text-emerald-600" id="tb-total">0.00</span>
+                </div>
             </div>
         </div>
-
-        {{-- Right: Totals (เปลี่ยนเป็นธีมสว่าง ขอบเขียวอ่อน) --}}
-        <div class="w-[400px] bg-white rounded-xl shadow-sm border-2 border-emerald-50 p-5 flex flex-col relative overflow-hidden">
-
-            <div class="flex justify-between items-center mb-2">
-                <span class="text-slate-500 font-medium">จำนวนรายการ</span>
-                <span id="s-count" class="font-bold text-slate-700 text-lg">0</span>
-            </div>
-            <div class="flex justify-between items-center mb-4 pb-4 border-b border-slate-100">
-                <span class="text-slate-500 font-medium">ส่วนลดรวม</span>
-                <span class="font-bold text-emerald-500">฿ 0.00</span>
-            </div>
-
-            <div class="flex justify-between items-end mb-4">
-                <span class="text-xl font-bold text-slate-700">ยอดสุทธิ</span>
-                <span class="text-4xl font-extrabold text-emerald-600" id="tb-total">฿ 0.00</span>
-            </div>
-        </div>
-
     </div>
 </div>
 
@@ -161,7 +154,7 @@ input[type=number] {
 </style>
 
 <!-- Modals -->
-<div id="price-modal" class="fixed inset-0 bg-black/40 bg-opacity-50 hidden flex items-center justify-center z-50">
+<div id="price-modal" class="fixed inset-0 bg-black/40 bg-opacity-50 hidden items-center justify-center z-50">
     <div class="bg-white rounded-xl p-6 w-96 shadow-lg">
         <h3 class="text-lg font-bold text-slate-800 mb-1">เปลี่ยนราคา</h3>
         <p id="price-modal-product-name" class="text-sm text-slate-500 mb-4"></p>
@@ -175,7 +168,7 @@ input[type=number] {
 
         <!-- Price input -->
         <input type="number" id="price-input" 
-            class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-lg font-bold" 
+            class="w-full text-right border border-slate-300 rounded-lg px-3 py-2 mb-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-lg font-bold" 
             min="0" step="0.01" placeholder="ใส่ราคาใหม่">
 
         <!-- Cost & Profit display -->
@@ -205,7 +198,7 @@ input[type=number] {
     </div>
 </div>
 
-<div id="discount-modal" class="fixed inset-0 bg-black/40 bg-opacity-50 hidden flex items-center justify-center z-50">
+<div id="discount-modal" class="fixed inset-0 bg-black/40 bg-opacity-50 hidden items-center justify-center z-50">
     <div class="bg-white rounded-lg p-6 w-96 shadow-lg">
         <h3 class="text-lg font-bold text-slate-800 mb-4">ใส่ส่วนลด</h3>
         <input type="number" id="discount-input" class="w-full border border-slate-300 rounded px-3 py-2 mb-4 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" min="0" step="0.01" placeholder="ใส่ส่วนลด">
@@ -216,7 +209,7 @@ input[type=number] {
     </div>
 </div>
 
-<div id="customer-modal" class="fixed inset-0 bg-black/40 bg-opacity-50 hidden items-center justify-center z-[70] px-4">
+<div id="customer-modal" class="fixed inset-0 bg-black/40 bg-opacity-50 hidden items-center justify-center z-70 px-4">
     <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-slate-200">
         <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
             <h3 class="text-xl font-bold text-slate-800">เลือกลูกค้า</h3>
@@ -238,7 +231,7 @@ input[type=number] {
 </div>
 
 <!-- Quick Add Customer Modal -->
-<div id="quick-add-customer-modal" class="fixed inset-0 bg-black/40 bg-opacity-50 hidden items-center justify-center z-[80] px-4">
+<div id="quick-add-customer-modal" class="fixed inset-0 bg-black/40 bg-opacity-50 hidden items-center justify-center z-80 px-4">
     <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200">
         <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
             <h3 class="text-xl font-bold text-slate-800">เพิ่มลูกค้าใหม่</h3>
@@ -273,13 +266,13 @@ input[type=number] {
     </div>
 </div>
 
-<div id="pay-modal" class="fixed inset-0 bg-black/40 bg-opacity-50 hidden items-center justify-center z-60 z-[60] px-4">
+<div id="pay-modal" class="fixed inset-0 bg-black/40 bg-opacity-50 hidden items-center justify-center z-60 px-4">
     <div class="bg-white rounded-2xl w-full max-w-xl shadow-2xl border border-slate-200 p-6">
         <h3 class="text-2xl font-bold text-slate-800 mb-4">ชำระเงิน</h3>
 
         <div class="bg-emerald-50 rounded-xl px-4 py-4 mb-5 border border-emerald-100">
             <div class="text-sm text-slate-500">ยอดสุทธิ</div>
-            <div id="pay-total-display" class="text-4xl font-extrabold text-emerald-600 leading-tight">฿ 0.00</div>
+            <div id="pay-total-display" class="text-4xl font-extrabold text-emerald-600 leading-tight">0.00</div>
         </div>
 
         <div id="pay-type-radio" class="mb-4">
@@ -300,7 +293,7 @@ input[type=number] {
 
         <div class="mb-5">
             <div class="text-sm text-slate-500 mb-1">เงินทอน</div>
-            <input type="text" id="pay-change" readonly value="฿ 0.00" class="text-4xl font-extrabold w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 text-right text-emerald-600">
+            <input type="text" id="pay-change" readonly value="0.00" class="text-4xl font-extrabold w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 text-right text-emerald-600">
         </div>
 
         <div class="flex gap-2 justify-between">
@@ -520,7 +513,7 @@ function renderSearchResults(products) {
                 <div class="text-sm text-slate-500 mt-0.5">สต็อกคงเหลือ: <span class="${stock > 0 ? 'text-emerald-600 font-semibold' : 'text-red-500'}">${stock}</span> | รหัส: ${p.id}</div>
             </div>
             <div class="text-right">
-                <div class="text-emerald-600 font-extrabold text-lg">฿${price.toLocaleString()}</div>
+                <div class="text-emerald-600 font-extrabold text-lg">${price.toLocaleString()}</div>
             </div>
         </div>`;
     }).join('');
@@ -580,7 +573,7 @@ window.setQty = function(id, value) {
 window.changePrice = function(id) {
     if (!cart[id]) return;
     const p = cart[id].product;
-    const currentPrice = cart[id].customPrice || parseFloat(p.price_retail);
+    const currentPrice = cart[id].customPrice ?? parseFloat(p.price_retail);
 
     // Set product name
     document.getElementById('price-modal-product-name').textContent = p.trade_name;
@@ -590,11 +583,11 @@ window.changePrice = function(id) {
     const btnWholesale1 = document.getElementById('btn-price-wholesale1');
     const btnWholesale2 = document.getElementById('btn-price-wholesale2');
 
-    btnRetail.textContent = 'ปลีก ฿' + parseFloat(p.price_retail).toLocaleString();
+    btnRetail.textContent = 'ปลีก ' + parseFloat(p.price_retail).toLocaleString() + ' บาท';
     btnRetail.onclick = () => { document.getElementById('price-input').value = parseFloat(p.price_retail); updatePriceModalStats(); };
 
     if (p.price_wholesale1 && parseFloat(p.price_wholesale1) > 0) {
-        btnWholesale1.textContent = 'ส่ง 1 ฿' + parseFloat(p.price_wholesale1).toLocaleString();
+        btnWholesale1.textContent = 'ส่ง 1 ' + parseFloat(p.price_wholesale1).toLocaleString() + ' บาท';
         btnWholesale1.classList.remove('hidden');
         btnWholesale1.onclick = () => { document.getElementById('price-input').value = parseFloat(p.price_wholesale1); updatePriceModalStats(); };
     } else {
@@ -602,7 +595,7 @@ window.changePrice = function(id) {
     }
 
     if (p.price_wholesale2 && parseFloat(p.price_wholesale2) > 0) {
-        btnWholesale2.textContent = 'ส่ง 2 ฿' + parseFloat(p.price_wholesale2).toLocaleString();
+        btnWholesale2.textContent = 'ส่ง 2 ' + parseFloat(p.price_wholesale2).toLocaleString() + ' บาท';
         btnWholesale2.classList.remove('hidden');
         btnWholesale2.onclick = () => { document.getElementById('price-input').value = parseFloat(p.price_wholesale2); updatePriceModalStats(); };
     } else {
@@ -611,13 +604,13 @@ window.changePrice = function(id) {
 
     // Cost price
     const costPrice = parseFloat(p.cost_price) || 0;
-    document.getElementById('price-modal-cost').textContent = costPrice > 0 ? '฿' + costPrice.toLocaleString() : '-';
+    document.getElementById('price-modal-cost').textContent = costPrice > 0 ? costPrice.toLocaleString() + ' บาท' : '-';
 
     // Average cost from lots
     const avgCost = p.lots && p.lots.length > 0
         ? p.lots.reduce((sum, l) => sum + (parseFloat(l.cost_price) * l.qty_on_hand), 0) / p.lots.reduce((sum, l) => sum + l.qty_on_hand, 0)
         : 0;
-    document.getElementById('price-modal-avg-cost').textContent = avgCost > 0 ? '฿' + avgCost.toFixed(2) : '-';
+    document.getElementById('price-modal-avg-cost').textContent = avgCost > 0 ? avgCost.toFixed(2) + ' บาท' : '-';
 
     window.currentPriceId = id;
     window.priceModalAvgCost = avgCost > 0 ? avgCost : costPrice;
@@ -640,10 +633,10 @@ function updatePriceModalStats() {
     const profitEl = document.getElementById('price-modal-profit');
     const profitPctEl = document.getElementById('price-modal-profit-pct');
 
-    profitEl.textContent = '฿' + profit.toFixed(2);
+    profitEl.textContent = profit.toFixed(2) + ' บาท';
     profitEl.className = 'font-semibold ' + (profit >= 0 ? 'text-emerald-600' : 'text-red-500');
 
-    profitPctEl.textContent = profitPct.toFixed(1) + '%';
+    profitPctEl.textContent = profitPct.toFixed(1) + ' %';
     profitPctEl.className = 'font-semibold ' + (profitPct >= 0 ? 'text-emerald-600' : 'text-red-500');
 }
 
@@ -738,8 +731,8 @@ function updateAll() {
             const item = cart[id];
             const p = item.product;
             const price = parseFloat(p.price_retail);
-            const effectivePrice = item.customPrice || price;
-            const discount = item.discount || 0;
+            const effectivePrice = item.customPrice ?? price;
+            const discount = item.discount ?? 0;
             const lineTotal = (effectivePrice * item.qty) - discount;
             grandTotal += lineTotal;
 
@@ -753,7 +746,7 @@ function updateAll() {
                     <div class="font-bold text-slate-800 text-base line-clamp-1">${p.trade_name}</div>
                 </div>
                 
-                <div class="text-center text-slate-500 font-medium">${p.unit ? p.unit.name : '-'}</div>
+                <div class="text-center text-slate-500 font-medium">${p.unit ? p.unit.name : (p.unit_name ?? '-')}</div>
                 
                 <div class="flex justify-center">
                     <div class="flex items-center bg-white border border-slate-300 rounded-lg overflow-hidden shadow-sm focus-within:ring-2 focus-within:ring-emerald-500 w-max max-w-[120px]">
@@ -764,14 +757,14 @@ function updateAll() {
                 </div>
                 
                 <div class="text-center">
-                    <div onclick="changePrice('${p.id}')" class="cursor-pointer text-slate-700 font-medium hover:bg-slate-100 px-2 py-1 rounded transition-colors inline-block" title="คลิกเพื่อแก้ราคา">฿${effectivePrice.toLocaleString('th', {minimumFractionDigits: 2})}</div>
+                    <div onclick="changePrice('${p.id}')" class="cursor-pointer text-slate-700 font-medium hover:bg-slate-100 px-2 py-1 rounded transition-colors inline-block" title="คลิกเพื่อแก้ราคา">${effectivePrice.toLocaleString('th', {minimumFractionDigits: 2})}</div>
                 </div>
                 
                 <div class="text-center">
-                    <div onclick="changeDiscount('${p.id}')" class="cursor-pointer text-slate-500 font-medium hover:bg-slate-100 px-2 py-1 rounded transition-colors inline-block" title="คลิกเพื่อใส่ส่วนลด">${discount > 0 ? '-฿' + discount.toLocaleString('th', {minimumFractionDigits: 2}) : '-'}</div>
+                    <div onclick="changeDiscount('${p.id}')" class="cursor-pointer text-slate-500 font-medium hover:bg-slate-100 px-2 py-1 rounded transition-colors inline-block" title="คลิกเพื่อใส่ส่วนลด">${discount > 0 ? '-' + discount.toLocaleString('th', {minimumFractionDigits: 2}) : '-'}</div>
                 </div>
                 
-                <div class="text-center font-bold text-emerald-600 text-lg">฿${lineTotal.toLocaleString('th', {minimumFractionDigits: 2})}</div>
+                <div class="text-center font-bold text-emerald-600 text-lg">${lineTotal.toLocaleString('th', {minimumFractionDigits: 2})}</div>
                 
                 <div class="flex justify-center">
                     <button type="button" data-action="removeItem" data-id="${p.id}" class="w-8 h-8 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors">
@@ -784,10 +777,16 @@ function updateAll() {
 
     // ใส่ if ดักเผื่อ Copilot ตั้งชื่อ ID ไม่ตรงด้วย
     const tbTotal = document.getElementById('tb-total');
-    if (tbTotal) tbTotal.textContent = '฿ ' + grandTotal.toLocaleString('th', {minimumFractionDigits: 2});
+    if (tbTotal) tbTotal.textContent = grandTotal.toLocaleString('th', {minimumFractionDigits: 2});
     
     const sCount = document.getElementById('s-count');
     if (sCount) sCount.textContent = keys.length;
+
+    const sDiscount = document.getElementById('s-discount');
+    if (sDiscount) {
+        const totalDiscount = Object.values(cart).reduce((sum, item) => sum + (item.discount ?? 0), 0);
+        sDiscount.textContent = totalDiscount.toLocaleString('th', {minimumFractionDigits: 2});
+    }
 
     const payBtn = document.getElementById('pay-btn');
     if (payBtn) payBtn.disabled = !keys.length;
@@ -819,6 +818,88 @@ const CUSTOMER_SEARCH_URL = '{{ route("pos.customers.search") }}';
 let currentCustomerId = null;
 let currentCustomerName = 'ลูกค้าทั่วไป (เงินสด)';
 
+function syncHeldBillsStorage() {
+    localStorage.setItem('held_bills', JSON.stringify(heldBills));
+}
+
+function calculateCartTotal(cartData = {}) {
+    return Object.values(cartData).reduce((sum, item) => {
+        const price = parseFloat(item?.product?.price_retail) || 0;
+        const effectivePrice = item.customPrice ?? price;
+        const discount = item.discount ?? 0;
+        return sum + ((effectivePrice * item.qty) - discount);
+    }, 0);
+}
+
+window.holdBill = function() {
+    if (!Object.keys(cart).length) {
+        showToast('ยังไม่มีรายการสำหรับพักบิล', 'error');
+        return;
+    }
+
+    heldBills.unshift({
+        id: Date.now(),
+        customerId: currentCustomerId,
+        customerName: currentCustomerName,
+        cart: JSON.parse(JSON.stringify(cart)),
+        createdAt: new Date().toISOString()
+    });
+
+    heldBills = heldBills.slice(0, 20);
+    syncHeldBillsStorage();
+    cart = {};
+    selectWalkIn();
+    updateAll();
+    searchInput.focus();
+    showToast('พักบิลเรียบร้อยแล้ว', 'success');
+};
+
+window.showHeldBills = function() {
+    if (!heldBills.length) {
+        showToast('ยังไม่มีบิลที่พักไว้', 'error');
+        return;
+    }
+
+    const choices = heldBills.map((bill, index) => {
+        const total = calculateCartTotal(bill.cart || {});
+        const time = bill.createdAt
+            ? new Date(bill.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+            : '--:--';
+
+        return `${index + 1}. ${bill.customerName || 'ลูกค้าทั่วไป (เงินสด)'} • ฿ ${total.toLocaleString('th', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} • ${time}`;
+    }).join('\n');
+
+    const selected = window.prompt(`เลือกบิลที่พักไว้ (ใส่หมายเลข)\n\n${choices}`, '1');
+    if (selected === null) return;
+
+    const selectedIndex = Number.parseInt(selected, 10) - 1;
+    const bill = heldBills[selectedIndex];
+
+    if (!bill) {
+        showToast('ไม่พบบิลที่เลือก', 'error');
+        return;
+    }
+
+    cart = bill.cart || {};
+    currentCustomerId = bill.customerId ?? null;
+    currentCustomerName = bill.customerName || 'ลูกค้าทั่วไป (เงินสด)';
+    document.getElementById('cust-name').textContent = currentCustomerName;
+
+    const warningBox = document.getElementById('allergy-warn');
+    warningBox.classList.add('hidden');
+    warningBox.classList.remove('flex');
+
+    heldBills.splice(selectedIndex, 1);
+    syncHeldBillsStorage();
+    updateAll();
+    searchInput.focus();
+    showToast('เรียกบิลที่พักเรียบร้อยแล้ว', 'success');
+};
+
+window.printLabel = function() {
+    showToast('ฟังก์ชันพิมพ์ฉลากในหน้านี้ยังไม่พร้อมใช้งาน', 'error');
+};
+
 function changeCustomer() {
     document.getElementById('cust-search-input').value = '';
     document.getElementById('cust-search-results').innerHTML = '';
@@ -831,15 +912,21 @@ function selectCustomer(id, name, isAlert, alertNote) {
     currentCustomerId = id;
     currentCustomerName = name;
     document.getElementById('cust-name').textContent = name;
-    if (isAlert && alertNote) {
-        document.getElementById('allergy-warn').classList.remove('hidden');
-        document.getElementById('allergy-warn').querySelector('span') &&
-            (document.getElementById('allergy-warn').innerHTML = `
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                คำเตือน: ${alertNote}`);
+
+    const warningBox = document.getElementById('allergy-warn');
+    const warningText = document.getElementById('allergy-warn-text');
+    const hasAlertNote = Boolean(isAlert) && String(alertNote || '').trim() !== '';
+
+    if (hasAlertNote) {
+        warningText.textContent = `คำเตือน: ${alertNote}`;
+        warningBox.classList.remove('hidden');
+        warningBox.classList.add('flex');
     } else {
-        document.getElementById('allergy-warn').classList.add('hidden');
+        warningText.textContent = 'คำเตือน: พบประวัติแพ้ยาในรายการสั่งซื้อ!';
+        warningBox.classList.add('hidden');
+        warningBox.classList.remove('flex');
     }
+
     closeCustomerModal();
 }
 
@@ -847,7 +934,13 @@ function selectWalkIn() {
     currentCustomerId = null;
     currentCustomerName = 'ลูกค้าทั่วไป (เงินสด)';
     document.getElementById('cust-name').textContent = currentCustomerName;
-    document.getElementById('allergy-warn').classList.add('hidden');
+
+    const warningBox = document.getElementById('allergy-warn');
+    const warningText = document.getElementById('allergy-warn-text');
+    warningText.textContent = 'คำเตือน: พบประวัติแพ้ยาในรายการสั่งซื้อ!';
+    warningBox.classList.add('hidden');
+    warningBox.classList.remove('flex');
+
     closeCustomerModal();
 }
 
@@ -871,14 +964,19 @@ function searchCustomers(q) {
             resultsEl.innerHTML = '<div class="p-4 text-center text-slate-400">ไม่พบลูกค้า</div>';
             return;
         }
-        resultsEl.innerHTML = customers.map(c => `
-              <div onclick="selectCustomer(${c.id}, '${c.full_name.replace(/'/g,"\\'")}', ${c.is_alert ? 1 : 0}, '${(c.alert_note||'').replace(/'/g,"\\'")}'')"
+        resultsEl.innerHTML = customers.map(c => {
+            const safeName = JSON.stringify(c.full_name || '');
+            const safeAlertNote = JSON.stringify(c.alert_note || '');
+
+            return `
+              <div onclick='selectCustomer(${c.id}, ${safeName}, ${c.is_alert ? 'true' : 'false'}, ${safeAlertNote})'
                  class="px-4 py-3 border-b border-slate-100 hover:bg-emerald-50 cursor-pointer flex justify-between items-center">
                 <div>
                     <div class="font-semibold text-slate-800">${c.full_name} ${c.is_alert ? '<span class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded ml-1">⚠ แจ้งเตือน</span>' : ''}</div>
                     <div class="text-xs text-slate-400">${c.code || ''} ${c.phone ? '· ' + c.phone : ''}</div>
                 </div>
-            </div>`).join('');
+            </div>`;
+        }).join('');
     }, 200);
 }
 
@@ -886,8 +984,8 @@ function getGrandTotal() {
     return Object.keys(cart).reduce((sum, id) => {
         const item = cart[id];
         const price = parseFloat(item.product.price_retail) || 0;
-        const effectivePrice = item.customPrice || price;
-        const discount = item.discount || 0;
+        const effectivePrice = item.customPrice ?? price;
+        const discount = item.discount ?? 0;
         return sum + ((effectivePrice * item.qty) - discount);
     }, 0);
 }
@@ -952,9 +1050,9 @@ async function submitBill() {
         item_name: item.product.trade_name,
         unit_name: item.product.unit ? item.product.unit.name : item.product.unit_name,
         qty: item.qty,
-        unit_price: item.customPrice || parseFloat(item.product.price_retail),
-        discount: item.discount || 0,
-        line_total: ((item.customPrice || parseFloat(item.product.price_retail)) * item.qty) - (item.discount || 0)
+        unit_price: item.customPrice ?? parseFloat(item.product.price_retail),
+        discount: item.discount ?? 0,
+        line_total: ((item.customPrice ?? parseFloat(item.product.price_retail)) * item.qty) - (item.discount ?? 0)
     }));
 
     const payload = {

@@ -16,7 +16,7 @@
 
     <form action="{{ route('products.index') }}" method="GET" class="mb-4 bg-white border border-slate-200 rounded-xl p-4">
         <input type="hidden" name="sort_by" value="{{ $sort_by ?? 'id' }}">
-        <input type="hidden" name="sort_dir" value="{{ $sort_dir ?? 'desc' }}">
+        <input type="hidden" name="sort_dir" value="{{ $sort_dir ?? 'asc' }}">
 
         <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
             <div class="md:col-span-6">
@@ -86,8 +86,8 @@
                         @if(isset($sortable[$col]))
                             @php
                                 $isActive = $sort_by === $col;
-                                $nextDir = ($isActive && $sort_dir === 'desc') ? 'asc' : 'desc';
-                                $arrow = $isActive ? ($sort_dir === 'desc' ? '↑' : '↓') : '';
+                                $nextDir = ($isActive && $sort_dir === 'asc') ? 'desc' : 'asc';
+                                $arrow = $isActive ? ($sort_dir === 'asc' ? '↓' : '↑') : '';
                                 $query = array_filter([
                                     'q' => $q ?? null,
                                     'category_id' => $category_id ?? null,
