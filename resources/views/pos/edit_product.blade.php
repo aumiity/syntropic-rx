@@ -218,13 +218,16 @@
 
                 <div class="overflow-hidden rounded-xl border border-gray-200 divide-y divide-gray-200" data-latest-cost="{{ $latestCost }}">
                     <div class="px-4 py-3 bg-gray-50 space-y-2">
-                        <div class="flex items-center justify-between text-sm">
-                            <span class="text-gray-600">ราคาทุนล่าสุด</span>
-                            <span class="font-semibold text-gray-800">฿{{ number_format($latestCost, 2) }}</span>
+                        <div class="flex items-center justify-between gap-4 text-sm">
+                            <label class="text-gray-600">ทุนเฉลี่ย</label>
+                            <span class="inline-flex items-center justify-end w-full max-w-xs h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:border-emerald-400">{{ number_format($avgCost, 2) }}</span>
                         </div>
-                        <div class="flex items-center justify-between text-sm">
-                            <span class="text-gray-600">ทุนเฉลี่ย</span>
-                            <span class="font-semibold text-gray-800">฿{{ number_format($avgCost, 2) }}</span>
+                        <div class="flex items-center justify-between gap-4 text-sm">
+                            <label for="cost_price" class="text-gray-600">ราคาทุนล่าสุด</label>
+                            <input type="number" name="cost_price" id="cost_price"
+                                value="{{ old('cost_price', $product->cost_price ?? $latestCost) }}"
+                                step="0.01" min="0"
+                                class="w-full max-w-xs h-10 rounded-lg border border-gray-300 px-3 text-sm text-right focus:outline-none focus:border-emerald-400 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none">
                         </div>
                     </div>
 
@@ -431,17 +434,6 @@
                                         <option value="{{ $type->id }}" {{ old('drug_type_id', $product->drug_type_id) == $type->id ? 'selected' : '' }}>{{ $type->name_th }}</option>
                                     @endforeach
                                 </select>
-                            </div>
-                        </div>
-
-                        <div class="px-4 py-4">
-                            <div class="flex items-center justify-between gap-4">
-                                <span class="text-sm font-medium text-gray-700">รายงาน ขย.11</span>
-                                <label class="inline-flex items-center gap-3 cursor-pointer select-none">
-                                    <input type="checkbox" name="is_fda11_report" id="is_fda11_report" value="1" class="sr-only peer"
-                                        {{ old('is_fda11_report', $product->is_fda11_report) ? 'checked' : '' }}>
-                                    <div class="relative w-14 h-7 rounded-full bg-gray-300 peer-checked:bg-blue-500 transition-colors duration-300 ease-in-out after:content-[''] after:absolute after:top-1 after:left-1 after:h-5 after:w-7 after:rounded-full after:bg-white after:shadow-sm after:translate-x-0 peer-checked:after:translate-x-5 after:transition-transform after:duration-300 after:ease-in-out"></div>
-                                </label>
                             </div>
                         </div>
 

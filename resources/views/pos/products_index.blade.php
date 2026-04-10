@@ -86,8 +86,8 @@
                         @if(isset($sortable[$col]))
                             @php
                                 $isActive = $sort_by === $col;
-                                $nextDir = ($isActive && $sort_dir === 'asc') ? 'desc' : 'asc';
-                                $arrow = $isActive ? ($sort_dir === 'asc' ? '↑' : '↓') : '';
+                                $nextDir = ($isActive && $sort_dir === 'desc') ? 'asc' : 'desc';
+                                $arrow = $isActive ? ($sort_dir === 'desc' ? '↑' : '↓') : '';
                                 $query = array_filter([
                                     'q' => $q ?? null,
                                     'category_id' => $category_id ?? null,
@@ -125,11 +125,11 @@
                         <td class="px-4 py-2">{{ $product->code ?? '-' }}</td>
                         <td class="px-4 py-2">{{ $product->trade_name }}</td>
                         <td class="px-4 py-2">{{ $product->category->name ?? '-' }}</td>
-                        <td class="px-4 py-2 text-right">{{ number_format($product->lots?->avg('cost_price') ?? 0, 2) }}</td>
+                        <td class="px-4 py-2 text-right">{{ number_format($product->cost_price ?? 0, 2) }}</td>
                         <td class="px-4 py-2 text-right">{{ number_format($product->price_retail, 2) }}</td>
                         <td class="px-4 py-2 text-right whitespace-nowrap">
                             @php
-                                $cost = $product->lots?->avg('cost_price') ?? 0;
+                                $cost = $product->cost_price ?? 0;
                                 $profit = $product->price_retail - $cost;
                                 $profit_percent_cost = $cost > 0 ? ($profit / $cost) * 100 : 0;
                                 $profit_percent_sale = $product->price_retail > 0 ? ($profit / $product->price_retail) * 100 : 0;

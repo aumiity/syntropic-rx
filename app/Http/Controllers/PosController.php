@@ -414,6 +414,7 @@ class PosController extends Controller
 
                 Product::whereKey($productId)->update([
                     'price_retail' => $sellPrice,
+                    'cost_price'   => $costPrice,
                     'updated_at' => now(),
                 ]);
 
@@ -718,7 +719,11 @@ class PosController extends Controller
             ->with(['lots' => function($q) {
                 $q->where('qty_on_hand', '>', 0)
                   ->orderBy('expiry_date', 'asc');
-            }, 'unit'])
+            }, 'unit', 'productUnits' => function($q) {
+                $q->where('is_disabled', false)
+                  ->orderByDesc('is_base_unit')
+                  ->orderBy('id');
+            }])
             ->get();
 
         return response()->json($products);
@@ -1739,7 +1744,27 @@ class PosController extends Controller
                 }
 
                 if ($remainingQty > 0) {
-                    throw new \Exception("สินค้า '{$itemData['item_name']}' มีสต็อกไม่เพียงพอ");
+                    SaleItemLot::create([
+                        'sale_item_id' => $saleItem->id,
+                        'lot_id'       => null,
+                        'product_id'   => $itemData['product_id'],
+                        'qty'          => $remainingQty,
+                    ]);
+
+                    $currentQty = (int) DB::table('product_lots')
+                        ->where('product_id', $itemData['product_id'])
+                        ->sum('qty_on_hand');
+
+                    DB::table('stock_movements')->insert([
+                        'product_id'    => $itemData['product_id'],
+                        'lot_id'        => null,
+                        'movement_type' => 'sale',
+                        'qty_change'    => -(int) $remainingQty,
+                        'qty_before'    => $currentQty,
+                        'qty_after'     => $currentQty - (int) $remainingQty,
+                        'note'          => 'ขายเกินสต็อก',
+                        'created_at'    => now(),
+                    ]);
                 }
             }
 

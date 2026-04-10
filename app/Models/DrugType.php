@@ -8,7 +8,7 @@ class DrugType extends Model
 {
     public $timestamps = false;
 
-    protected $fillable = ['code', 'name_th', 'khor_yor_report', 'is_disabled'];
+    protected $fillable = ['code', 'name_th', 'is_disabled', 'is_fda9', 'is_fda10', 'is_fda11', 'is_fda13'];
 
     protected $casts = ['is_disabled' => 'boolean'];
 }

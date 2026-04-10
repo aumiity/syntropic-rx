@@ -162,12 +162,45 @@ input[type=number] {
 
 <!-- Modals -->
 <div id="price-modal" class="fixed inset-0 bg-black/40 bg-opacity-50 hidden flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 w-96 shadow-lg">
-        <h3 class="text-lg font-bold text-slate-800 mb-4">เปลี่ยนราคา</h3>
-        <input type="number" id="price-input" class="w-full border border-slate-300 rounded px-3 py-2 mb-4 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" min="0" step="0.01" placeholder="ใส่ราคาใหม่">
+    <div class="bg-white rounded-xl p-6 w-96 shadow-lg">
+        <h3 class="text-lg font-bold text-slate-800 mb-1">เปลี่ยนราคา</h3>
+        <p id="price-modal-product-name" class="text-sm text-slate-500 mb-4"></p>
+
+        <!-- Quick price buttons -->
+        <div class="flex gap-2 mb-4" id="price-quick-buttons">
+            <button type="button" id="btn-price-retail" class="flex-1 py-2 rounded-lg border text-sm font-medium transition-colors"></button>
+            <button type="button" id="btn-price-wholesale1" class="flex-1 py-2 rounded-lg border text-sm font-medium transition-colors hidden"></button>
+            <button type="button" id="btn-price-wholesale2" class="flex-1 py-2 rounded-lg border text-sm font-medium transition-colors hidden"></button>
+        </div>
+
+        <!-- Price input -->
+        <input type="number" id="price-input" 
+            class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-lg font-bold" 
+            min="0" step="0.01" placeholder="ใส่ราคาใหม่">
+
+        <!-- Cost & Profit display -->
+        <div class="bg-slate-50 rounded-lg px-4 py-3 mb-4 text-sm space-y-1">
+            <div class="flex justify-between">
+                <span class="text-slate-500">ต้นทุนล่าสุด</span>
+                <span id="price-modal-cost" class="font-medium text-slate-700">-</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-500">ต้นทุนเฉลี่ย (lots)</span>
+                <span id="price-modal-avg-cost" class="font-medium text-slate-700">-</span>
+            </div>
+            <div class="flex justify-between border-t border-slate-200 pt-1 mt-1">
+                <span class="text-slate-500">กำไร</span>
+                <span id="price-modal-profit" class="font-semibold">-</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-500">% กำไร</span>
+                <span id="price-modal-profit-pct" class="font-semibold">-</span>
+            </div>
+        </div>
+
         <div class="flex justify-end gap-2">
-            <button id="price-cancel" class="px-4 py-2 bg-slate-200 text-slate-700 rounded hover:bg-slate-300 transition-colors">ยกเลิก</button>
-            <button id="price-ok" class="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition-colors">ตกลง</button>
+            <button id="price-cancel" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors">ยกเลิก</button>
+            <button id="price-ok" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">ตกลง</button>
         </div>
     </div>
 </div>
@@ -281,6 +314,7 @@ input[type=number] {
 // --- State ---
 let cart = {}, allProducts = [], heldBills = JSON.parse(localStorage.getItem('held_bills') || '[]');
 let grandTotal = 0;
+let scanLock = false;
 
 // --- Quick Add Customer Submit Logic ---
 async function submitQuickAddCustomer() {
@@ -416,6 +450,26 @@ searchInput.addEventListener('keydown', function(e) {
     }
 });
 
+const thaiToNum = {'ๅ':'1','/':'2','_':'3','-':'3','ภ':'4','ถ':'5','ุ':'6','ึ':'7','ค':'8','ต':'9','จ':'0'};
+
+function convertThaiBarcode(str) {
+    const mappable = (c) => thaiToNum[c] !== undefined;
+    // Check if string has 4+ consecutive mappable characters
+    let consecutive = 0;
+    for (const c of str) {
+        if (mappable(c)) {
+            consecutive++;
+            if (consecutive >= 4) {
+                // Convert all mappable chars, keep others as-is
+                return [...str].map(c => thaiToNum[c] ?? c).join('');
+            }
+        } else {
+            consecutive = 0;
+        }
+    }
+    return str;
+}
+
 function searchDrugs(q) {
     clearTimeout(timer);
     if (!q.trim()) {
@@ -423,11 +477,18 @@ function searchDrugs(q) {
         return;
     }
 
+    q = convertThaiBarcode(q);
+
     timer = setTimeout(async () => {
         try {
             const res = await fetch(`/pos/search?q=${encodeURIComponent(q)}`);
             allProducts = await res.json();
             renderSearchResults(allProducts);
+
+            if (allProducts.length === 1) {
+                const product = allProducts[0];
+                addToCart(product.id);
+            }
         } catch (e) {
             console.error('Search failed:', e);
         }
@@ -446,15 +507,15 @@ function renderSearchResults(products) {
     searchContainer.innerHTML = products.map(p => {
         const stock = p.lots ? p.lots.reduce((s,l) => s+l.qty_on_hand, 0) : 0;
         const price = parseFloat(p.price_retail);
-        const out = stock === 0;
+        const out = false;
 
         return `
-        <div onclick="${!out ? `addToCart('${p.id}')` : ''}" 
-             class="px-4 py-3 border-b border-slate-100 last:border-0 flex justify-between items-center ${out ? 'opacity-50 cursor-not-allowed bg-slate-50' : 'hover:bg-emerald-50 cursor-pointer'}">
+        <div onclick="addToCart('${p.id}')" 
+             class="px-4 py-3 border-b border-slate-100 last:border-0 flex justify-between items-center hover:bg-emerald-50 cursor-pointer">
             <div class="flex-1">
                 <div class="font-bold text-slate-800 text-lg flex items-center gap-2">
                     ${p.trade_name}
-                    ${out ? '<span class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-md">สินค้าหมด</span>' : ''}
+                    ${stock === 0 ? '<span class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-md">สินค้าหมด</span>' : ''}
                 </div>
                 <div class="text-sm text-slate-500 mt-0.5">สต็อกคงเหลือ: <span class="${stock > 0 ? 'text-emerald-600 font-semibold' : 'text-red-500'}">${stock}</span> | รหัส: ${p.id}</div>
             </div>
@@ -467,6 +528,10 @@ function renderSearchResults(products) {
 
 // --- Cart Actions ---
 function addToCart(id) {
+    if (scanLock) return;
+    scanLock = true;
+    setTimeout(() => { scanLock = false; }, 500);
+
     const p = allProducts.find(product => product.id == id);
     if (!p) return;
 
@@ -516,11 +581,71 @@ window.changePrice = function(id) {
     if (!cart[id]) return;
     const p = cart[id].product;
     const currentPrice = cart[id].customPrice || parseFloat(p.price_retail);
+
+    // Set product name
+    document.getElementById('price-modal-product-name').textContent = p.trade_name;
+
+    // Set quick buttons
+    const btnRetail = document.getElementById('btn-price-retail');
+    const btnWholesale1 = document.getElementById('btn-price-wholesale1');
+    const btnWholesale2 = document.getElementById('btn-price-wholesale2');
+
+    btnRetail.textContent = 'ปลีก ฿' + parseFloat(p.price_retail).toLocaleString();
+    btnRetail.onclick = () => { document.getElementById('price-input').value = parseFloat(p.price_retail); updatePriceModalStats(); };
+
+    if (p.price_wholesale1 && parseFloat(p.price_wholesale1) > 0) {
+        btnWholesale1.textContent = 'ส่ง 1 ฿' + parseFloat(p.price_wholesale1).toLocaleString();
+        btnWholesale1.classList.remove('hidden');
+        btnWholesale1.onclick = () => { document.getElementById('price-input').value = parseFloat(p.price_wholesale1); updatePriceModalStats(); };
+    } else {
+        btnWholesale1.classList.add('hidden');
+    }
+
+    if (p.price_wholesale2 && parseFloat(p.price_wholesale2) > 0) {
+        btnWholesale2.textContent = 'ส่ง 2 ฿' + parseFloat(p.price_wholesale2).toLocaleString();
+        btnWholesale2.classList.remove('hidden');
+        btnWholesale2.onclick = () => { document.getElementById('price-input').value = parseFloat(p.price_wholesale2); updatePriceModalStats(); };
+    } else {
+        btnWholesale2.classList.add('hidden');
+    }
+
+    // Cost price
+    const costPrice = parseFloat(p.cost_price) || 0;
+    document.getElementById('price-modal-cost').textContent = costPrice > 0 ? '฿' + costPrice.toLocaleString() : '-';
+
+    // Average cost from lots
+    const avgCost = p.lots && p.lots.length > 0
+        ? p.lots.reduce((sum, l) => sum + (parseFloat(l.cost_price) * l.qty_on_hand), 0) / p.lots.reduce((sum, l) => sum + l.qty_on_hand, 0)
+        : 0;
+    document.getElementById('price-modal-avg-cost').textContent = avgCost > 0 ? '฿' + avgCost.toFixed(2) : '-';
+
+    window.currentPriceId = id;
+    window.priceModalAvgCost = avgCost > 0 ? avgCost : costPrice;
+
     document.getElementById('price-input').value = currentPrice;
+    updatePriceModalStats();
+
     document.getElementById('price-modal').classList.remove('hidden');
     document.getElementById('price-modal').classList.add('flex');
-    window.currentPriceId = id;
+    document.getElementById('price-input').focus();
+    document.getElementById('price-input').select();
 };
+
+function updatePriceModalStats() {
+    const price = parseFloat(document.getElementById('price-input').value) || 0;
+    const cost = window.priceModalAvgCost || 0;
+    const profit = price - cost;
+    const profitPct = cost > 0 ? (profit / cost * 100) : 0;
+
+    const profitEl = document.getElementById('price-modal-profit');
+    const profitPctEl = document.getElementById('price-modal-profit-pct');
+
+    profitEl.textContent = '฿' + profit.toFixed(2);
+    profitEl.className = 'font-semibold ' + (profit >= 0 ? 'text-emerald-600' : 'text-red-500');
+
+    profitPctEl.textContent = profitPct.toFixed(1) + '%';
+    profitPctEl.className = 'font-semibold ' + (profitPct >= 0 ? 'text-emerald-600' : 'text-red-500');
+}
 
 window.changeDiscount = function(id) {
     if (!cart[id]) return;
@@ -546,6 +671,8 @@ document.getElementById('price-cancel').addEventListener('click', function() {
     document.getElementById('price-modal').classList.add('hidden');
     document.getElementById('price-modal').classList.remove('flex');
 });
+
+document.getElementById('price-input').addEventListener('input', updatePriceModalStats);
 
 document.getElementById('discount-ok').addEventListener('click', function() {
     const newDiscount = parseFloat(document.getElementById('discount-input').value);
