@@ -140,7 +140,13 @@ class PosController extends Controller
         $customers = Customer::where('is_hidden', false)
             ->orderBy('full_name')
             ->get(['id', 'full_name', 'phone', 'code', 'is_alert', 'alert_note']);
-        return view('pos.index', compact('customers'));
+        
+        $dailyBills = Sale::whereDate('sold_at', today())->count();
+        $dailyTotal = Sale::whereDate('sold_at', today())->sum('total_amount');
+        $latestBill = Sale::whereDate('sold_at', today())->latest('sold_at')->first();
+        $latestBillTime = $latestBill ? \Carbon\Carbon::parse($latestBill->sold_at)->format('H:i') : '-';
+
+        return view('pos.index', compact('customers', 'dailyBills', 'dailyTotal', 'latestBillTime'));
     }
 
     public function searchCustomers(Request $request)
@@ -722,7 +728,9 @@ class PosController extends Controller
             }, 'unit', 'productUnits' => function($q) {
                 $q->where('is_disabled', false)
                   ->orderByDesc('is_base_unit')
-                  ->orderBy('id');
+                  ->orderBy('id')
+                  ->select(['id', 'product_id', 'unit_name', 'qty_per_base', 'is_base_unit', 
+                            'is_disabled', 'price_retail', 'price_wholesale1', 'price_wholesale2']);
             }])
             ->get();
 
@@ -1770,9 +1778,17 @@ class PosController extends Controller
 
             DB::commit();
 
+            $dailyBills = Sale::whereDate('sold_at', today())->count();
+            $dailyTotal = Sale::whereDate('sold_at', today())->sum('total_amount');
+            $latestBill = Sale::whereDate('sold_at', today())->latest('sold_at')->first();
+            $latestBillTime = $latestBill ? \Carbon\Carbon::parse($latestBill->sold_at)->format('H:i') : '-';
+
             return response()->json([
-                'success'    => true,
-                'invoice_no' => $sale->invoice_no,
+                'success'          => true,
+                'invoice_no'       => $sale->invoice_no,
+                'daily_bills'      => $dailyBills,
+                'daily_total'      => (float) $dailyTotal,
+                'latest_bill_time' => $latestBillTime,
             ]);
 
         } catch (\Exception $e) {

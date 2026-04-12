@@ -2,57 +2,105 @@
 
 @section('content')
 
-<div class="flex flex-col bg-slate-50 text-slate-800 overflow-hidden px-3 py-3" style="height: 100dvh; box-sizing: border-box;">
+<div class="flex flex-col bg-slate-50 text-slate-800 overflow-hidden px-3 py-3 gap-3" style="height: 100dvh; box-sizing: border-box;">
 
-    {{-- Hygeia Header (temporary mockup) --}}
-    <div class="mb-3 px-4 py-2 rounded-xl bg-linear-to-r from-emerald-600 to-sky-600 text-white shadow-md">
-        <div class="flex items-center justify-between gap-4">
-            <div>
-                <h1 class="text-2xl font-extrabold">Syntropic RX</h1>
-                <p class="text-sm opacity-90">หน้าจอขายสินค้า Test Version</p>
+    {{-- TOP SECTION: Header & Search (Left) + Grand Total (Right) --}}
+    <div class="flex flex-row gap-4 shrink-0">
+        
+        {{-- Top Left --}}
+        <div class="flex-1 flex flex-col gap-3">
+            {{-- Hygeia Header (temporary mockup) --}}
+            <div class="px-4 py-2 rounded-xl bg-linear-to-r from-emerald-600 to-sky-600 text-white shadow-md flex-1 flex flex-col justify-center">
+                <div class="flex items-center justify-between gap-4">
+                    <div>
+                        <h1 class="text-2xl font-extrabold">Syntropic RX</h1>
+                        <p class="text-sm opacity-90">หน้าจอขายสินค้า Test Version</p>
+                    </div>
+                    <div class="text-right text-xs">
+                        <div>สาขา: กรุณาเลือก</div>
+                        <div>วันที่: <span id="hygeia-date"></span> เวลา: <span id="hygeia-time">--:--:--</span></div>
+                    </div>
+                </div>
             </div>
-            <div class="text-right text-xs">
-                <div>สาขา: กรุณาเลือก</div>
-                <div>เวลา: <span id="hygeia-time">--:--:--</span></div>
+
+            {{-- Search Input with Dropdown --}}
+            <div class="flex gap-2 relative z-50 shrink-0">
+                <div class="flex-1 relative">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <svg class="w-6 h-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </div>
+                    <input type="text" id="search-input"
+                        placeholder="ค้นหารหัส, ชื่อยา หรือสแกนบาร์โค้ด [F2]..."
+                        class="w-full h-14 pl-12 pr-4 rounded-xl border border-slate-300 shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-lg bg-white outline-none transition-all"
+                        oninput="searchDrugs(this.value)" autocomplete="off" autofocus>
+                </div>
+
+                {{-- Sale Type Toggle --}}
+                <div class="flex rounded-xl overflow-hidden border border-slate-300 shadow-sm shrink-0">
+                    <button id="btn-sale-retail" onclick="setSaleType('retail')"
+                        class="h-14 px-4 font-bold text-sm transition-colors bg-emerald-500 text-white">
+                        ปลีก
+                    </button>
+                    <button id="btn-sale-wholesale" onclick="setSaleType('wholesale')"
+                        class="h-14 px-4 font-bold text-sm transition-colors bg-white text-slate-500">
+                        ส่ง
+                    </button>
+                </div>
+
+                {{-- Customer Select --}}
+                <button onclick="changeCustomer()" class="h-14 bg-white border border-slate-300 rounded-xl px-4 w-72 flex items-center justify-between hover:bg-slate-50 transition-colors shadow-sm shrink-0 truncate">
+                    <div class="flex flex-col text-left pr-2 overflow-hidden">
+                        <span class="text-xs text-slate-400 font-medium">ลูกค้า / สมาชิก</span>
+                        <span class="text-sm font-bold text-emerald-600 truncate" id="cust-name">ลูกค้าทั่วไป (เงินสด)</span>
+                    </div>
+                    <svg class="w-5 h-5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+
+                {{-- Customer Info Button --}}
+                <button id="btn-customer-info" onclick="openCustomerInfo()" disabled
+                    class="w-14 h-14 bg-white border border-slate-300 rounded-xl flex flex-col items-center justify-center shadow-sm text-slate-300 shrink-0 disabled:cursor-not-allowed" title="ข้อมูลลูกค้า">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <span class="text-[10px] leading-none mt-0.5">ข้อมูล</span>
+                </button>
+
+                {{-- Add Customer Button --}}
+                <button onclick="openQuickAddCustomer()" class="w-14 h-14 bg-white border border-slate-300 rounded-xl flex flex-col items-center justify-center hover:bg-slate-50 shadow-sm text-slate-500 shrink-0" title="เพิ่มลูกค้าใหม่">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    <span class="text-[10px] leading-none mt-0.5">เพิ่มลูกค้า</span>
+                </button>
+            </div>
+        </div>
+
+        {{-- Top Right: Grand Total Box --}}
+        <div class="w-72 bg-white rounded-xl shadow-sm border-2 border-emerald-50 p-5 flex flex-col justify-center relative overflow-hidden shrink-0">
+            <div class="text-right mb-1">
+                <span class="text-xl font-bold text-slate-700">ยอดสุทธิ</span>
+            </div>
+            <div class="text-right mb-1">
+                <span class="text-5xl font-extrabold text-emerald-600" id="tb-total">0.00</span>
             </div>
         </div>
 
     </div>
 
-    {{-- ========================================== --}}
-    {{-- MAIN CONTENT: 2-COLUMN POS LAYOUT --}}
-    {{-- ========================================== --}}
+    {{-- BOTTOM SECTION: Cart (Left) + Actions/Summary (Right) --}}
     <div class="flex-1 flex flex-row gap-4 min-h-0">
-
-        {{-- Left Column: Search + Warning + Cart --}}
+        
+        {{-- Bottom Left Column: Warning + Cart --}}
         <div class="flex-1 flex flex-col gap-3 min-h-0">
-
-            {{-- Search Input with Dropdown --}}
-            <div class="relative z-50">
-                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <svg class="w-6 h-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                </div>
-                <input type="text" id="search-input"
-                    placeholder="ค้นหารหัส, ชื่อยา หรือสแกนบาร์โค้ด [F2]..."
-                    class="w-full h-14 pl-12 pr-4 rounded-xl border border-slate-300 shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-lg bg-white outline-none transition-all"
-                    oninput="searchDrugs(this.value)" autocomplete="off" autofocus>
-
-                {{-- Search Results Popup (Dropdown) --}}
-                <div id="search-dropdown" class="absolute top-[110%] left-0 w-full bg-white shadow-2xl rounded-xl border border-slate-200 hidden max-h-100 overflow-y-auto custom-scrollbar">
-                    <div id="search-results-container" class="py-2"></div>
-                </div>
-            </div>
-
-            <div id="allergy-warn" class="hidden bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-600 items-center gap-2 font-bold">
+            <div id="allergy-warn" class="hidden bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-600 items-center gap-2 font-bold shrink-0">
                 <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                 <span id="allergy-warn-text">คำเตือน: พบประวัติแพ้ยาในรายการสั่งซื้อ!</span>
             </div>
 
             {{-- Cart Table --}}
             <div class="flex-1 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden relative min-h-0">
-
-               {{-- Table Header (ล็อกขนาด Grid ตายตัว 100%) --}}
-                <div class="w-full grid gap-2 px-4 py-3 bg-slate-100 text-slate-600 text-sm font-bold border-b border-slate-200 items-center"
+               {{-- Table Header --}}
+                <div class="w-full grid gap-2 px-4 py-3 bg-slate-100 text-slate-600 text-sm font-bold border-b border-slate-200 items-center shrink-0"
                      style="grid-template-columns: 50px 3fr 1fr 80px 1fr 1fr 1fr 50px;">
                     <div class="text-center">ลำดับ</div>
                     <div>รายการสินค้า (Product)</div>
@@ -72,58 +120,42 @@
                         <p class="text-sm text-slate-400">พิมพ์ค้นหา หรือ สแกนบาร์โค้ด เพื่อเริ่มขาย</p>
                     </div>
                 </div>
-
             </div>
         </div>
 
-        {{-- Right Column: Customer + Totals + Actions --}}
+        {{-- Bottom Right Column: Totals + Actions --}}
         <div class="w-72 shrink-0 flex flex-col gap-3 min-h-0">
-            <div class="flex gap-2">
-                <button onclick="changeCustomer()" class="flex-1 h-14 bg-white border border-slate-300 rounded-xl px-4 flex items-center justify-between hover:bg-slate-50 transition-colors shadow-sm">
-                    <div class="flex flex-col text-left">
-                        <span class="text-xs text-slate-400 font-medium">ลูกค้า / สมาชิก</span>
-                        <span class="text-sm font-bold text-emerald-600" id="cust-name">ลูกค้าทั่วไป (เงินสด)</span>
-                    </div>
-                    <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                </button>
-                <button onclick="openQuickAddCustomer()" class="w-14 h-14 bg-white border border-slate-300 rounded-xl flex flex-col items-center justify-center hover:bg-slate-50 shadow-sm text-slate-500" title="เพิ่มลูกค้าใหม่">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                    </svg>
-                    <span class="text-[10px] leading-none mt-0.5">เพิ่มลูกค้า</span>
-                </button>
-            </div>
-
             <div class="flex-1 flex flex-col gap-3 min-h-0">
-                <button id="pay-btn" disabled onclick="handlePay()" class="w-full flex-1 px-6 py-6 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-2xl shadow-md transition-all flex items-center justify-center gap-2">
+                <button id="pay-btn" disabled onclick="handlePay()" class="w-full flex-1 px-6 py-6 rounded-lg bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-2xl shadow-md transition-all flex items-center justify-center gap-2 shrink-0">
                     รับชำระเงิน <span class="text-base bg-black/10 px-3 py-1 rounded-md font-medium ml-2">F9</span>
                 </button>
-                <button class="w-full px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm">เปิดลิ้นชัก</button>
-                <button onclick="printLabel()" class="w-full px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm">พิมพ์ฉลากยา</button>
-                <button onclick="holdBill()" class="w-full px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm">พักบิล</button>
-                <button onclick="showHeldBills()" class="w-full px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm">เรียกบิลที่พัก</button>
-                <button onclick="clearCart()" class="w-full px-6 py-3 rounded-lg bg-white hover:bg-red-50 text-slate-600 hover:text-red-500 font-medium border border-slate-300 hover:border-red-200 transition-colors flex items-center justify-center gap-2 shadow-sm">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                    ยกเลิกบิล [F8]
-                </button>
+                <div class="flex-1 flex flex-col gap-3 overflow-hidden">
+                    <button class="w-full px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm shrink-0">เปิดลิ้นชัก</button>
+                    <button onclick="printLabel()" class="w-full px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm shrink-0">พิมพ์ฉลากยา</button>
+                    <button onclick="holdBill()" class="w-full px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm shrink-0">พักบิล</button>
+                    <button onclick="showHeldBills()" class="w-full px-6 py-3 rounded-lg bg-white hover:bg-slate-50 text-slate-600 font-medium border border-slate-300 transition-colors shadow-sm shrink-0">เรียกบิลที่พัก</button>
+                    <button onclick="clearCart()" class="w-full px-6 py-3 rounded-lg bg-white hover:bg-red-50 text-slate-600 hover:text-red-500 font-medium border border-slate-300 hover:border-red-200 transition-colors flex items-center justify-center gap-2 shadow-sm shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        ยกเลิกบิล [F8]
+                    </button>
+                </div>
             </div>
-            <div class="bg-white rounded-xl shadow-sm border-2 border-emerald-50 p-5 flex flex-col relative overflow-hidden">
+            <div class="bg-white rounded-xl shadow-sm border-2 border-emerald-50 p-5 flex flex-col justify-center relative overflow-hidden shrink-0">
                 <div class="flex justify-between items-center mb-2">
-                    <span class="text-slate-500 font-medium">จำนวนรายการ</span>
-                    <span id="s-count" class="font-bold text-slate-700 text-lg">0</span>
+                    <span class="text-slate-500 font-medium">บิลล่าสุด</span>
+                    <span id="latest-bill-time" class="font-bold text-slate-700 text-lg">{{ $latestBillTime ?? '-' }}</span>
                 </div>
-                <div class="flex justify-between items-center mb-4 pb-4 border-b border-slate-100">
-                    <span class="text-slate-500 font-medium">ส่วนลดรวม</span>
-                    <span id="s-discount" class="font-bold text-emerald-500">0.00</span>
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-slate-500 font-medium">จำนวนบิล</span>
+                    <span id="daily-bill-count" class="font-bold text-slate-700 text-lg">{{ $dailyBills ?? 0 }}</span>
                 </div>
-                <div class="items-end text-right">
-                    <span class="text-xl font-bold text-slate-700">ยอดสุทธิ</span>
-                </div>
-                <div class="items-end text-right">
-                    <span class="text-5xl font-extrabold text-emerald-600" id="tb-total">0.00</span>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-500 font-medium">ยอดรวม</span>
+                    <span id="daily-sales-total" class="font-bold text-emerald-500">{{ number_format($dailyTotal ?? 0, 2) }}</span>
                 </div>
             </div>
         </div>
+
     </div>
 </div>
 
@@ -271,8 +303,18 @@ input[type=number] {
         <h3 class="text-2xl font-bold text-slate-800 mb-4">ชำระเงิน</h3>
 
         <div class="bg-emerald-50 rounded-xl px-4 py-4 mb-5 border border-emerald-100">
-            <div class="text-sm text-slate-500">ยอดสุทธิ</div>
-            <div id="pay-total-display" class="text-4xl font-extrabold text-emerald-600 leading-tight">0.00</div>
+            <div class="flex justify-between items-end mb-2">
+                <div class="text-sm text-slate-500">ยอดรวมสินค้า</div>
+                <div id="pay-subtotal-display" class="text-xl font-bold text-slate-700">0.00</div>
+            </div>
+            <div class="flex justify-between items-center mb-3 pb-3 border-b border-emerald-200">
+                <div class="text-sm text-slate-600 font-medium">ส่วนลดท้ายบิล</div>
+                <input type="number" id="pay-bill-discount" min="0" step="0.01" class="text-right w-32 border border-slate-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-emerald-500 outline-none font-bold" placeholder="0.00" oninput="updatePayChange()">
+            </div>
+            <div class="flex justify-between items-end">
+                <div class="text-sm text-slate-700 font-medium">ยอดสุทธิ</div>
+                <div id="pay-total-display" class="text-4xl font-extrabold text-emerald-600 leading-tight">0.00</div>
+            </div>
         </div>
 
         <div id="pay-type-radio" class="mb-4">
@@ -303,11 +345,156 @@ input[type=number] {
     </div>
 </div>
 
+<div id="customer-info-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-70 px-4">
+    <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+            <h3 class="text-xl font-bold text-slate-800">ข้อมูลลูกค้า</h3>
+            <button onclick="closeCustomerInfo()" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+        </div>
+        <div class="p-6 space-y-3">
+            <div>
+                <span class="text-xs text-slate-400">ชื่อ-นามสกุล</span>
+                <div id="cinfo-name" class="font-bold text-slate-800 text-lg">-</div>
+            </div>
+            <div>
+                <span class="text-xs text-slate-400">เบอร์โทร</span>
+                <div id="cinfo-phone" class="text-slate-700">-</div>
+            </div>
+            <div>
+                <span class="text-xs text-slate-400">หมายเหตุ / ประวัติแพ้ยา</span>
+                <div id="cinfo-note" class="text-slate-700 whitespace-pre-line">-</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="unit-picker-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-60 px-4">
+    <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200">
+
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+            <div>
+                <h3 class="text-xl font-bold text-slate-800">เลือกหน่วย</h3>
+                <p id="unit-picker-product-name" class="text-sm text-slate-400 mt-0.5"></p>
+            </div>
+            <button onclick="closeUnitPicker()" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        <div id="unit-picker-list" class="p-4 space-y-2 max-h-96 overflow-y-auto custom-scrollbar"></div>
+
+    </div>
+</div>
+
+<!-- Search Results Modal -->
+<div id="search-results-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50 px-4">
+    <div class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl border border-slate-200" style="height: 560px; display: flex; flex-direction: column;">
+
+        <div class="px-5 pt-5 pb-3 shrink-0">
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
+                <input type="text" id="search-input-modal"
+                    placeholder="ค้นหารหัส, ชื่อยา หรือสแกนบาร์โค้ด..."
+                    class="w-full h-12 pl-11 pr-10 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base bg-white outline-none transition-all"
+                    oninput="searchDrugs(this.value)" autocomplete="off">
+                <button onclick="closeSearchModal()" class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+            </div>
+            <p id="search-modal-query" class="text-sm text-slate-400 mt-2 px-1"></p>
+        </div>
+
+        <div id="search-modal-list" class="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-100 pb-2"></div>
+
+    </div>
+</div>
+
+<!-- Product Detail Modal -->
+<div id="product-detail-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-60 px-4">
+    <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-slate-200">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+            <h3 id="product-detail-name" class="text-xl font-bold text-slate-800"></h3>
+            <button onclick="closeProductDetail()" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+        </div>
+        <div class="p-5 space-y-4">
+            <div>
+                <div class="text-sm font-bold text-slate-500 mb-2">โครงสร้างราคา</div>
+                <div id="product-detail-prices" class="space-y-2"></div>
+            </div>
+            <div>
+                <div class="text-sm font-bold text-slate-500 mb-2">หน่วย</div>
+                <div id="product-detail-units" class="space-y-2"></div>
+            </div>
+            <div>
+                <div class="text-sm font-bold text-slate-500 mb-2">สต็อกคงเหลือ</div>
+                <div id="product-detail-stock" class="text-2xl font-extrabold text-emerald-600"></div>
+            </div>
+        </div>
+        <div class="px-5 pb-5">
+            <button id="product-detail-add-btn" class="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-lg transition-colors">
+                เพิ่มลงตะกร้า
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 // --- State ---
 let cart = {}, allProducts = [], heldBills = JSON.parse(localStorage.getItem('held_bills') || '[]');
 let grandTotal = 0;
 let scanLock = false;
+
+// Sale Type Toggle
+let currentSaleType = 'retail';
+
+function setSaleType(type) {
+    currentSaleType = type;
+
+    const btnRetail = document.getElementById('btn-sale-retail');
+    const btnWholesale = document.getElementById('btn-sale-wholesale');
+
+    if (type === 'retail') {
+        btnRetail.classList.add('bg-emerald-500', 'text-white');
+        btnRetail.classList.remove('bg-white', 'text-slate-500');
+        btnWholesale.classList.add('bg-white', 'text-slate-500');
+        btnWholesale.classList.remove('bg-emerald-500', 'text-white');
+    } else {
+        btnWholesale.classList.add('bg-emerald-500', 'text-white');
+        btnWholesale.classList.remove('bg-white', 'text-slate-500');
+        btnRetail.classList.add('bg-white', 'text-slate-500');
+        btnRetail.classList.remove('bg-emerald-500', 'text-white');
+    }
+
+    // Update all prices in cart
+    Object.keys(cart).forEach(id => {
+        const p = cart[id].product;
+        if (type === 'wholesale') {
+            const wsPrice = parseFloat(p.price_wholesale1);
+            cart[id].customPrice = (wsPrice > 0) ? wsPrice : parseFloat(p.price_retail);
+        } else {
+            cart[id].customPrice = undefined;
+        }
+    });
+
+    updateAll();
+}
+
+// Customer Info Modal
+let currentCustomerData = null;
+
+function openCustomerInfo() {
+    if (!currentCustomerData) return;
+    document.getElementById('cinfo-name').textContent = currentCustomerData.full_name || '-';
+    document.getElementById('cinfo-phone').textContent = currentCustomerData.phone || '-';
+    document.getElementById('cinfo-note').textContent = currentCustomerData.alert_note || '-';
+    const modal = document.getElementById('customer-info-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeCustomerInfo() {
+    const modal = document.getElementById('customer-info-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
 
 // --- Quick Add Customer Submit Logic ---
 async function submitQuickAddCustomer() {
@@ -378,68 +565,39 @@ const searchDropdown = document.getElementById('search-dropdown');
 const searchContainer = document.getElementById('search-results-container');
 let searchSelectedIndex = -1;
 
-document.addEventListener('click', function(event) {
-    if (!searchInput.contains(event.target) && !searchDropdown.contains(event.target)) {
-        searchDropdown.classList.add('hidden');
-    }
-});
+
 
 // --- Keyboard navigation for search autocomplete ---
 searchInput.addEventListener('keydown', function(e) {
-    const items = searchContainer.querySelectorAll(':scope > div');
+    const modal = document.getElementById('search-results-modal');
+    if (!modal || modal.classList.contains('hidden')) return;
+
+    const items = document.querySelectorAll('#search-modal-list > div[id^="search-row-"]');
     const max = items.length;
     if (!max) return;
 
     function updateSelection(newIndex) {
         searchSelectedIndex = newIndex;
         items.forEach((el, idx) => {
+            el.classList.remove('bg-emerald-100', 'bg-emerald-50');
             if (idx === searchSelectedIndex) {
                 el.classList.add('bg-emerald-100');
                 el.scrollIntoView({ block: 'nearest' });
-            } else {
-                el.classList.remove('bg-emerald-100');
             }
         });
     }
 
     if (e.key === 'ArrowDown') {
         e.preventDefault();
-        let next = searchSelectedIndex;
-        do {
-            next = (next + 1) % max;
-        } while (items[next].classList.contains('cursor-not-allowed') && next !== searchSelectedIndex);
-        updateSelection(next);
+        updateSelection((searchSelectedIndex + 1) % max);
     } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        let prev = searchSelectedIndex;
-        do {
-            prev = (prev - 1 + max) % max;
-        } while (items[prev].classList.contains('cursor-not-allowed') && prev !== searchSelectedIndex);
-        updateSelection(prev);
+        updateSelection((searchSelectedIndex - 1 + max) % max);
     } else if (e.key === 'Enter') {
-        if (searchSelectedIndex >= 0) {
-            const selected = items[searchSelectedIndex];
-            if (!selected.classList.contains('cursor-not-allowed')) {
-                // Extract product id from onclick="addToCart('ID')"
-                const onclick = selected.getAttribute('onclick');
-                const match = onclick && onclick.match(/addToCart\('(.+?)'\)/);
-                if (match) {
-                    addToCart(match[1]);
-                }
-            }
-        } else if (max === 1) {
-            const only = items[0];
-            if (!only.classList.contains('cursor-not-allowed')) {
-                const onclick = only.getAttribute('onclick');
-                const match = onclick && onclick.match(/addToCart\('(.+?)'\)/);
-                if (match) {
-                    addToCart(match[1]);
-                }
-            }
+        e.preventDefault();
+        if (searchSelectedIndex >= 0 && items[searchSelectedIndex]) {
+            items[searchSelectedIndex].click();
         }
-    } else if (e.key === 'Escape') {
-        searchDropdown.classList.add('hidden');
-        searchInput.value = '';
     }
 });
 
@@ -463,60 +621,165 @@ function convertThaiBarcode(str) {
     return str;
 }
 
-function searchDrugs(q) {
-    clearTimeout(timer);
+async function searchDrugs(q) {
     if (!q.trim()) {
-        searchDropdown.classList.add('hidden');
+        closeSearchModal();
         return;
     }
 
     q = convertThaiBarcode(q);
 
-    timer = setTimeout(async () => {
-        try {
-            const res = await fetch(`/pos/search?q=${encodeURIComponent(q)}`);
-            allProducts = await res.json();
-            renderSearchResults(allProducts);
-
-            if (allProducts.length === 1) {
-                const product = allProducts[0];
-                addToCart(product.id);
-            }
-        } catch (e) {
-            console.error('Search failed:', e);
+    // ถ้า modal ยังไม่เปิด ให้เปิดแล้ว sync ค่าไป modal input
+    const modal = document.getElementById('search-results-modal');
+    if (modal.classList.contains('hidden')) {
+        openSearchModal();
+        const modalInput = document.getElementById('search-input-modal');
+        if (modalInput) {
+            modalInput.value = q;
+            modalInput.focus();
+            // clear outer input แล้วหยุด ให้ modal input รับต่อเอง
+            document.getElementById('search-input').value = '';
+            // trigger search จาก modal input
+            await doSearch(q);
+            return;
         }
-    }, 200);
+    }
+
+    await doSearch(q);
+}
+
+async function doSearch(q) {
+    try {
+        const res = await fetch(`/pos/search?q=${encodeURIComponent(q)}`);
+        allProducts = await res.json();
+        renderSearchResults(allProducts);
+    } catch (e) {
+        console.error('Search failed:', e);
+    }
+}
+
+function openSearchModal() {
+    const modal = document.getElementById('search-results-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setTimeout(() => {
+        const modalInput = document.getElementById('search-input-modal');
+        if (modalInput) modalInput.focus();
+    }, 50);
+}
+
+function closeSearchModal() {
+    document.getElementById('search-results-modal').classList.add('hidden');
+    document.getElementById('search-results-modal').classList.remove('flex');
+    document.getElementById('search-input').value = '';
+    document.getElementById('search-modal-list').innerHTML = '';
+    document.getElementById('search-modal-query').textContent = '';
+}
+
+function addToCartFromModal(id) {
+    addToCart(id);
+    closeSearchModal();
+}
+
+function openProductDetail(productId) {
+    const p = allProducts.find(x => x.id == productId);
+    if (!p) return;
+
+    document.getElementById('product-detail-name').textContent = p.trade_name;
+
+    const stock = p.lots ? p.lots.reduce((s, l) => s + l.qty_on_hand, 0) : 0;
+    document.getElementById('product-detail-stock').textContent = stock + ' ' + (p.unit_name ?? '');
+
+    const costPrice = parseFloat(p.cost_price) || 0;
+    const prices = [
+        { label: 'ราคาปลีก', price: parseFloat(p.price_retail) || 0 },
+        { label: 'ราคาส่ง 1', price: parseFloat(p.price_wholesale1) || 0 },
+        { label: 'ราคาส่ง 2', price: parseFloat(p.price_wholesale2) || 0 },
+    ].filter(x => x.price > 0);
+
+    document.getElementById('product-detail-prices').innerHTML = prices.map(x => {
+        const profit = x.price - costPrice;
+        const profitPct = costPrice > 0 ? (profit / costPrice * 100) : 0;
+        return `
+        <div class="flex justify-between items-center bg-slate-50 rounded-lg px-4 py-2">
+            <span class="text-sm text-slate-500">${x.label}</span>
+            <div class="text-right">
+                <span class="font-bold text-slate-800">${x.price.toLocaleString('th', {minimumFractionDigits: 2})} บาท</span>
+                <span class="text-xs ml-2 ${profit >= 0 ? 'text-emerald-500' : 'text-red-500'}">
+                    กำไร ${profit.toFixed(2)} (${profitPct.toFixed(1)}%)
+                </span>
+            </div>
+        </div>`;
+    }).join('');
+
+    const extraUnits = p.product_units || p.productUnits || [];
+    const baseUnit = { unit_name: p.unit_name ?? '-', qty_per_base: 1 };
+    const units = [baseUnit, ...extraUnits];
+
+    document.getElementById('product-detail-units').innerHTML = units.map(u => `
+        <div class="flex justify-between items-center bg-slate-50 rounded-lg px-4 py-2">
+            <span class="text-sm font-medium text-slate-700">${u.unit_name}</span>
+            <span class="text-xs text-slate-400">${parseFloat(u.qty_per_base) > 1 ? u.qty_per_base + ' หน่วยฐาน' : 'หน่วยฐาน'}</span>
+        </div>`).join('');
+
+    document.getElementById('product-detail-add-btn').onclick = () => {
+        addToCartFromModal(productId);
+        closeProductDetail();
+    };
+
+    document.getElementById('product-detail-modal').classList.remove('hidden');
+    document.getElementById('product-detail-modal').classList.add('flex');
+}
+
+function closeProductDetail() {
+    document.getElementById('product-detail-modal').classList.add('hidden');
+    document.getElementById('product-detail-modal').classList.remove('flex');
 }
 
 function renderSearchResults(products) {
     searchSelectedIndex = -1;
-    searchDropdown.classList.remove('hidden');
+    const query = document.getElementById('search-input').value;
+    document.getElementById('search-modal-query').textContent = `ค้นหา: "${query}" — พบ ${products.length} รายการ`;
+
+    const modal = document.getElementById('search-results-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
 
     if (!products.length) {
-        searchContainer.innerHTML = '<div class="p-4 text-center text-slate-500">ไม่พบข้อมูลยา หรือ บาร์โค้ดนี้</div>';
+        document.getElementById('search-modal-list').innerHTML = '<div class="p-8 text-center text-slate-400">ไม่พบข้อมูลยา หรือบาร์โค้ดนี้</div>';
         return;
     }
 
-    searchContainer.innerHTML = products.map(p => {
-        const stock = p.lots ? p.lots.reduce((s,l) => s+l.qty_on_hand, 0) : 0;
+    document.getElementById('search-modal-list').innerHTML = products.map((p, index) => {
+        const stock = p.lots ? p.lots.reduce((s, l) => s + l.qty_on_hand, 0) : 0;
         const price = parseFloat(p.price_retail);
-        const out = false;
-
         return `
-        <div onclick="addToCart('${p.id}')" 
-             class="px-4 py-3 border-b border-slate-100 last:border-0 flex justify-between items-center hover:bg-emerald-50 cursor-pointer">
+        <div id="search-row-${p.id}"
+            class="px-4 py-3 flex items-center gap-3 hover:bg-emerald-50 transition-colors cursor-pointer ${index === 0 ? 'bg-emerald-50' : ''}"
+            onclick="addToCartFromModal('${p.id}')">
             <div class="flex-1">
-                <div class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                <div class="font-bold text-slate-800 text-base flex items-center gap-2">
                     ${p.trade_name}
                     ${stock === 0 ? '<span class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-md">สินค้าหมด</span>' : ''}
                 </div>
-                <div class="text-sm text-slate-500 mt-0.5">สต็อกคงเหลือ: <span class="${stock > 0 ? 'text-emerald-600 font-semibold' : 'text-red-500'}">${stock}</span> | รหัส: ${p.id}</div>
+                <div class="text-sm text-slate-500 mt-0.5">
+                    สต็อก: <span class="${stock > 0 ? 'text-emerald-600 font-semibold' : 'text-red-500'}">${stock}</span>
+                    | รหัส: ${p.code ?? p.id}
+                    | หน่วย: ${p.unit_name ?? '-'}
+                </div>
             </div>
-            <div class="text-right">
-                <div class="text-emerald-600 font-extrabold text-lg">${price.toLocaleString()}</div>
+            <div class="text-right shrink-0">
+                <div class="text-emerald-600 font-extrabold text-lg">${price.toLocaleString('th', {minimumFractionDigits: 2})}</div>
+                <div class="text-xs text-slate-400">บาท</div>
             </div>
+            <button type="button" onclick="event.stopPropagation(); openProductDetail('${p.id}')"
+                class="shrink-0 px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-medium transition-colors">
+                ดูเพิ่ม
+            </button>
         </div>`;
     }).join('');
+
+    searchSelectedIndex = 0;
 }
 
 // --- Cart Actions ---
@@ -691,10 +954,8 @@ function clearCart() {
     if(Object.keys(cart).length === 0) return;
     if(confirm('ต้องการยกเลิกบิลนี้ใช่หรือไม่?')) {
         cart = {};
-        searchInput.value = '';
-        searchDropdown.classList.add('hidden');
+        closeSearchModal();
         updateAll();
-        searchInput.focus();
     }
 }
 
@@ -746,7 +1007,11 @@ function updateAll() {
                     <div class="font-bold text-slate-800 text-base line-clamp-1">${p.trade_name}</div>
                 </div>
                 
-                <div class="text-center text-slate-500 font-medium">${p.unit ? p.unit.name : (p.unit_name ?? '-')}</div>
+                <div onclick="openUnitPicker('${p.id}')" 
+                    class="text-center text-slate-500 font-medium cursor-pointer hover:bg-slate-100 px-2 py-1 rounded transition-colors"
+                    title="คลิกเพื่อเปลี่ยนหน่วย">
+                    ${cart[p.id].selectedUnit ? cart[p.id].selectedUnit.unit_name : (p.unit_name ?? '-')}
+                </div>
                 
                 <div class="flex justify-center">
                     <div class="flex items-center bg-white border border-slate-300 rounded-lg overflow-hidden shadow-sm focus-within:ring-2 focus-within:ring-emerald-500 w-max max-w-[120px]">
@@ -779,14 +1044,7 @@ function updateAll() {
     const tbTotal = document.getElementById('tb-total');
     if (tbTotal) tbTotal.textContent = grandTotal.toLocaleString('th', {minimumFractionDigits: 2});
     
-    const sCount = document.getElementById('s-count');
-    if (sCount) sCount.textContent = keys.length;
-
-    const sDiscount = document.getElementById('s-discount');
-    if (sDiscount) {
-        const totalDiscount = Object.values(cart).reduce((sum, item) => sum + (item.discount ?? 0), 0);
-        sDiscount.textContent = totalDiscount.toLocaleString('th', {minimumFractionDigits: 2});
-    }
+    // ส่วนลดกับจำนวนที่แสดงตรงนี้ ถูกเปลี่ยนไปแสดงข้อมูลสรุปประจำวันแล้ว ทำให้ไม่ต้องอัปเดตตรงนี้อีก
 
     const payBtn = document.getElementById('pay-btn');
     if (payBtn) payBtn.disabled = !keys.length;
@@ -908,21 +1166,28 @@ function changeCustomer() {
     setTimeout(() => document.getElementById('cust-search-input').focus(), 100);
 }
 
-function selectCustomer(id, name, isAlert, alertNote) {
+function selectCustomer(id, name, isAlert, alertNote, phone = '') {
     currentCustomerId = id;
     currentCustomerName = name;
+    currentCustomerData = { id, full_name: name, is_alert: isAlert, alert_note: alertNote, phone };
     document.getElementById('cust-name').textContent = name;
+
+    const infoBtn = document.getElementById('btn-customer-info');
+    if (infoBtn) {
+        infoBtn.disabled = false;
+        infoBtn.classList.remove('text-slate-300');
+        infoBtn.classList.add('text-slate-500', 'hover:bg-slate-50');
+    }
 
     const warningBox = document.getElementById('allergy-warn');
     const warningText = document.getElementById('allergy-warn-text');
     const hasAlertNote = Boolean(isAlert) && String(alertNote || '').trim() !== '';
 
     if (hasAlertNote) {
-        warningText.textContent = `คำเตือน: ${alertNote}`;
+        warningText.textContent = 'คำเตือน: ' + alertNote;
         warningBox.classList.remove('hidden');
         warningBox.classList.add('flex');
     } else {
-        warningText.textContent = 'คำเตือน: พบประวัติแพ้ยาในรายการสั่งซื้อ!';
         warningBox.classList.add('hidden');
         warningBox.classList.remove('flex');
     }
@@ -933,11 +1198,17 @@ function selectCustomer(id, name, isAlert, alertNote) {
 function selectWalkIn() {
     currentCustomerId = null;
     currentCustomerName = 'ลูกค้าทั่วไป (เงินสด)';
+    currentCustomerData = null;
     document.getElementById('cust-name').textContent = currentCustomerName;
 
+    const infoBtn = document.getElementById('btn-customer-info');
+    if (infoBtn) {
+        infoBtn.disabled = true;
+        infoBtn.classList.add('text-slate-300');
+        infoBtn.classList.remove('text-slate-500', 'hover:bg-slate-50');
+    }
+
     const warningBox = document.getElementById('allergy-warn');
-    const warningText = document.getElementById('allergy-warn-text');
-    warningText.textContent = 'คำเตือน: พบประวัติแพ้ยาในรายการสั่งซื้อ!';
     warningBox.classList.add('hidden');
     warningBox.classList.remove('flex');
 
@@ -1001,9 +1272,18 @@ function updatePayChange() {
     const changeEl = document.getElementById('pay-change');
     const receivedEl = document.getElementById('pay-received');
     const typeEl = document.querySelector('input[name="pay-type"]:checked');
+    const discountEl = document.getElementById('pay-bill-discount');
     if (!changeEl || !receivedEl) return;
 
-    const total = getGrandTotal();
+    const subtotal = getGrandTotal();
+    const billDiscount = parseFloat(discountEl?.value) || 0;
+    const total = Math.max(0, subtotal - billDiscount);
+
+    const totalDisplay = document.getElementById('pay-total-display');
+    if (totalDisplay) {
+        totalDisplay.textContent = `฿ ${total.toLocaleString('th', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
     let change = 0;
 
     if (typeEl && typeEl.value === 'cash') {
@@ -1019,16 +1299,21 @@ function updatePayChange() {
 function handlePay() {
     if (!Object.keys(cart).length) return;
 
-    const total = getGrandTotal();
-    const totalDisplay = document.getElementById('pay-total-display');
+    const subtotal = getGrandTotal();
+    const subtotalDisplay = document.getElementById('pay-subtotal-display');
     const payReceived = document.getElementById('pay-received');
+    const billDiscountEl = document.getElementById('pay-bill-discount');
     const cashRadio = document.querySelector('input[name="pay-type"][value="cash"]');
     const receivedWrap = document.getElementById('pay-received-wrap');
     const modal = document.getElementById('pay-modal');
 
-    if (!modal || !totalDisplay || !payReceived || !cashRadio || !receivedWrap) return;
+    if (!modal || !payReceived || !cashRadio || !receivedWrap) return;
 
-    totalDisplay.textContent = `฿ ${total.toLocaleString('th', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (subtotalDisplay) {
+        subtotalDisplay.textContent = `฿ ${subtotal.toLocaleString('th', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+    if (billDiscountEl) billDiscountEl.value = '';
+
     payReceived.value = '';
     cashRadio.checked = true;
     receivedWrap.classList.remove('hidden');
@@ -1042,23 +1327,29 @@ function handlePay() {
 async function submitBill() {
     const csrfToken = '{{ csrf_token() }}';
     const payType = document.querySelector('input[name="pay-type"]:checked').value;
-    const totalAmount = getGrandTotal();
+    const subtotal = getGrandTotal();
+    const billDiscount = parseFloat(document.getElementById('pay-bill-discount')?.value) || 0;
+    const totalAmount = Math.max(0, subtotal - billDiscount);
     const received = parseFloat(document.getElementById('pay-received').value) || 0;
 
     const items = Object.values(cart).map(item => ({
         product_id: item.product.id,
         item_name: item.product.trade_name,
-        unit_name: item.product.unit ? item.product.unit.name : item.product.unit_name,
+        unit_name: item.selectedUnit ? item.selectedUnit.unit_name : (item.product.unit ? item.product.unit.name : item.product.unit_name),
         qty: item.qty,
         unit_price: item.customPrice ?? parseFloat(item.product.price_retail),
         discount: item.discount ?? 0,
         line_total: ((item.customPrice ?? parseFloat(item.product.price_retail)) * item.qty) - (item.discount ?? 0)
     }));
 
+    const itemsDiscount = Object.values(cart).reduce((s, i) => s + (i.discount || 0), 0);
+
     const payload = {
         customer_id: currentCustomerId || null,
-        subtotal: totalAmount,
-        total_discount: Object.values(cart).reduce((s, i) => s + (i.discount || 0), 0),
+        sale_type: currentSaleType,
+        subtotal: subtotal,
+        bill_discount: billDiscount,
+        total_discount: itemsDiscount + billDiscount,
         total_amount: totalAmount,
         cash_amount: payType === 'cash' ? received : 0,
         transfer_amount: payType === 'transfer' ? totalAmount : 0,
@@ -1083,6 +1374,19 @@ async function submitBill() {
             updateAll();
             document.getElementById('pay-modal').classList.add('hidden');
             document.getElementById('pay-modal').classList.remove('flex');
+
+            if (data.daily_bills !== undefined) {
+                const el = document.getElementById('daily-bill-count');
+                if (el) el.textContent = data.daily_bills;
+            }
+            if (data.latest_bill_time !== undefined) {
+                const el = document.getElementById('latest-bill-time');
+                if (el) el.textContent = data.latest_bill_time;
+            }
+            if (data.daily_total !== undefined) {
+                const el = document.getElementById('daily-sales-total');
+                if (el) el.textContent = parseFloat(data.daily_total).toLocaleString('th', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
         } else {
             showToast(data.message || 'เกิดข้อผิดพลาด', 'error');
         }
@@ -1129,22 +1433,148 @@ document.getElementById('pay-cancel-btn')?.addEventListener('click', hidePayModa
 document.addEventListener('keydown', e => {
     if(e.key === 'F9') { e.preventDefault(); handlePay(); }
     if(e.key === 'F8') { e.preventDefault(); clearCart(); }
-    if(e.key === 'F2') { e.preventDefault(); searchInput.focus(); }
+    if(e.key === 'F2') { e.preventDefault(); document.getElementById('search-input').focus(); }
     if (e.key === 'Escape') {
+        const detailModal = document.getElementById('product-detail-modal');
+        const searchModal = document.getElementById('search-results-modal');
         const payModal = document.getElementById('pay-modal');
-        if (payModal && !payModal.classList.contains('hidden')) {
+
+        if (detailModal && !detailModal.classList.contains('hidden')) {
+            e.preventDefault();
+            closeProductDetail();
+        } else if (searchModal && !searchModal.classList.contains('hidden')) {
+            e.preventDefault();
+            closeSearchModal();
+            searchInput.value = '';
+            searchInput.focus();
+        } else if (payModal && !payModal.classList.contains('hidden')) {
             e.preventDefault();
             hidePayModal();
         }
     }
 });
 
+let currentUnitPickerId = null;
+
+function openUnitPicker(productId) {
+    const item = cart[productId];
+    if (!item) return;
+
+    const p = item.product;
+    const extraUnits = (p.product_units || p.productUnits || []).filter(u => !u.is_disabled);
+
+    const baseUnit = {
+        id: 'base',
+        unit_name: p.unit_name ?? '-',
+        qty_per_base: 1,
+        is_base_unit: true,
+        is_disabled: false,
+        price_retail: parseFloat(p.price_retail) || 0,
+        price_wholesale1: parseFloat(p.price_wholesale1) || 0,
+        price_wholesale2: parseFloat(p.price_wholesale2) || 0,
+    };
+
+    const units = [baseUnit, ...extraUnits];
+
+    if (!units.length) {
+        showToast('ไม่พบข้อมูลหน่วยสินค้า', 'error');
+        return;
+    }
+
+    currentUnitPickerId = productId;
+    document.getElementById('unit-picker-product-name').textContent = p.trade_name;
+
+    const saleType = typeof currentSaleType !== 'undefined' ? currentSaleType : 'retail';
+    const costPrice = parseFloat(p.cost_price) || 0;
+
+    const list = document.getElementById('unit-picker-list');
+    list.innerHTML = units
+        .filter(u => !u.is_disabled)
+        .map(u => {
+            const qtyPerBase = parseFloat(u.qty_per_base) || 1;
+            const price = saleType === 'wholesale'
+                ? (parseFloat(u.price_wholesale1) > 0 ? parseFloat(u.price_wholesale1) : parseFloat(u.price_retail))
+                : parseFloat(u.price_retail);
+            const unitCost = costPrice * qtyPerBase;
+            const profit = price - unitCost;
+            const profitPct = unitCost > 0 ? (profit / unitCost * 100) : 0;
+
+            const isSelected = item.selectedUnit
+                ? item.selectedUnit.id == u.id
+                : u.is_base_unit;
+
+            return `
+            <div onclick="selectUnit('${u.id}')"
+                class="px-4 py-3 rounded-xl border cursor-pointer transition-colors ${isSelected ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:bg-slate-50'}"
+                id="unit-option-${u.id}">
+                <div class="flex justify-between items-center">
+                    <span class="font-bold text-slate-800 text-lg">${u.unit_name}</span>
+                    <span class="font-extrabold text-emerald-600 text-lg">${price.toLocaleString('th', {minimumFractionDigits: 2})} บาท</span>
+                </div>
+                <div class="flex justify-between text-xs text-slate-400 mt-1">
+                    <span>${qtyPerBase > 1 ? qtyPerBase + ' หน่วยฐาน' : 'หน่วยฐาน'}</span>
+                    <span>ต้นทุน: ${unitCost.toFixed(2)} | กำไร: <span class="${profit >= 0 ? 'text-emerald-500' : 'text-red-500'}">${profit.toFixed(2)} (${profitPct.toFixed(1)}%)</span></span>
+                </div>
+            </div>`;
+        }).join('');
+
+    const modal = document.getElementById('unit-picker-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeUnitPicker() {
+    const modal = document.getElementById('unit-picker-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    currentUnitPickerId = null;
+}
+
+function selectUnit(unitId) {
+    const item = cart[currentUnitPickerId];
+    if (!item) return;
+
+    const p = item.product;
+    const extraUnits = (p.product_units || p.productUnits || []).filter(u => !u.is_disabled);
+
+    const baseUnit = {
+        id: 'base',
+        unit_name: p.unit_name ?? '-',
+        qty_per_base: 1,
+        is_base_unit: true,
+        is_disabled: false,
+        price_retail: parseFloat(p.price_retail) || 0,
+        price_wholesale1: parseFloat(p.price_wholesale1) || 0,
+        price_wholesale2: parseFloat(p.price_wholesale2) || 0,
+    };
+
+    const allUnits = [baseUnit, ...extraUnits];
+    const unit = allUnits.find(u => u.id == unitId);
+    if (!unit) return;
+
+    const saleType = typeof currentSaleType !== 'undefined' ? currentSaleType : 'retail';
+    const price = saleType === 'wholesale'
+        ? (parseFloat(unit.price_wholesale1) > 0 ? parseFloat(unit.price_wholesale1) : parseFloat(unit.price_retail))
+        : parseFloat(unit.price_retail);
+
+    item.selectedUnit = unit;
+    item.customPrice = price;
+
+    updateAll();
+    closeUnitPicker();
+    showToast('เปลี่ยนหน่วยเป็น ' + unit.unit_name + ' เรียบร้อยแล้ว', 'success');
+}
+
 // --- Hygeia-style helper: realtime clock ---
 function updateHygeiaTime() {
-    const el = document.getElementById('hygeia-time');
-    if(el) {
+    const timeEl = document.getElementById('hygeia-time');
+    const dateEl = document.getElementById('hygeia-date');
+    if(timeEl) {
         const now = new Date();
-        el.textContent = now.toLocaleTimeString('th-TH', { hour12: false });
+        timeEl.textContent = now.toLocaleTimeString('th-TH', { hour12: false });
+        if (dateEl && dateEl.textContent === '') {
+            dateEl.textContent = now.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
     }
 }
 setInterval(updateHygeiaTime, 1000);
