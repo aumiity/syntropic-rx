@@ -302,18 +302,14 @@ input[type=number] {
     <div class="bg-white rounded-2xl w-full max-w-xl shadow-2xl border border-slate-200 p-6">
         <h3 class="text-2xl font-bold text-slate-800 mb-4">ชำระเงิน</h3>
 
-        <div class="bg-emerald-50 rounded-xl px-4 py-4 mb-5 border border-emerald-100">
-            <div class="flex justify-between items-end mb-2">
-                <div class="text-sm text-slate-500">ยอดรวมสินค้า</div>
-                <div id="pay-subtotal-display" class="text-xl font-bold text-slate-700">0.00</div>
+        <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl px-5 py-5 mb-5 border border-emerald-200 shadow-sm">
+            <div class="flex justify-between items-end gap-2 mb-4">
+                <div class="text-sm text-slate-600 font-semibold tracking-wide">ยอดสุทธิ</div>
+                <div id="pay-total-display" class="text-5xl font-extrabold text-emerald-600 leading-none">0.00</div>
             </div>
-            <div class="flex justify-between items-center mb-3 pb-3 border-b border-emerald-200">
-                <div class="text-sm text-slate-600 font-medium">ส่วนลดท้ายบิล</div>
-                <input type="number" id="pay-bill-discount" min="0" step="0.01" class="text-right w-32 border border-slate-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-emerald-500 outline-none font-bold" placeholder="0.00" oninput="updatePayChange()">
-            </div>
-            <div class="flex justify-between items-end">
-                <div class="text-sm text-slate-700 font-medium">ยอดสุทธิ</div>
-                <div id="pay-total-display" class="text-4xl font-extrabold text-emerald-600 leading-tight">0.00</div>
+            <div class="flex justify-between items-center gap-3 pt-4 border-t border-emerald-200">
+                <div class="text-sm text-slate-600 font-semibold">ส่วนลดท้ายบิล</div>
+                <input type="number" id="pay-bill-discount" min="0" step="0.01" class="text-right text-xl w-40 px-3 py-2 border border-emerald-300 rounded-lg bg-white hover:bg-emerald-50 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none font-bold text-emerald-700 shadow-sm transition-all" placeholder="0.00" oninput="updatePayChange()">
             </div>
         </div>
 
@@ -329,12 +325,12 @@ input[type=number] {
         </div>
 
         <div id="pay-received-wrap" class="mb-3">
-            <div class="text-sm text-slate-500 mb-1">รับเงินมา</div>
+            <div class="text-m text-slate-500 mb-1">รับเงินมา</div>
             <input type="number" id="pay-received" min="0" step="0.01" class="text-4xl font-extrabold text-slate-800 w-full bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-4 text-right outline-none focus:ring-2 focus:ring-emerald-400" placeholder="0.00">
         </div>
 
         <div class="mb-5">
-            <div class="text-sm text-slate-500 mb-1">เงินทอน</div>
+            <div class="text-m text-slate-500 mb-1">เงินทอน</div>
             <input type="text" id="pay-change" readonly value="0.00" class="text-4xl font-extrabold w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 text-right text-emerald-600">
         </div>
 
@@ -475,6 +471,7 @@ function setSaleType(type) {
     });
 
     updateAll();
+    returnFocusToSearch();
 }
 
 // Customer Info Modal
@@ -494,6 +491,7 @@ function closeCustomerInfo() {
     const modal = document.getElementById('customer-info-modal');
     modal.classList.add('hidden');
     modal.classList.remove('flex');
+    returnFocusToSearch();
 }
 
 // --- Quick Add Customer Submit Logic ---
@@ -540,6 +538,7 @@ function closeQuickAddCustomer() {
     const modal = document.getElementById('quick-add-customer-modal');
     modal.classList.add('hidden');
     modal.classList.remove('flex');
+    returnFocusToSearch();
 }
 
 // Wire up buttons after DOMContentLoaded
@@ -547,7 +546,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('quick-add-customer-btn')?.addEventListener('click', openQuickAddCustomer);
     document.getElementById('quick-add-cancel-btn')?.addEventListener('click', closeQuickAddCustomer);
     document.getElementById('quick-add-x-btn')?.addEventListener('click', closeQuickAddCustomer);
-    // Wire save button if route exists
     const saveBtn = document.getElementById('quick-add-save-btn');
     if (saveBtn) {
         saveBtn.addEventListener('click', function(e) {
@@ -555,15 +553,62 @@ document.addEventListener('DOMContentLoaded', function() {
             submitQuickAddCustomer();
         });
     }
+
+    document.getElementById('search-input-modal').addEventListener('keydown', function(e) {
+        const modal = document.getElementById('search-results-modal');
+        if (!modal || modal.classList.contains('hidden')) return;
+
+        const items = document.querySelectorAll('#search-modal-list > div[id^="search-row-"]');
+        const max = items.length;
+        if (!max) return;
+
+        function updateSelection(newIndex) {
+            searchSelectedIndex = newIndex;
+            items.forEach((el, idx) => {
+                el.classList.remove('bg-emerald-100', 'bg-emerald-50');
+                if (idx === searchSelectedIndex) {
+                    el.classList.add('bg-emerald-100');
+                    el.scrollIntoView({ block: 'nearest' });
+                }
+            });
+        }
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            updateSelection((searchSelectedIndex + 1) % max);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            updateSelection((searchSelectedIndex - 1 + max) % max);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (searchSelectedIndex >= 0 && items[searchSelectedIndex]) {
+                items[searchSelectedIndex].click();
+            }
+        }
+    });
 });
 
 
 // --- Search & Popup Logic ---
 let timer;
 const searchInput = document.getElementById('search-input');
-const searchDropdown = document.getElementById('search-dropdown');
+const searchDropdown = { classList: { add: () => {}, remove: () => {} } };
 const searchContainer = document.getElementById('search-results-container');
 let searchSelectedIndex = -1;
+
+function isAnyFixedModalOpen() {
+    return Array.from(document.querySelectorAll('.fixed')).some(el => !el.classList.contains('hidden'));
+}
+
+function returnFocusToSearch() {
+    setTimeout(() => {
+        const modals = [...document.querySelectorAll('.fixed')].filter(el => 
+            !el.classList.contains('hidden') && el.id !== 'toast-container'
+        );
+        if (modals.length > 0) return;
+        document.getElementById('search-input')?.focus();
+    }, 50);
+}
 
 
 
@@ -621,15 +666,16 @@ function convertThaiBarcode(str) {
     return str;
 }
 
+let searchTimer;
 async function searchDrugs(q) {
     if (!q.trim()) {
-        closeSearchModal();
+        document.getElementById('search-modal-list').innerHTML = '';
+        document.getElementById('search-modal-query').textContent = '';
         return;
     }
 
     q = convertThaiBarcode(q);
 
-    // ถ้า modal ยังไม่เปิด ให้เปิดแล้ว sync ค่าไป modal input
     const modal = document.getElementById('search-results-modal');
     if (modal.classList.contains('hidden')) {
         openSearchModal();
@@ -637,15 +683,12 @@ async function searchDrugs(q) {
         if (modalInput) {
             modalInput.value = q;
             modalInput.focus();
-            // clear outer input แล้วหยุด ให้ modal input รับต่อเอง
             document.getElementById('search-input').value = '';
-            // trigger search จาก modal input
-            await doSearch(q);
-            return;
         }
     }
 
-    await doSearch(q);
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => doSearch(q), 200);
 }
 
 async function doSearch(q) {
@@ -674,6 +717,7 @@ function closeSearchModal() {
     document.getElementById('search-input').value = '';
     document.getElementById('search-modal-list').innerHTML = '';
     document.getElementById('search-modal-query').textContent = '';
+    returnFocusToSearch();
 }
 
 function addToCartFromModal(id) {
@@ -734,14 +778,18 @@ function openProductDetail(productId) {
 function closeProductDetail() {
     document.getElementById('product-detail-modal').classList.add('hidden');
     document.getElementById('product-detail-modal').classList.remove('flex');
+    returnFocusToSearch();
 }
 
 function renderSearchResults(products) {
     searchSelectedIndex = -1;
-    const query = document.getElementById('search-input').value;
+    const modal = document.getElementById('search-results-modal');
+    const isModalOpen = !modal.classList.contains('hidden');
+    const query = isModalOpen 
+        ? document.getElementById('search-input-modal').value 
+        : document.getElementById('search-input').value;
     document.getElementById('search-modal-query').textContent = `ค้นหา: "${query}" — พบ ${products.length} รายการ`;
 
-    const modal = document.getElementById('search-results-modal');
     modal.classList.remove('hidden');
     modal.classList.add('flex');
 
@@ -799,7 +847,7 @@ function addToCart(id) {
 
     searchInput.value = '';
     searchDropdown.classList.add('hidden');
-    searchInput.focus();
+    returnFocusToSearch();
 
     updateAll();
 }
@@ -909,6 +957,8 @@ window.changeDiscount = function(id) {
     document.getElementById('discount-input').value = currentDiscount;
     document.getElementById('discount-modal').classList.remove('hidden');
     document.getElementById('discount-modal').classList.add('flex');
+    document.getElementById('discount-input').focus();
+    document.getElementById('discount-input').select();
     window.currentDiscountId = id;
 };
 
@@ -945,6 +995,16 @@ document.getElementById('discount-cancel').addEventListener('click', function() 
     document.getElementById('discount-modal').classList.remove('flex');
 });
 
+document.getElementById('discount-input').addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        document.getElementById('discount-ok').click();
+    } else if (event.key === 'Escape') {
+        event.preventDefault();
+        document.getElementById('discount-cancel').click();
+    }
+});
+
 window.removeItem = function(id) {
     delete cart[id];
     updateAll();
@@ -956,6 +1016,7 @@ function clearCart() {
         cart = {};
         closeSearchModal();
         updateAll();
+        returnFocusToSearch();
     }
 }
 
@@ -1193,6 +1254,7 @@ function selectCustomer(id, name, isAlert, alertNote, phone = '') {
     }
 
     closeCustomerModal();
+    returnFocusToSearch();
 }
 
 function selectWalkIn() {
@@ -1213,11 +1275,13 @@ function selectWalkIn() {
     warningBox.classList.remove('flex');
 
     closeCustomerModal();
+    returnFocusToSearch();
 }
 
 function closeCustomerModal() {
     document.getElementById('customer-modal').classList.add('hidden');
     document.getElementById('customer-modal').classList.remove('flex');
+    returnFocusToSearch();
 }
 
 let custSearchTimer;
@@ -1266,6 +1330,7 @@ function hidePayModal() {
     if (!modal) return;
     modal.classList.add('hidden');
     modal.classList.remove('flex');
+    returnFocusToSearch();
 }
 
 function updatePayChange() {
@@ -1312,7 +1377,9 @@ function handlePay() {
     if (subtotalDisplay) {
         subtotalDisplay.textContent = `฿ ${subtotal.toLocaleString('th', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
-    if (billDiscountEl) billDiscountEl.value = '';
+    const totalItemsDiscount = Object.values(cart).reduce((s, i) => s + (i.discount || 0), 0);
+        if (billDiscountEl) billDiscountEl.value = totalItemsDiscount > 0 ? totalItemsDiscount : '';
+        updatePayChange();
 
     payReceived.value = '';
     cashRadio.checked = true;
@@ -1374,6 +1441,7 @@ async function submitBill() {
             updateAll();
             document.getElementById('pay-modal').classList.add('hidden');
             document.getElementById('pay-modal').classList.remove('flex');
+            returnFocusToSearch();
 
             if (data.daily_bills !== undefined) {
                 const el = document.getElementById('daily-bill-count');
@@ -1427,7 +1495,29 @@ document.getElementById('pay-confirm-btn')?.addEventListener('click', function()
     submitBill();
 });
 
-document.getElementById('pay-cancel-btn')?.addEventListener('click', hidePayModal);
+document.getElementById('pay-cancel-btn')?.addEventListener('click', function() {
+    hidePayModal();
+    returnFocusToSearch();
+});
+
+document.addEventListener('keydown', function(e) {
+    const isPrintableCharacter = e.key.length === 1 || /\d/.test(e.key);
+    if (!isPrintableCharacter) return;
+
+    if (isAnyFixedModalOpen()) return;
+
+    const activeEl = document.activeElement;
+    if (activeEl && (
+        activeEl.tagName === 'INPUT' ||
+        activeEl.tagName === 'TEXTAREA' ||
+        activeEl.tagName === 'SELECT' ||
+        activeEl.isContentEditable
+    )) {
+        return;
+    }
+
+    returnFocusToSearch();
+});
 
 // --- Keyboard Shortcuts ---
 document.addEventListener('keydown', e => {
@@ -1528,6 +1618,7 @@ function closeUnitPicker() {
     modal.classList.add('hidden');
     modal.classList.remove('flex');
     currentUnitPickerId = null;
+    returnFocusToSearch();
 }
 
 function selectUnit(unitId) {
@@ -1579,6 +1670,19 @@ function updateHygeiaTime() {
 }
 setInterval(updateHygeiaTime, 1000);
 updateHygeiaTime();
+
+document.addEventListener('click', function() {
+    setTimeout(() => {
+        const modals = [...document.querySelectorAll('.fixed')].filter(el => 
+            !el.classList.contains('hidden') && el.id !== 'toast-container'
+        );
+        if (modals.length > 0) return;
+        const active = document.activeElement;
+        if (active && ['INPUT','TEXTAREA','SELECT'].includes(active.tagName)) return;
+        document.getElementById('search-input')?.focus();
+    }, 100);
+});
+
 </script>
 
 @endsection

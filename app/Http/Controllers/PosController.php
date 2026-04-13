@@ -732,6 +732,11 @@ class PosController extends Controller
                   ->select(['id', 'product_id', 'unit_name', 'qty_per_base', 'is_base_unit', 
                             'is_disabled', 'price_retail', 'price_wholesale1', 'price_wholesale2']);
             }])
+            ->orderByRaw("CASE 
+    WHEN trade_name LIKE ? THEN 0 
+    WHEN trade_name LIKE ? THEN 1 
+    ELSE 2 
+END, trade_name ASC", [$query.'%', '%'.$query.'%'])
             ->get();
 
         return response()->json($products);
